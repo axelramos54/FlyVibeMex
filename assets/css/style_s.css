@@ -6,11 +6,3 @@ root{
     --color-color5: #fff;
     --color-color6: #fff;
 }
-
-#navbar_left{
-    margin-left: 1rem !important;
-}
-
-#navbar_right{
-    margin-right: 1rem;
-}

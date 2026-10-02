@@ -7,10 +7,6 @@ root{
     --color-color6: #fff;
 }
 
-#navbar_left{
-    margin-left: 1rem !important;
-}
-
-#navbar_right{
-    margin-right: 1rem;
+#buscador{
+    width: 100rem !important;
 }
