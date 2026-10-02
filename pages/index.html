@@ -1,11 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Proyecto final</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
+    <header>
+        <section class="navbar" id="navbar">
+            <div class="navbar-collapse d-flex">                  <!--Este div es para que todo este en una sola linea-->
+                
+                <div class="navbar-brand d-flex" id="navbar_left">
+                    <img class="m-1" src="" alt="imagen">
+                    <p class="m-1">FlyVideMex</p>
+                </div>
+
+                <div class="navbar-item ms-auto d-flex" id="navbar_right">
+                    <a class="m-1" onclick="cargarPagina('/pages/index_D.html')" href="#">Home</a>
+                    <a class="m-1" onclick="cargarPagina('/pages/index_V.html')" href="#">Viajes</a>
+                    <a class="m-1" onclick="cargarPagina('/pages/index_H.html')" href="#">Hoteles</a>
+                    <a class="m-1" onclick="cargarPagina('/pages/index_T.html')" href="#">Tours</a>
+                    <a class="m-1" onclick="cargarPagina('/pages/index_P.html')" href="#">Paquetes</a>
+                    <div class="m-1" id="secion">
+                        <a class="m-1" onclick="cargarPagina('/pages/index_s.html')" href="#" id="secion">Iniciar secion</a> <!-- Cuando inicia secion modificar el logo y de "iniciar secion" -> "mi perfil" -->
+                        <img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto">
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </header>
+
+
+    <main id="contenido_main">
+        
+    </main>
+
+
+    <footer>
+
+    </footer>
     
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script src="/assets/js/script.js"></script>
 </body>
 </html>

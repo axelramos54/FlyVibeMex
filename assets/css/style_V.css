@@ -1,0 +1,12 @@
+root{
+    --color-color1: #fff;
+    --color-color2: #fff;
+    --color-color3: #fff;
+    --color-color4: #fff;
+    --color-color5: #fff;
+    --color-color6: #fff;
+}
+
+#buscador{
+    width: 100rem !important;
+}
