@@ -1,0 +1,44 @@
+Este documento es la explicacion de como esta estructurado la pagina
+se estrucutura de la siguiente manera en el frontend
+
+
+|-home
+|  |----- pagina de sesion
+
+a nivel archivos estan en las siguientes rutas
+
+|-pages
+|   |--index.html
+|   |--index_D.html
+|   |--ect
+|   |
+|-assets
+|   |--css
+|       |--styles.css
+|       |--styles_D-css
+|       |--etc
+|   |--js
+|       |--script.js
+|       |--script_D.js
+|       |--etc
+
+Todos los que tiene una letra se refiere una parte de la pagina por ejemplo:
+
+D.html -> Pagina defualt, la que sale en un inicio
+H.html -> Pagina Hospedajes (para buscar)
+P.html -> Pagina de paquetes (para buscar)
+T.html -> Pagina de tours (para buscar)
+V.html -> Pagina de viajes (para buscar)
+s.HTML -> Pagina de inicio de sesion (para buscar)
+
+Todas las paginas a excepcion de inicio de sesion (y en algunas en un futuro)
+sera inertaran en el main de index.html para que sea dinamica la pagina
+
+notas:
+
+las class solo se usaran para que el boostrap meta mano,
+si quieres meterle diseño, usa los ids
+
+
+Existe un html llamado card, este es el archivo que utiliaremos en el back para insertar en 
+el altera derecho de los motores de busqueda
