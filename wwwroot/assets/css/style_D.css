@@ -1,16 +1,202 @@
-root{
-    --color-color1: #fff;
-    --color-color2: #fff;
-    --color-color3: #fff;
-    --color-color4: #fff;
-    --color-color5: #fff;
-    --color-color6: #fff;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-#navbar_left{
-    margin-left: 1rem !important;
+#mapas_preferidos {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding-bottom: 40px;
 }
 
-#navbar_right{
-    margin-right: 1rem;
+#seccion_bienvenida {
+    background: linear-gradient(115deg, #3E8FD6 0%, #7FC4F2 45%, #F07B3F 100%);
+    border-radius: 20px;
+    padding: 32px 36px;
+    color: #ffffff;
+    box-shadow: 0 10px 30px rgba(13, 27, 84, 0.18);
+    margin-bottom: 28px;
+}
+
+.bg-infor h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+}
+
+.bg-alert {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 14px;
+    padding: 14px 20px;
+}
+
+.bg-alert p:first-child {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #fef08a;
+    margin-bottom: 2px;
+}
+
+.bg-alert p:last-child {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+}
+
+.btn-hero-primary {
+    background-color: #ffffff;
+    color: #319293 !important;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.btn-hero-primary:hover {
+    background-color: #f1f5f9;
+    transform: translateY(-2px);
+}
+
+.btn-hero-outline {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 10px 20px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.btn-hero-outline:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.mi-tarjeta {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    overflow: hidden;
+    background-color: #ffffff;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mi-tarjeta:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
+}
+
+.mi-tarjeta .card-img-top {
+    height: 160px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.mi-tarjeta .card-body {
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.mi-tarjeta .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.mi-tarjeta .card-text {
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.45;
+    margin-bottom: 20px;
+}
+
+.btn-card-action {
+    margin-top: auto;
+    background-color: #319293;
+    color: #ffffff !important;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-card-action:hover {
+    background-color: #e62b4a;
+    transform: translateY(-1px);
+}
+
+#seccion_promociones {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    padding: 28px 32px;
+    color: #ffffff;
+    border-left: 6px solid #e62b4a;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+#seccion_promociones h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    color: #ffffff;
+}
+
+#seccion_promociones p {
+    color: #cbd5e1;
+    font-size: 0.92rem;
+    margin: 0;
+}
+
+#seccion_contactanos {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 28px 32px;
+    border: 1px solid #e2e8f0;
+    border-left: 6px solid #3E8FD6;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+}
+
+#seccion_contactanos h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+#seccion_contactanos p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+@media (max-width: 576px) {
+    #seccion_bienvenida {
+        padding: 20px;
+    }
+
+    .btn-hero-primary,
+    .btn-hero-outline {
+        width: 100%;
+        text-align: center;
+    }
 }

@@ -3,66 +3,127 @@
     Layout = null;
 }
 
-<link rel="stylesheet" href="/assets/css/style_H.css">
-<div class="container mt-5" id="mapas_preferidos">
-            <h1 class="mb-4">Hoteles</h1>
-            
-            <section class="d-flex" id="contenido">
-                <div class="m-2 w-200" id="buscador">
-                    <h2>Motor de busqueda</h2>
-                    <form action="">
-                        <label for="ubicacion">Nombre hotel <input type="text" placeholder="Ej. Caesar´s Place"></label>
-                        <div class="d-flex">
-                            <label for="fecha_inicio">Fecha inicial <input type="date" ></label>
-                            <label for="fecha_final">Fecha final <input type="date"></label>
-                        </div>
-                        <label for="num_viajeros">Viajeros <input type="number" placeholder="1"></label>
-                        <input type="submit" value="Buscar">
-                    </form>
-                </div>  
+<link rel="stylesheet" href="~/assets/css/style_H.css">
 
-            
-            
-                <div class="row g-4" id="tarjetas">
-                    <!-- Tarjeta 1 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_dust2">
-                            <img src="imagenes/grandes/Cs2_dust2.webp" class="card-img-top" alt="de_dust2">
-                            <div class="card-body">
-                                <h5 class="card-title">de_dust2</h5>
-                                <p class="card-text">Como TT suelo jugar con el grupo de la bomba, casualmente juego como AWPer, como CT suelo ser el ancla de B site, 
-                                    en temas de utilidad, mi fuerte esta del lado TT y del CT conozco las básicas de B site, algunas de A site.</p>
-                                <a href="https://sketchfab.com/3d-models/de-dust2-cs-map-056008d59eb849a29c0ab6884c0c3d87" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
+<div class="container mt-4" id="mapas_preferidos">
+    <h1 class="page-title mb-4">Hoteles y Hospedaje</h1>
+
+    <section class="row g-4" id="contenido">
+        
+        <!-- Motor de Búsqueda (Barra Lateral) -->
+        <div class="col-12 col-lg-4 col-xl-3" id="buscador">
+            <div class="search-card">
+                <h2>Buscar Alojamiento</h2>
+                <form action="#" method="get">
+                    <div class="form-group mb-3">
+                        <label for="ubicacion">Alojamiento / Destino</label>
+                        <input type="text" id="ubicacion" class="form-control"
+                               placeholder="Ej. Cancún, Los Cabos, CDMX">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="fecha_inicio">Fecha de entrada</label>
+                        <input type="date" id="fecha_inicio" class="form-control">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="fecha_final">Fecha de salida</label>
+                        <input type="date" id="fecha_final" class="form-control">
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="num_viajeros">Huéspedes</label>
+                        <input type="number" id="num_viajeros" class="form-control" placeholder="1" min="1" value="2">
+                    </div>
+
+                    <button type="submit" class="btn btn-search-submit">Buscar hoteles</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Listado de Tarjetas de Hoteles -->
+        <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+            <div class="row g-4">
+
+                <!-- Hotel 1: Cancún -->
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 mi-tarjeta">
+                        <div class="card-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                                 class="card-img-top" alt="Grand Oasis Cancún">
+                            <div class="route-badge">
+                                <span class="route-text">Cancún • 5★ All Inclusive</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Grand Oasis Cancún</h5>
+                            <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
+                                especialidades y vista panorámica al mar Caribe.</p>
+                                <div class="card-footer-box">
+                                    <div class="price-box">
+                                        <span class="price-label">Noche desde</span>
+                                        <span class="price-value">$3,250 <small>MXN</small></span>
+                                    </div>
+                                    <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tarjeta 2 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_mirage">
-                            <img src="imagenes/grandes/De_mirage_cs2.webp" class="card-img-top" alt="de_mirage">
-                            <div class="card-body">
-                                <h5 class="card-title">de_mirage</h5>
-                                <p class="card-text">En mirage juego con el grupo de la bomba como TT y suelo jugar como ancla del B site, muy ocasionalemte juego
-                                    como AWPer de lado CT, este es el segundo mapa que mejor domino las utilidades (junto a Dust 2).</p>
-                                <a href="https://sketchfab.com/3d-models/de-mirage-cs2-42091af5b78941e68b01396d0c955aac" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
+                    <!-- Hotel 2: Los Cabos -->
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 mi-tarjeta">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80"
+                                     class="card-img-top" alt="Pueblo Bonito Los Cabos">
+                                <div class="route-badge">
+                                    <span class="route-text">Los Cabos • Resort de Lujo</span>
+                                </div>
                             </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Pueblo Bonito Sunset</h5>
+                                <p class="card-text">Ubicado en acantilados del Pacífico, ofrece suites privadas, spas
+                                    exclusivos y atardeceres inolvidables.</p>
+                                    <div class="card-footer-box">
+                                        <div class="price-box">
+                                            <span class="price-label">Noche desde</span>
+                                            <span class="price-value">$4,890 <small>MXN</small></span>
+                                        </div>
+                                        <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hotel 3: Oaxaca -->
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="card h-100 mi-tarjeta">
+                                <div class="card-img-wrapper">
+                                    <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80"
+                                         class="card-img-top" alt="Quinta Real Oaxaca">
+                                    <div class="route-badge">
+                                        <span class="route-text">Oaxaca • Boutique Histórico</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">Quinta Real Oaxaca</h5>
+                                    <p class="card-text">Alojamiento único en un antiguo convento del siglo XVI situado en el
+                                        corazón del centro histórico.</p>
+                                        <div class="card-footer-box">
+                                            <div class="price-box">
+                                                <span class="price-label">Noche desde</span>
+                                                <span class="price-value">$2,980 <small>MXN</small></span>
+                                            </div>
+                                            <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Tarjeta 3 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_ancient">
-                            <img src="imagenes/grandes/de_ancient.jpg" class="card-img-top" alt="de_ancient">
-                            <div class="card-body">
-                                <h5 class="card-title">de_ancient</h5>
-                                <p class="card-text">En ancient juego tambien como ancla y con el grupo de la bomba, nada más que aqui, 
-                                    el ancla la juego en el A site, estoy en proceso de aprender las utilidades y las callouts.</p>
-                                <a href="https://dekiar.com/products/cs2-ancient-3d-map" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </div>
 
-<script src="/assets/js/script_H.js"></script>
+<script src="~/assets/js/script_H.js"></script>
