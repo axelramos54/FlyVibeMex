@@ -35,7 +35,7 @@
                         <h5 class="card-title">Conoce nuestros vuelos</h5>
                         <p class="card-text">Vuela a los mejores destinos de México y el mundo con tarifas exclusivas.
                         </p>
-                        <a href="#" class="btn btn-card-action">Ver vuelos</a>
+                        <a href="#" class="btn btn-card-action" onclick="cargarPagina('/Home/Viajes')">Ver viajes</a>
                     </div>
                 </div>
             </div>
@@ -47,51 +47,52 @@
                     <div class="card-body">
                         <h5 class="card-title">Paquetes para ti</h5>
                         <p class="card-text">Ahorra combinando Vuelo + Hotel con todo incluido para tus vacaciones.</p>
-                        <a href="#" class="btn btn-card-action">Ver paquetes</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="card h-100 mi-tarjeta" id="Hospedaje_card">
-                    <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                         class="card-img-top" alt="Hoteles y hospedaje">
-                    <div class="card-body">
-                        <h5 class="card-title">Duerme con comodidad</h5>
-                        <p class="card-text">Encuentra desde hoteles boutique hasta resorts de lujo frente al mar.</p>
-                        <a href="#" class="btn btn-card-action">Ver hoteles</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="card h-100 mi-tarjeta" id="Tour_card">
-                    <img src="https://images.unsplash.com/photo-1512813195386-6cf811ad3542?auto=format&fit=crop&w=600&q=80"
-                         class="card-img-top" alt="Tours y experiencias">
-                    <div class="card-body">
-                        <h5 class="card-title">Tours y Experiencias</h5>
-                        <p class="card-text">Excursiones guiadas, actividades de aventura y visitas culturales
-                            inolvidables.</p>
-                            <a href="#" class="btn btn-card-action">Ver tours</a>
+                        <a href="#" class="btn btn-card-action" onclick="cargarPagina('/Home/Paquetes')">Ver
+                            paquetes</a>
                         </div>
                     </div>
                 </div>
 
-            </div>
-        </section>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="card h-100 mi-tarjeta" id="Hospedaje_card">
+                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                             class="card-img-top" alt="Hoteles y hospedaje">
+                        <div class="card-body">
+                            <h5 class="card-title">Duerme con comodidad</h5>
+                            <p class="card-text">Encuentra desde hoteles boutique hasta resorts de lujo frente al mar.</p>
+                            <a href="#" class="btn btn-card-action" onclick="cargarPagina('/Home/Hoteles')">Ver hoteles</a>
+                        </div>
+                    </div>
+                </div>
 
-        <section id="seccion_promociones" class="mt-4">
-            <div class="promo-content">
-                <h2>La mejor promoción es la que no dejas pasar</h2>
-                <p>Aprovecha hasta 12 meses sin intereses en paquetes seleccionados por temporada.</p>
-            </div>
-        </section>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="card h-100 mi-tarjeta" id="Tour_card">
+                        <img src="https://images.unsplash.com/photo-1512813195386-6cf811ad3542?auto=format&fit=crop&w=600&q=80"
+                             class="card-img-top" alt="Tours y experiencias">
+                        <div class="card-body">
+                            <h5 class="card-title">Tours y Experiencias</h5>
+                            <p class="card-text">Excursiones guiadas, actividades de aventura y visitas culturales
+                                inolvidables.</p>
+                                <a href="#" class="btn btn-card-action" onclick="cargarPagina('/Home/Tours')">Ver tours</a>
+                            </div>
+                        </div>
+                    </div>
 
-        <section id="seccion_contactanos" class="mt-4">
-            <h2>¿Tienes alguna duda sobre tu viaje?</h2>
-            <p>Contáctanos directamente o genera una solicitud de asistencia y nuestro equipo te atenderá de inmediato.</p>
-        </section>
+                </div>
+            </section>
 
-    </div>
+            <section id="seccion_promociones" class="mt-4">
+                <div class="promo-content">
+                    <h2>La mejor promoción es la que no dejas pasar</h2>
+                    <p>Aprovecha hasta 12 meses sin intereses en paquetes seleccionados por temporada.</p>
+                </div>
+            </section>
+
+            <section id="seccion_contactanos" class="mt-4">
+                <h2>¿Tienes alguna duda sobre tu viaje?</h2>
+                <p>Contáctanos directamente o genera una solicitud de asistencia y nuestro equipo te atenderá de inmediato.</p>
+            </section>
+
+        </div>
 
 <script src="~/assets/js/script_D.js"></script>
