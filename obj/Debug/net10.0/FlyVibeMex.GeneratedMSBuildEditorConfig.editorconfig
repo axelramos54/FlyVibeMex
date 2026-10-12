@@ -11,73 +11,73 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = FlyVibeMex
 build_property.RootNamespace = FlyVibeMex
-build_property.ProjectDir = /mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/
+build_property.ProjectDir = c:\Users\User\OneDrive\Desktop\FlyVibeMex\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = /mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex
+build_property.MSBuildProjectDirectory = c:\Users\User\OneDrive\Desktop\FlyVibeMex
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/card.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9jYXJkLmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/card.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxjYXJkLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Default.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9EZWZhdWx0LmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Default.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxEZWZhdWx0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/exIndex.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9leEluZGV4LmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/exIndex.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxleEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Hoteles.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9Ib3RlbGVzLmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Hoteles.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxIb3RlbGVzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Paquetes.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9QYXF1ZXRlcy5jc2h0bWw=
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Paquetes.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQYXF1ZXRlcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Privacy.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9Qcml2YWN5LmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Privacy.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/sesion.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9zZXNpb24uY3NodG1s
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/sesion.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxzZXNpb24uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Tours.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9Ub3Vycy5jc2h0bWw=
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Tours.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxUb3Vycy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Home/Viajes.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9WaWFqZXMuY3NodG1s
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Home/Viajes.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxWaWFqZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Shared/Error.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0Vycm9yLmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Shared/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Shared/_ValidationScriptsPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Shared/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/Views/Shared/_Layout.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19MYXlvdXQuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = b-fp88cn2epj
+[c:/Users/User/OneDrive/Desktop/FlyVibeMex/Views/Shared/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = b-ubb0y96tlo

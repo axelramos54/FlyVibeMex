@@ -1,26 +1,27 @@
 {
   "format": 1,
   "restore": {
-    "/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/FlyVibeMex.csproj": {}
+    "c:\\Users\\User\\OneDrive\\Desktop\\FlyVibeMex\\FlyVibeMex.csproj": {}
   },
   "projects": {
-    "/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/FlyVibeMex.csproj": {
+    "c:\\Users\\User\\OneDrive\\Desktop\\FlyVibeMex\\FlyVibeMex.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/FlyVibeMex.csproj",
+        "projectUniqueName": "c:\\Users\\User\\OneDrive\\Desktop\\FlyVibeMex\\FlyVibeMex.csproj",
         "projectName": "FlyVibeMex",
-        "projectPath": "/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/FlyVibeMex.csproj",
-        "packagesPath": "/home/yamil07gamer/.nuget/packages/",
-        "outputPath": "/mnt/9C0AF8FD0AF8D56C/Documentos/para la pc gamer master race XDXDXDXD/universidad/5 semestre/programacion web/fvm/FlyVibeMex/obj/",
+        "projectPath": "c:\\Users\\User\\OneDrive\\Desktop\\FlyVibeMex\\FlyVibeMex.csproj",
+        "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
+        "outputPath": "c:\\Users\\User\\OneDrive\\Desktop\\FlyVibeMex\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/yamil07gamer/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "/usr/lib64/dotnet/library-packs": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -39,7 +40,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.100"
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net10.0": {
@@ -63,7 +64,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/10.0.111/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
