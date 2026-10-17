@@ -138,8 +138,6 @@ c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\scopedcss\bundle\Fly
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\scopedcss\projectbundle\FlyVibeMex.bundle.scp.css
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\zukv9etwd6-{0}-5ipweew5fc-5ipweew5fc.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\wo4m13cz3x-{0}-b9sayid5wm-b9sayid5wm.gz
-c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\phinceo8to-{0}-iu5bj7l869-iu5bj7l869.gz
-c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\9n80sckk6r-{0}-iu5bj7l869-iu5bj7l869.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\6y1kskuv6g-{0}-5ipweew5fc-5ipweew5fc.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\ilprbxbv5n-{0}-0jndmb4id7-0jndmb4id7.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\7sxcv4yc07-{0}-5ipweew5fc-5ipweew5fc.gz
@@ -170,3 +168,5 @@ c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\id4og9wqr
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\iplwpkiv8h-{0}-o6gqpe6hs2-o6gqpe6hs2.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\xtbbk2423r-{0}-mulfb9dw8o-mulfb9dw8o.gz
 c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\kpf4flqx2t-{0}-o6gqpe6hs2-o6gqpe6hs2.gz
+c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\phinceo8to-{0}-40wupprb7c-40wupprb7c.gz
+c:\Users\User\OneDrive\Desktop\FlyVibeMex\obj\Debug\net10.0\compressed\9n80sckk6r-{0}-o6gqpe6hs2-o6gqpe6hs2.gz
