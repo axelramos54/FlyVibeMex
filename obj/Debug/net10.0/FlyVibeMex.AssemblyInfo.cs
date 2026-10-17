@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FlyVibeMex")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f484f7343c3c0c376081f5f852783de33ac7e15d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d1649d35962688e4e2bcf47edee5249b92fc7eb")]
 [assembly: System.Reflection.AssemblyProductAttribute("FlyVibeMex")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FlyVibeMex")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

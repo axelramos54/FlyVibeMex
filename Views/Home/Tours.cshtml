@@ -3,66 +3,121 @@
     Layout = null;
 }
 
-<link rel="stylesheet" href="/assets/css/style_T.css">
+<link rel="stylesheet" href="~/assets/css/style_T.css">
 
-<div class="container mt-5" id="mapas_preferidos">
-            <h1 class="mb-4">Tours</h1>
-            
-            <section class="d-flex" id="contenido">
-                <div class="m-2 w-200" id="buscador">
-                    <h2>Motor de busqueda</h2>
-                    <form action="">
-                        <label for="ubicacion">Nombre del tour <input type="text" placeholder="Ej. Disneyland"></label>
-                        <div class="d-flex">
-                            <label for="fecha_inicio">Fecha inicial <input type="date" ></label>
-                            <label for="fecha_final">Fecha final <input type="date"></label>
+<div class="container mt-4" id="mapas_preferidos">
+    <h1 class="page-title mb-4">Tours y Experiencias</h1>
+
+    <section class="row g-4" id="contenido">
+        
+        <div class="col-12 col-lg-4 col-xl-3" id="buscador">
+            <div class="search-card">
+                <h2>Buscar Tour</h2>
+                <form action="#" method="get">
+                    <div class="form-group mb-3">
+                        <label for="ubicacion">Nombre o destino</label>
+                        <input type="text" id="ubicacion" class="form-control" placeholder="Ej. Chichén Itzá, Tulum">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="fecha_inicio">Fecha inicial</label>
+                        <input type="date" id="fecha_inicio" class="form-control">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="fecha_final">Fecha final</label>
+                        <input type="date" id="fecha_final" class="form-control">
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="num_viajeros">Personas</label>
+                        <input type="number" id="num_viajeros" class="form-control" placeholder="1" min="1" value="1">
+                    </div>
+
+                    <button type="submit" class="btn btn-search-submit">Buscar experiencias</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+            <div class="row g-4">
+
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 mi-tarjeta">
+                        <div class="card-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=600&q=80"
+                                 class="card-img-top" alt="Chichén Itzá">
+                            <div class="route-badge">
+                                <span class="route-text">Yucatán • Tour de 1 día</span>
+                            </div>
                         </div>
-                        <label for="num_viajeros">Viajeros <input type="number" placeholder="1"></label>
-                        <input type="submit" value="Buscar">
-                    </form>
-                </div>  
-
-            
-            
-                <div class="row g-4" id="tarjetas">
-                    <!-- Tarjeta 1 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_dust2">
-                            <img src="imagenes/grandes/Cs2_dust2.webp" class="card-img-top" alt="de_dust2">
-                            <div class="card-body">
-                                <h5 class="card-title">de_dust2</h5>
-                                <p class="card-text">Como TT suelo jugar con el grupo de la bomba, casualmente juego como AWPer, como CT suelo ser el ancla de B site, 
-                                    en temas de utilidad, mi fuerte esta del lado TT y del CT conozco las básicas de B site, algunas de A site.</p>
-                                <a href="https://sketchfab.com/3d-models/de-dust2-cs-map-056008d59eb849a29c0ab6884c0c3d87" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
+                        <div class="card-body">
+                            <h5 class="card-title">Chichén Itzá & Cenote</h5>
+                            <p class="card-text">Explora una de las 7 maravillas del mundo moderno con guía certificado,
+                                comida buffet y nado en cenote sagrado.</p>
+                                <div class="card-footer-box">
+                                    <div class="price-box">
+                                        <span class="price-label">Por persona</span>
+                                        <span class="price-value">$1,450 <small>MXN</small></span>
+                                    </div>
+                                    <a href="#" class="btn btn-card-action">Ver tour</a>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tarjeta 2 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_mirage">
-                            <img src="imagenes/grandes/De_mirage_cs2.webp" class="card-img-top" alt="de_mirage">
-                            <div class="card-body">
-                                <h5 class="card-title">de_mirage</h5>
-                                <p class="card-text">En mirage juego con el grupo de la bomba como TT y suelo jugar como ancla del B site, muy ocasionalemte juego
-                                    como AWPer de lado CT, este es el segundo mapa que mejor domino las utilidades (junto a Dust 2).</p>
-                                <a href="https://sketchfab.com/3d-models/de-mirage-cs2-42091af5b78941e68b01396d0c955aac" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 mi-tarjeta">
+                            <div class="card-img-wrapper">
+                                <img src="https://lavidasondosviajes.com/wp-content/uploads/2022/06/ruinas-que-ver-en-tulum.jpg"
+                                     class="card-img-top" alt="Tulum y Arrecife">
+                                <div class="route-badge">
+                                    <span class="route-text">Tulum • Acuático</span>
+                                </div>
                             </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Tulum & Snorkel Maya</h5>
+                                <p class="card-text">Recorre las míticas ruinas arqueológicas frente al mar y nada entre
+                                    tortugas marinas en el arrecife de Akumal.</p>
+                                    <div class="card-footer-box">
+                                        <div class="price-box">
+                                            <span class="price-label">Por persona</span>
+                                            <span class="price-value">$1,890 <small>MXN</small></span>
+                                        </div>
+                                        <a href="#" class="btn btn-card-action">Ver tour</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="card h-100 mi-tarjeta">
+                                <div class="card-img-wrapper">
+                                    <img src="https://travelgrafia.co/wp-content/uploads/2025/04/Miradores-Canon-del-Sumidero-Mexico.webp"
+                                         class="card-img-top" alt="Cañón del Sumidero">
+                                    <div class="route-badge">
+                                        <span class="route-text">Chiapas • Naturaleza</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">Cañón del Sumidero</h5>
+                                    <p class="card-text">Navega en lancha por las imponentes paredes del cañón y visita el
+                                        pintoresco Pueblo Mágico de Chiapa de Corzo.</p>
+                                        <div class="card-footer-box">
+                                            <div class="price-box">
+                                                <span class="price-label">Por persona</span>
+                                                <span class="price-value">$1,200 <small>MXN</small></span>
+                                            </div>
+                                            <a href="#" class="btn btn-card-action">Ver tour</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Tarjeta 3 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="de_ancient">
-                            <img src="imagenes/grandes/de_ancient.jpg" class="card-img-top" alt="de_ancient">
-                            <div class="card-body">
-                                <h5 class="card-title">de_ancient</h5>
-                                <p class="card-text">En ancient juego tambien como ancla y con el grupo de la bomba, nada más que aqui, 
-                                    el ancla la juego en el A site, estoy en proceso de aprender las utilidades y las callouts.</p>
-                                <a href="https://dekiar.com/products/cs2-ancient-3d-map" class="btn btn-outline-primary" target="_blank">Ver mapa</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-<script src="/assets/js/script_T.js"></script>
+                </section>
+            </div>
+
+<script src="~/assets/js/script_T.js"></script>

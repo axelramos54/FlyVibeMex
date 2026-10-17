@@ -2,15 +2,325 @@
     ViewData["Title"] = "card";
     Layout = null;
 }
+<link rel="stylesheet" href="~/assets/css/style_V.css">
 
-<!-- Tarjeta 1 -->
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="card h-100 mi-tarjeta" id="card">
-                            <img src="" class="card-img-top" alt="imag_targeta">
-                            <div class="card-body">
-                                <h5 class="card-title">Titulo de la tarjeta</h5>
-                                <p class="card-text">Texto informativo de la terjeta.</p>
-                                <a href="" class="btn btn-outline-primary" target="_blank">Boton de la tarjeta</a>
+<div class="container mt-4" id="card-container">
+    <section class="row g-4" id="contenido">
+
+        <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+            <div class="row g-4">
+
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 mi-tarjeta">
+                        <div class="card-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                                 class="card-img-top" alt="Grand Oasis Cancún">
+                            <div class="route-badge">
+                                <span class="route-text">Cancún • 5★ All Inclusive</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Grand Oasis Cancún</h5>
+                            <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
+                                especialidades y vista panorámica al mar Caribe.</p>
+                                <div class="card-footer-box">
+                                    <div class="price-box">
+                                        <span class="price-label">Noche desde</span>
+                                        <span class="price-value">$3,250 <small>MXN</small></span>
+                                    </div>
+                                    <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 mi-tarjeta">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80"
+                                     class="card-img-top" alt="Pueblo Bonito Los Cabos">
+                                <div class="route-badge">
+                                    <span class="route-text">Los Cabos • Resort de Lujo</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Pueblo Bonito Sunset</h5>
+                                <p class="card-text">Ubicado en acantilados del Pacífico, ofrece suites privadas, spas
+                                    exclusivos y atardeceres inolvidables.</p>
+                                    <div class="card-footer-box">
+                                        <div class="price-box">
+                                            <span class="price-label">Noche desde</span>
+                                            <span class="price-value">$4,890 <small>MXN</small></span>
+                                        </div>
+                                        <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="card h-100 mi-tarjeta">
+                                <div class="card-img-wrapper">
+                                    <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80"
+                                         class="card-img-top" alt="Quinta Real Oaxaca">
+                                    <div class="route-badge">
+                                        <span class="route-text">Oaxaca • Boutique Histórico</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">Quinta Real Oaxaca</h5>
+                                    <p class="card-text">Alojamiento único en un antiguo convento del siglo XVI situado en el
+                                        corazón del centro histórico.</p>
+                                        <div class="card-footer-box">
+                                            <div class="price-box">
+                                                <span class="price-label">Noche desde</span>
+                                                <span class="price-value">$2,980 <small>MXN</small></span>
+                                            </div>
+                                            <a href="#" class="btn btn-card-action">Ver hotel</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+            <div class="row g-4">
+
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 mi-tarjeta">
+                        <div class="card-img-wrapper">
+                            <img src="https://www.barcelo.com/guia-turismo/wp-content/uploads/2024/09/ok-cancun.jpg"
+                                 class="card-img-top" alt="Cancún All Inclusive">
+                            <div class="route-badge">
+                                <span class="route-text">Vuelo + Hotel All Inclusive</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Cancún Caribe Básico</h5>
+                            <p class="card-text">4 días / 3 noches con vuelo redondo, hospedaje en resort 5 estrellas
+                                frente a la playa y alimentos ilimitados.</p>
+                                <div class="card-footer-box">
+                                    <div class="price-box">
+                                        <span class="price-label">Desde</span>
+                                        <span class="price-value">$9,890 <small>MXN</small></span>
+                                    </div>
+                                    <a href="#" class="btn btn-card-action">Ver paquete</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 mi-tarjeta">
+                            <div class="card-img-wrapper">
+                                <img src="https://cdn.sanity.io/images/esqfj3od/production/fd61473baccd1bfee0280dfe4bceb225f52ff8a9-1080x720.png?w=828&q=65&fit=clip&auto=format"
+                                     class="card-img-top" alt="Los Cabos Escape VIP">
+                                <div class="route-badge">
+                                    <span class="route-text">Vuelo + Resort 5★ + Auto</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Los Cabos Escape VIP</h5>
+                                <p class="card-text">5 días / 4 noches en resort de lujo con vista al mar, avión incluido y
+                                    renta de auto SUV durante tu estancia.</p>
+                                    <div class="card-footer-box">
+                                        <div class="price-box">
+                                            <span class="price-label">Desde</span>
+                                            <span class="price-value">$14,250 <small>MXN</small></span>
+                                        </div>
+                                        <a href="#" class="btn btn-card-action">Ver paquete</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="card h-100 mi-tarjeta">
+                                <div class="card-img-wrapper">
+                                    <img src="https://larevistadelsureste.com/wp-content/uploads/2024/02/Monte-Alban.jpg"
+                                         class="card-img-top" alt="Oaxaca Mágica">
+                                    <div class="route-badge">
+                                        <span class="route-text">Vuelo + Hotel + Tours</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">Oaxaca Mágica & Sabores</h5>
+                                    <p class="card-text">3 días / 2 noches con hospedaje en hotel céntrico, desayunos
+                                        tradicionales y tour a Monte Albán y Hierve el Agua.</p>
+                                        <div class="card-footer-box">
+                                            <div class="price-box">
+                                                <span class="price-label">Desde</span>
+                                                <span class="price-value">$6,450 <small>MXN</small></span>
+                                            </div>
+                                            <a href="#" class="btn btn-card-action">Ver paquete</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+                        <div class="row g-4">
+
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="card h-100 mi-tarjeta">
+                                    <div class="card-img-wrapper">
+                                        <img src="https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=600&q=80"
+                                             class="card-img-top" alt="Chichén Itzá">
+                                        <div class="route-badge">
+                                            <span class="route-text">Yucatán • Tour de 1 día</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <h5 class="card-title">Chichén Itzá & Cenote</h5>
+                                        <p class="card-text">Explora una de las 7 maravillas del mundo moderno con guía certificado,
+                                            comida buffet y nado en cenote sagrado.</p>
+                                            <div class="card-footer-box">
+                                                <div class="price-box">
+                                                    <span class="price-label">Por persona</span>
+                                                    <span class="price-value">$1,450 <small>MXN</small></span>
+                                                </div>
+                                                <a href="#" class="btn btn-card-action">Ver tour</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="card h-100 mi-tarjeta">
+                                        <div class="card-img-wrapper">
+                                            <img src="https://lavidasondosviajes.com/wp-content/uploads/2022/06/ruinas-que-ver-en-tulum.jpg"
+                                                 class="card-img-top" alt="Tulum y Arrecife">
+                                            <div class="route-badge">
+                                                <span class="route-text">Tulum • Acuático</span>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <h5 class="card-title">Tulum & Snorkel Maya</h5>
+                                            <p class="card-text">Recorre las míticas ruinas arqueológicas frente al mar y nada entre
+                                                tortugas marinas en el arrecife de Akumal.</p>
+                                                <div class="card-footer-box">
+                                                    <div class="price-box">
+                                                        <span class="price-label">Por persona</span>
+                                                        <span class="price-value">$1,890 <small>MXN</small></span>
+                                                    </div>
+                                                    <a href="#" class="btn btn-card-action">Ver tour</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <div class="card h-100 mi-tarjeta">
+                                            <div class="card-img-wrapper">
+                                                <img src="https://travelgrafia.co/wp-content/uploads/2025/04/Miradores-Canon-del-Sumidero-Mexico.webp"
+                                                     class="card-img-top" alt="Cañón del Sumidero">
+                                                <div class="route-badge">
+                                                    <span class="route-text">Chiapas • Naturaleza</span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <h5 class="card-title">Cañón del Sumidero</h5>
+                                                <p class="card-text">Navega en lancha por las imponentes paredes del cañón y visita el
+                                                    pintoresco Pueblo Mágico de Chiapa de Corzo.</p>
+                                                    <div class="card-footer-box">
+                                                        <div class="price-box">
+                                                            <span class="price-label">Por persona</span>
+                                                            <span class="price-value">$1,200 <small>MXN</small></span>
+                                                        </div>
+                                                        <a href="#" class="btn btn-card-action">Ver tour</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
+                                    <div class="row g-4">
+
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <div class="card h-100 mi-tarjeta">
+                                                <div class="card-img-wrapper">
+                                                    <img src="https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=600&q=80"
+                                                         class="card-img-top" alt="Cancún">
+                                                    <div class="route-badge">
+                                                        <span class="route-text">CDMX ✈ Cancún</span>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <h5 class="card-title">Cancún & Riviera Maya</h5>
+                                                    <p class="card-text">Disfruta de las playas del Caribe Mexicano con vuelo redondo y
+                                                        hospedaje todo incluido frente al mar.</p>
+                                                        <div class="card-footer-box">
+                                                            <div class="price-box">
+                                                                <span class="price-label">Desde</span>
+                                                                <span class="price-value">$8,499 <small>MXN</small></span>
+                                                            </div>
+                                                            <a href="#" class="btn btn-card-action">Ver vuelo</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-md-6 col-xl-4">
+                                                <div class="card h-100 mi-tarjeta">
+                                                    <div class="card-img-wrapper">
+                                                        <img src="https://cdn.sanity.io/images/esqfj3od/production/c1c9069644295a989eaa58f5f18fa124eb438379-1080x720.webp?w=828&q=65&fit=clip&auto=format"
+                                                             class="card-img-top" alt="Los Cabos">
+                                                        <div class="route-badge">
+                                                            <span class="route-text">GDL ✈ Los Cabos</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <h5 class="card-title">Los Cabos Escape</h5>
+                                                        <p class="card-text">Relájate en resorts de lujo donde el desierto se une con el mar.
+                                                            Incluye renta de auto y vuelo directo.</p>
+                                                            <div class="card-footer-box">
+                                                                <div class="price-box">
+                                                                    <span class="price-label">Desde</span>
+                                                                    <span class="price-value">$12,850 <small>MXN</small></span>
+                                                                </div>
+                                                                <a href="#" class="btn btn-card-action">Ver vuelo</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-md-6 col-xl-4">
+                                                    <div class="card h-100 mi-tarjeta">
+                                                        <div class="card-img-wrapper">
+                                                            <img src="https://www.entornoturistico.com/wp-content/uploads/2021/10/Templo-de-Santo-Domingo-de-Guzma%CC%81n-en-la-ciudad-de-Oaxaca.jpg"
+                                                                 class="card-img-top" alt="Oaxaca">
+                                                            <div class="route-badge">
+                                                                <span class="route-text">MTY ✈ Oaxaca</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <h5 class="card-title">Oaxaca Cultural</h5>
+                                                            <p class="card-text">Sumérgete en la cultura, zonas arqueológicas y gastronomía tradicional
+                                                                de uno de los estados más ricos de México.</p>
+                                                                <div class="card-footer-box">
+                                                                    <div class="price-box">
+                                                                        <span class="price-label">Desde</span>
+                                                                        <span class="price-value">$4,920 <small>MXN</small></span>
+                                                                    </div>
+                                                                    <a href="#" class="btn btn-card-action">Ver vuelo</a>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </section>
+                            </div>
+
+<script src="~/assets/js/script_H.js"></script>
