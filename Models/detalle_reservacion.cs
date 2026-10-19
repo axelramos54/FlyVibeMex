@@ -28,7 +28,7 @@ namespace FlyVibeMex.Models
 
         /// <summary>Fecha de inicio del servicio reservado.</summary>
         // NOTA: error en el nombre: `fehca_inicio` debería ser `fecha_inicio`. No se renombra aquí para no romper la compilación.
-        public DateTime fehca_inicio {get; set;}
+        public DateTime fecha_inicio {get; set;}
 
         /// <summary>Fecha de fin del servicio reservado.</summary>
         public DateTime fecha_fin {get; set;}

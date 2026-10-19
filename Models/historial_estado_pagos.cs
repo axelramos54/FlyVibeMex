@@ -1,4 +1,4 @@
-namespace fvm.models
+namespace FlyVibeMex.Models
 {
     public class HistorialEstadoPago
     {
