@@ -1,3 +1,9 @@
+/* ============================================================================================
+ * site.css — Hoja de la PLANTILLA original de ASP.NET Core (tamaño de fuente, foco de botones, footer,
+ * placeholders de form-floating).
+ * No la carga ninguna vista activa: _Layout.cshtml la busca en ~/css/site.css, pero está en ~/assets/css/.
+ * NOTA: eliminar o integrar lo útil en style.css.
+ * ============================================================================================ */
 html {
   font-size: 14px;
 }

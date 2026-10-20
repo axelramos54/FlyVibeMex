@@ -1,3 +1,17 @@
+@*
+ ============================================================================================
+ Views/Home/Index.cshtml   —   GET / , /Home , /Home/Index   (HomeController.Index())
+ SHELL DE LA SPA CASERA DE FLYVIBE MEX.
+ - Layout = null: es un documento HTML completo e independiente (no usa Views/Shared/_Layout.cshtml).
+ - Se carga una sola vez. La barra de navegación llama a cargarPagina('/Home/<Accion>') y la vista parcial
+   recibida se inserta en <main id="contenido_main"> sin recargar la página.
+ - Al terminar de cargar el DOM, script.js pide automáticamente '/Home/Default' (pantalla de Inicio).
+ - Estilos globales: Bootstrap 5.3.8 (CDN jsDelivr con SRI) + wwwroot/assets/css/style.css.
+ - Lógica global: wwwroot/assets/js/script.js.
+ NOTA: al no usar history.pushState, el botón Atrás del navegador y los enlaces directos a una sección
+       no funcionan; la URL siempre es la del shell.
+ ============================================================================================
+*@
 @{
     ViewData["Title"] = "Home Page";
     Layout = null;
@@ -10,28 +24,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proyecto final</title>
+    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
     <link rel="stylesheet" href="~/assets/css/style.css">
 </head>
 
 <body>
+    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ----
+         Cada enlace usa onclick="cargarPagina('/Home/<Accion>'); return false;" — el return false evita que el
+         href="#" agregue '#' a la URL. *@
     <header>
         <section class="navbar" id="navbar">
             <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
                 
+                @* Marca (logo + nombre).
+                     NOTA: <img src=""> sin imagen de logo.
+                     NOTA: el nombre visible dice "FlyVideMex" (con d); el proyecto es FlyVibe Mex. *@
                 <div class="navbar-brand d-flex" id="navbar_left">
                     <img class="m-1" src="" alt="imagen">
                     <p class="m-1">FlyVideMex</p>
                 </div>
 
+                @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
+                     NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
                 <div class="navbar-item ms-auto d-flex" id="navbar_right">
                     <a class="m-1" onclick="cargarPagina('/Home/Default'); return false;" href="#">Home</a>
                     <a class="m-1" onclick="cargarPagina('/Home/Viajes'); return false;" href="#">Viajes</a>
                     <a class="m-1" onclick="cargarPagina('/Home/Hoteles'); return false;" href="#">Hoteles</a>
                     <a class="m-1" onclick="cargarPagina('/Home/Tours'); return false;" href="#">Tours</a>
                     <a class="m-1" onclick="cargarPagina('/Home/Paquetes'); return false;" href="#">Paquetes</a>
+                    @* TODO: enlace de prueba hacia card.cshtml; quitar antes de la entrega. *@
                     <a class="m-1" onclick="cargarPagina('/Home/card'); return false;" href="#">VER TARJETA test</a>
+                    @* Bloque de sesión: enlace a /Home/sesion + foto de perfil de prueba (assets/img/imagen-prueba.jpg).
+                         NOTA: id="secion" está repetido (en este <div> y en el <a> interior): los id deben ser únicos.
+                         NOTA: errata visible "Iniciar secion" → "Iniciar sesión"; y class "imf-fluid" → "img-fluid" (Bootstrap).
+                         NOTA : al iniciar sesión, cambiar el texto a "Mi perfil" y mostrar la foto del usuario. *@
                     <div class="m-1" id="secion">
                         <a class="m-1" onclick="cargarPagina('/Home/sesion'); return false;" href="#"
                            id="secion">Iniciar secion</a>
@@ -45,20 +74,24 @@
     </header>
 
 
+    @* Contenedor donde cargarPagina() inyecta (innerHTML) la vista parcial de cada sección. Inicia vacío. *@
     <main id="contenido_main">
         
     </main>
 
 
+    @* NOTA: pie de página vacío (contacto, aviso de privacidad, redes). *@
     <footer>
 
     </footer>
     
 
 
+    @* JS de Bootstrap (CDN) necesario para componentes interactivos. *@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
             crossorigin="anonymous"></script>
+    @* script.js: define cargarPagina(url) y carga /Home/Default al iniciar. *@
     <script src="/assets/js/script.js"></script>
 </body>
 

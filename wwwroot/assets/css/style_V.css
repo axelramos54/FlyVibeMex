@@ -1,3 +1,18 @@
+/* ============================================================================================
+ * style_V.css — Sección V: Viajes / Vuelos (buscador de vuelos)
+ * Vista que estiliza: Views/Home/Viajes.cshtml
+ * Carga: se enlaza con <link> dentro de la vista parcial. Al inyectarse con innerHTML la hoja se aplica mientras
+ * la sección está visible y se elimina junto con su HTML al cargar otra sección (no se acumula). Mientras está
+ * cargada, sus reglas globales (*, body) afectan a todo el documento, incluido el shell.
+ * Regla del equipo: los atributos `class` se reservan para utilidades de Bootstrap; los componentes
+ * propios se estilizan con selectores #id (p. ej. #mapas_preferidos, #buscador, #tarjetas).
+ * NOTA: esta hoja también usa selectores de clase propios (p. ej. .mi-tarjeta, .btn-card-action);
+ *       mantenerlos o migrarlos a #id es una decisión pendiente del equipo.
+ * NOTA (consolidación): style_H.css, style_T.css y style_V.css son idénticos y style_P.css solo difiere por
+ *       una línea en blanco. Candidatos a unificarse en una sola hoja común para los buscadores.
+ * NOTA: card.cshtml también enlaza esta hoja.
+ * ============================================================================================ */
+/* ---- Reset ---- */
 * {
     margin: 0;
     padding: 0;
@@ -5,18 +20,21 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* ---- Contenedor de la sección (#mapas_preferidos) ---- */
 #mapas_preferidos {
     max-width: 1140px;
     margin: 0 auto;
     padding-bottom: 40px;
 }
 
+/* ---- Título de la página ---- */
 .page-title {
     font-size: 1.8rem;
     font-weight: 800;
     color: #0f172a;
 }
 
+/* ---- Tarjeta del buscador (columna #buscador): título, etiquetas, campos y botón ---- */
 .search-card {
     background: #ffffff;
     border-radius: 18px;
@@ -74,6 +92,7 @@
     transform: translateY(-1px);
 }
 
+/* ---- Tarjetas de resultados (columna #tarjetas): imagen, insignia de ruta, cuerpo y texto ---- */
 .mi-tarjeta {
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 16px;
@@ -141,6 +160,7 @@
     margin-bottom: 20px;
 }
 
+/* ---- Pie de tarjeta: precio y botón de acción ---- */
 .card-footer-box {
     margin-top: auto;
     display: flex;
@@ -191,6 +211,7 @@
     transform: translateY(-1px);
 }
 
+/* ---- Responsivo: pantallas menores a 992 px ---- */
 @media (max-width: 991px) {
     #buscador {
         margin-bottom: 20px;

@@ -1,12 +1,24 @@
-﻿<!DOCTYPE html>
+﻿@*
+ ============================================================================================
+ Views/Shared/_Layout.cshtml — plantilla maestra de la PLANTILLA original de ASP.NET Core MVC.
+ NO la usan las vistas de Home (todas declaran Layout = null; el shell real es Views/Home/Index.cshtml).
+ Hoy solo la usan Views/Shared/Error.cshtml y Views/Home/exIndex.cshtml (a través de _ViewStart.cshtml).
+ NOTAS: sus rutas a recursos están rotas (ver comentarios abajo), así que cualquier vista que la use
+        se mostrará sin estilos ni scripts.
+ ============================================================================================
+*@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - FlyVibeMex</title>
     <script type="importmap"></script>
+    @* NOTA: ~/lib/bootstrap/dist/... no existe: wwwroot/lib/bootstrap solo contiene LICENSE. *@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    @* NOTA: ~/css/site.css no existe; el archivo está en ~/assets/css/site.css. *@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* CSS aislado generado al compilar a partir de _Layout.cshtml.css. *@
     <link rel="stylesheet" href="~/FlyVibeMex.styles.css" asp-append-version="true" />
 </head>
 <body>
@@ -24,6 +36,7 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
+                            @* NOTA: enlace a /Home/Privacy, que responde 404 (no existe la acción). *@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
@@ -42,8 +55,10 @@
             &copy; 2026 - FlyVibeMex - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+    @* NOTA: ~/lib/jquery/dist y ~/lib/bootstrap/dist no existen (solo hay archivos LICENSE en wwwroot/lib). *@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @* NOTA: ~/js/site.js no existe; el archivo está en ~/assets/js/site.js. *@
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

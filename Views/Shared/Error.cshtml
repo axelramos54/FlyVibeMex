@@ -1,4 +1,10 @@
-﻿@model ErrorViewModel
+﻿@*
+ Views/Shared/Error.cshtml — vista de error de la PLANTILLA (modelo: ErrorViewModel).
+ La devuelve HomeController.Error(), que Program.cs usa como manejador de excepciones fuera de Development.
+ Usa _Layout.cshtml (vía _ViewStart), cuyas rutas de CSS/JS están rotas: se verá sin estilos.
+ NOTA: traducir los textos al español y no mostrar detalles técnicos al usuario final.
+*@
+@model ErrorViewModel
 @{
     ViewData["Title"] = "Error";
 }
