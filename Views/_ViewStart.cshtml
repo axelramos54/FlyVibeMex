@@ -1,3 +1,8 @@
-﻿@{
+﻿@*
+ _ViewStart.cshtml: asigna "_Layout" como plantilla por defecto.
+ NOTA: todas las vistas de Views/Home/ (excepto exIndex.cshtml) lo anulan con Layout = null, por lo que
+       hoy solo lo usan Views/Shared/Error.cshtml y Views/Home/exIndex.cshtml.
+*@
+@{
     Layout = "_Layout";
 }

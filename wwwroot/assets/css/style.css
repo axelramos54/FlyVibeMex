@@ -1,3 +1,13 @@
+/* ============================================================================================
+ * style.css — Hoja GLOBAL del shell (Views/Home/Index.cshtml). Siempre está cargada.
+ * Estiliza: reset base, cuerpo, header fijo, barra de navegación (#navbar), bloque de sesión (#secion,
+ * #foto), contenedor <main id="contenido_main"> y footer.
+ * Regla del equipo: los atributos `class` se reservan para utilidades de Bootstrap; los componentes
+ * propios se estilizan con selectores #id (p. ej. #mapas_preferidos, #buscador, #tarjetas).
+ * NOTA: esta hoja también usa selectores de clase propios (p. ej. .mi-tarjeta, .btn-card-action);
+ *       mantenerlos o migrarlos a #id es una decisión pendiente del equipo.
+ * ============================================================================================ */
+/* ---- Reset y cuerpo de la página ---- */
 * {
     margin: 0;
     padding: 0;
@@ -13,6 +23,7 @@ body {
     flex-direction: column;
 }
 
+/* ---- Header fijo en la parte superior ---- */
 header {
     position: fixed;
     top: 0;
@@ -21,6 +32,7 @@ header {
     z-index: 1000;
 }
 
+/* ---- Barra de navegación: degradado azul → naranja, marca (#navbar_left) y menú (#navbar_right) ---- */
 #navbar {
     background: linear-gradient(115deg, #3E8FD6 0%, #7FC4F2 45%, #F07B3F 100%);
     padding: 10px 24px;
@@ -72,6 +84,8 @@ header {
     background-color: rgba(255, 255, 255, 0.18);
 }
 
+/* ---- Bloque de sesión: enlace "Iniciar sesión" y foto de perfil ----
+ * NOTA: el id "secion" está repetido en Index.cshtml; selectores como #secion a#secion dependen de esa duplicidad. */
 #secion {
     display: flex;
     align-items: center;
@@ -101,6 +115,7 @@ header {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+/* ---- Contenedor donde se inyectan las vistas parciales ---- */
 #contenido_main {
     margin-top: 75px;
     flex: 1;
@@ -111,6 +126,7 @@ header {
     margin-right: auto;
 }
 
+/* ---- Pie de página ---- */
 footer {
     background-color: #0f172a;
     color: #94a3b8;
@@ -120,6 +136,7 @@ footer {
     font-size: 0.85rem;
 }
 
+/* ---- Responsivo: pantallas de hasta 992 px ---- */
 @media (max-width: 992px) {
     .navbar-collapse {
         flex-direction: column;

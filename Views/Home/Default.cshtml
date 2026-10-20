@@ -1,3 +1,16 @@
+@*
+ ============================================================================================
+ Vista parcial: Views/Home/Default.cshtml   —   GET /Home/Default (HomeController.Default())
+ Pantalla del prototipo: Home / Explorar (pantalla de Inicio que se muestra al abrir el sitio).
+ Layout = null → fragmento HTML que se inserta en <main id="contenido_main"> de Index.cshtml.
+ Archivos asociados (letra D): style_D.css y script_D.js (vacío).
+   ⚠ Esta vista se inyecta con innerHTML desde wwwroot/assets/js/script.js (función cargarPagina):
+     - el <link> de CSS sí se aplica mientras la sección está visible y se elimina junto con el HTML al cargar otra
+       (no se acumula, pero se vuelve a pedir en cada visita y sus reglas globales como * o body afectan a todo el shell);
+     - la etiqueta <script> del final NO se ejecuta en el navegador (limitación de innerHTML).
+ Estado: contenido estático.
+ ============================================================================================
+*@
 @{
     ViewData["Title"] = "Default";
     Layout = null;
@@ -7,6 +20,7 @@
 
 <div class="container mt-4" id="mapas_preferidos">
 
+    @* ---- Bienvenida ---- *@
     <section id="seccion_bienvenida">
         <div class="d-flex flex-column flex-md-row gap-3 mb-3 align-items-center">
             <div class="w-100 bg-infor">
@@ -19,11 +33,18 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            @* NOTA: ambos botones tienen href="#" sin acción.
+                NOTA : "Explorar opciones" → módulo Explorar y reservar; "Mis Viajes" → módulo Mis viajes (aún no existe). *@
             <a href="#" class="btn btn-hero-primary">Explorar opciones</a>
             <a href="#" class="btn btn-hero-outline">Mis Viajes</a>
         </div>
     </section>
 
+    @* ---- Tarjetas de categorías: Vuelos (Viajes), Paquetes, Hospedaje (Hoteles) y Tours ----
+         Cada botón llama a cargarPagina('/Home/<Accion>').
+         NOTA: a diferencia del menú, aquí no hay "return false", así que el href="#" agrega '#' a la URL.
+         NOTA: falta la tarjeta de Vehículos (está en el mapa de sitio); Tours no está en el mapa de sitio.
+         NOTA: las imágenes son URL externas de Unsplash. *@
     <section id="seccion_general" class="mt-4">
         <div class="row g-4">
             
@@ -81,6 +102,7 @@
                 </div>
             </section>
 
+            @* ---- Banner de promociones (texto fijo). NOTA: alimentar desde las promociones vigentes y enlazar a la pantalla Promociones. *@
             <section id="seccion_promociones" class="mt-4">
                 <div class="promo-content">
                     <h2>La mejor promoción es la que no dejas pasar</h2>
@@ -88,6 +110,7 @@
                 </div>
             </section>
 
+            @* ---- Bloque de contacto (texto fijo). NOTA: enlazar al módulo Soporte › Contactar a un asesor. *@
             <section id="seccion_contactanos" class="mt-4">
                 <h2>¿Tienes alguna duda sobre tu viaje?</h2>
                 <p>Contáctanos directamente o genera una solicitud de asistencia y nuestro equipo te atenderá de inmediato.</p>
@@ -95,4 +118,5 @@
 
         </div>
 
+@* NOTA: este <script> no se ejecuta al inyectarse con innerHTML (script_D.js está vacío). *@
 <script src="~/assets/js/script_D.js"></script>

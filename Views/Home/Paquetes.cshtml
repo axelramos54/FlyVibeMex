@@ -1,3 +1,18 @@
+@*
+ ============================================================================================
+ Vista parcial: Views/Home/Paquetes.cshtml   —   GET /Home/Paquetes (HomeController.Paquetes())
+ Pantalla del prototipo: Explorar y reservar › Paquetes (+ Resultados)
+ Layout = null → devuelve solo un fragmento HTML que se inserta en <main id="contenido_main"> de Index.cshtml.
+ Archivos asociados (convención de letras, P):
+   - CSS: wwwroot/assets/css/style_P.css
+   - JS : wwwroot/assets/js/script_P.js (actualmente vacío)
+   ⚠ Esta vista se inyecta con innerHTML desde wwwroot/assets/js/script.js (función cargarPagina):
+     - el <link> de CSS sí se aplica mientras la sección está visible y se elimina junto con el HTML al cargar otra
+       (no se acumula, pero se vuelve a pedir en cada visita y sus reglas globales como * o body afectan a todo el shell);
+     - la etiqueta <script> del final NO se ejecuta en el navegador (limitación de innerHTML).
+ Estado: maqueta estática. El buscador no envía datos y las tarjetas están escritas a mano.
+ ============================================================================================
+*@
 @{
     ViewData["Title"] = "Paquetes";
     Layout = null;
@@ -5,11 +20,16 @@
 
 <link rel="stylesheet" href="~/assets/css/style_P.css">
 
+@* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
 <div class="container mt-4" id="mapas_preferidos">
     <h1 class="page-title mb-4">Paquetes Vacacionales</h1>
 
     <section class="row g-4" id="contenido">
 
+        @* ---- Columna izquierda: formulario de búsqueda (nombre o destino, fecha inicial, fecha final y viajeros) ----
+             NOTA: el <form> tiene action="#" y ningún <input> tiene atributo name, por lo que no se envía ningún dato.
+                    Al pulsar el botón, el navegador navega a la URL actual y recarga el shell (vuelve a Inicio).
+             NOTA : conectar a una acción GET de búsqueda (p. ej. con asp-action) y dar name a cada campo. *@
         <div class="col-12 col-lg-4 col-xl-3" id="buscador">
             <div class="search-card">
                 <h2>Buscar Paquete</h2>
@@ -40,6 +60,10 @@
             </div>
         </div>
 
+        @* ---- Columna derecha: resultados (#tarjetas) ----
+             Tarjetas de DEMOSTRACIÓN escritas a mano: 3 paquetes (Cancún, Los Cabos, Oaxaca).
+             NOTA: generar las tarjetas desde el servidor (bucle Razor sobre un ViewModel de resultados),
+                   usando card.cshtml como referencia de diseño. *@
         <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
             <div class="row g-4">
 
@@ -120,4 +144,5 @@
     </section>
 </div>
 
+@* NOTA: este <script> no se ejecuta al inyectarse con innerHTML. Si script_P.js llega a tener código, debe cargarse desde Index.cshtml o desde cargarPagina(). *@
 <script src="~/assets/js/script_P.js"></script>
