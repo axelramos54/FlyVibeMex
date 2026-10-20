@@ -1,0 +1,22 @@
+@* Layout del panel Gestor de ventas: define su menú y se mete dentro del layout general del admin. *@
+@{
+    Layout = "~/Views/Admin/_AdminLayout.cshtml";
+    ViewData["Seccion"] = "Gestor de ventas";
+    ViewData["SeccionUrl"] = Url.Action("Index", "Gestor");
+}
+
+@section Menu {
+    <a class="m-1" asp-controller="Gestor" asp-action="AltaProveedor">Dar de alta proveedor</a>
+    <a class="m-1" asp-controller="Gestor" asp-action="GestionarProveedores">Gestionar proveedores</a>
+    <a class="m-1" asp-controller="Gestor" asp-action="CrearPaquete">Crear paquete</a>
+    <a class="m-1" asp-controller="Gestor" asp-action="GestionarPaquetes">Gestionar paquetes</a>
+    <a class="m-1" asp-controller="Gestor" asp-action="Promociones">Promociones</a>
+    <a class="m-1" asp-controller="Gestor" asp-action="GestionarPromociones">Gestionar promociones</a>
+    <a class="m-1" asp-controller="Admin" asp-action="Index">Regresar</a>
+}
+
+@RenderBody()
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

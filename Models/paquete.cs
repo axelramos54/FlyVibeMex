@@ -1,4 +1,4 @@
-namespace fvm
+namespace FlyVibeMex.Models
 {
     public class Paquetes
     {

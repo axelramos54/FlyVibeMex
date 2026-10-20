@@ -1,0 +1,84 @@
+@model AsociarViewModel
+@{
+    ViewData["Title"] = "Asociar";
+}
+
+<h1 class="h3 mb-1">Asociar a @Model.Proveedor.nombre</h1>
+<p class="text-muted">
+    Primero elige el tipo de asociación. Después se mostrará lo que este proveedor ya tiene asociado
+    y el formulario para agregar uno nuevo.
+</p>
+
+@* Paso 1: elegir el tipo. Es un GET (solo cambia lo que se muestra), el controlador decide qué formulario mandar. *@
+<form method="get" asp-action="Asociar" asp-route-id="@Model.Proveedor.id" class="row g-2 align-items-end mb-4" style="max-width: 760px">
+    <div class="col-sm-8">
+        <label asp-for="Tipo" class="form-label">Tipo de asociación</label>
+        <select asp-for="Tipo" asp-items="AsociarViewModel.OpcionesTipo()" class="form-select" onchange="this.form.submit()">
+            <option value="">— Selecciona —</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Mostrar</button>
+    </div>
+</form>
+
+@if (Model.Tipo is not null)
+{
+    var nombreTipo = AsociarViewModel.Nombre(Model.Tipo);
+    var singular = Model.Tipo switch
+    {
+        "hospedaje" => "hospedaje",
+        "vehiculo" => "vehículo",
+        _ => "evento"
+    };
+
+    @* Paso 2a: información de lo que ya tiene asociado *@
+    <h2 class="h5">@nombreTipo asociados a este proveedor</h2>
+
+    if (Model.ServiciosAsociados.Count == 0)
+    {
+        <div class="alert alert-info" style="max-width: 760px">
+            Este proveedor aún no tiene @nombreTipo.ToLower() asociados.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive" style="max-width: 760px">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr><th>Nombre</th><th>Precio base</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.ServiciosAsociados)
+                    {
+                        <tr>
+                            <td>@s.nombre</td>
+                            <td>@s.precio_base.ToString("N2") @s.moneda</td>
+                            <td>@(s.activo ? "Activo" : "Inactivo")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* Paso 2b: formulario del tipo elegido *@
+    <h2 class="h5 mt-4">Agregar @singular</h2>
+
+    switch (Model.Tipo)
+    {
+        case "hospedaje":
+            <partial name="~/Views/Admin/GestorVentas/_FormHospedaje.cshtml" model="Model.Formulario" />
+            break;
+        case "vehiculo":
+            <partial name="~/Views/Admin/GestorVentas/_FormVehiculo.cshtml" model="Model.Formulario" />
+            break;
+        case "evento":
+            <partial name="~/Views/Admin/GestorVentas/_FormEvento.cshtml" model="Model.Formulario" />
+            break;
+    }
+}
+
+<div class="mt-4">
+    <a class="btn btn-outline-secondary" asp-action="GestionarProveedores" asp-route-nombre="@Model.Proveedor.nombre">Volver a proveedores</a>
+</div>

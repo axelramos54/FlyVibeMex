@@ -1,0 +1,30 @@
+@* Tabla de tickets reutilizada por "Seguir atendiendo" y "Mi historial". *@
+@model List<SolicitudesSoporte>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Asunto</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Creado</th>
+                <th>Última actualización</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>@t.id</td>
+                    <td>@t.asunto</td>
+                    <td>@t.tipo</td>
+                    <td><span class="badge text-bg-secondary">@t.estado</span></td>
+                    <td>@t.creada_en.ToString("dd/MM/yyyy")</td>
+                    <td>@t.actualizada_en.ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

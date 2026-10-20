@@ -1,0 +1,19 @@
+@model List<SolicitudesSoporte>
+@{
+    ViewData["Title"] = "Seguir atendiendo";
+}
+
+<h1 class="h3 mb-3">Seguir atendiendo</h1>
+<p class="text-muted">Tickets que tienes asignados y que todavía no se cierran.</p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">
+        <strong>No hay tickets que atender.</strong> No tienes tickets en proceso.
+    </div>
+    <a class="btn btn-primary" asp-action="NuevoTicket">Atender nuevo ticket</a>
+}
+else
+{
+    <partial name="~/Views/Admin/Soporte/_TablaTickets.cshtml" model="Model" />
+}

@@ -1,0 +1,36 @@
+@* No existe tabla "eventos": se guarda como servicio (tipo EVENTO) + disponibilidad_servicio (fecha y cupo). *@
+@model EventoFormViewModel
+
+<form asp-action="AsociarEvento" asp-route-id="@Model.id_proveedor" method="post"
+      class="card card-body" style="max-width: 760px">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ServicioCampos.cshtml" model="Model" />
+
+    <hr class="my-4" />
+    <h3 class="h6">Fecha y cupo del evento</h3>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="fecha" class="form-label"></label>
+            <input asp-for="fecha" class="form-control" required />
+            <span asp-validation-for="fecha" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="cantidad_total" class="form-label"></label>
+            <input asp-for="cantidad_total" type="number" min="1" class="form-control" required />
+            <span asp-validation-for="cantidad_total" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="precio_fecha" class="form-label"></label>
+            <input asp-for="precio_fecha" type="number" step="0.01" min="0" class="form-control" />
+            <div class="form-text">Si lo dejas vacío se usa el precio base.</div>
+            <span asp-validation-for="precio_fecha" class="text-danger small"></span>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Asociar evento</button>
+    </div>
+</form>

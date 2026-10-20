@@ -1,0 +1,17 @@
+@* Layout del panel SA: define su menú y se mete dentro del layout general del admin. *@
+@{
+    Layout = "~/Views/Admin/_AdminLayout.cshtml";
+    ViewData["Seccion"] = "SA";
+    ViewData["SeccionUrl"] = Url.Action("Index", "SA");
+}
+
+@section Menu {
+    @* Aquí irán las opciones del SA cuando se definan *@
+    <a class="m-1" asp-controller="Admin" asp-action="Index">Regresar</a>
+}
+
+@RenderBody()
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}
