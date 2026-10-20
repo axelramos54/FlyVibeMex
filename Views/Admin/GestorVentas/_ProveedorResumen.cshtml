@@ -1,0 +1,34 @@
+@* Ficha con la información de un proveedor. *@
+@model Proveedores
+
+<dl class="row mb-0">
+    <dt class="col-sm-3">Nombre</dt>
+    <dd class="col-sm-9">@Model.nombre</dd>
+
+    <dt class="col-sm-3">Tipo</dt>
+    <dd class="col-sm-9">@Model.tipo_proveedor</dd>
+
+    <dt class="col-sm-3">Teléfono</dt>
+    <dd class="col-sm-9">@Model.telefono</dd>
+
+    <dt class="col-sm-3">Correo</dt>
+    <dd class="col-sm-9">@Model.correo</dd>
+
+    <dt class="col-sm-3">Estado</dt>
+    <dd class="col-sm-9">
+        @if (Model.activo)
+        {
+            <span class="badge text-bg-success">Activo</span>
+        }
+        else
+        {
+            <span class="badge text-bg-secondary">Inactivo</span>
+        }
+    </dd>
+
+    @if (Model.creado_en != default)
+    {
+        <dt class="col-sm-3">Registrado</dt>
+        <dd class="col-sm-9">@Model.creado_en.ToString("dd/MM/yyyy")</dd>
+    }
+</dl>

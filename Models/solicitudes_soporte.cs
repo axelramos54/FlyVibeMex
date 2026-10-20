@@ -1,7 +1,4 @@
-// NOTA: [NAMESPACE] Esta clase está en el namespace `fvm.models`; el estándar acordado es `FlyVibeMex.Models`.
-// Views/_ViewImports.cshtml solo importa FlyVibeMex.Models, así que esta clase no es visible en vistas ni
-// controladores sin un `using fvm.models;` adicional. No se cambia aquí para no alterar la compilación actual.
-namespace fvm.models
+namespace FlyVibeMex.Models
 {
     /// <summary>
     /// Ticket de soporte unificado, cubre "Contactar a un asesor" (tipo ASESORIA) y

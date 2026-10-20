@@ -1,0 +1,19 @@
+@model ProveedorFormViewModel
+@{
+    ViewData["Title"] = "Actualizar proveedor";
+    ViewData["MostrarActivo"] = true;
+}
+
+<h1 class="h3 mb-1">Actualizar proveedor</h1>
+<p class="text-muted">Modifica la información y presiona Confirmar para guardar los cambios.</p>
+
+<form asp-action="Actualizar" asp-route-id="@Model.id" method="post" class="card card-body" style="max-width: 760px">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ProveedorCampos.cshtml" model="Model" />
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Confirmar</button>
+        <a class="btn btn-outline-secondary" asp-action="GestionarProveedores" asp-route-nombre="@Model.nombre">Cancelar</a>
+    </div>
+</form>

@@ -1,0 +1,67 @@
+@model HospedajeFormViewModel
+@{
+    var ubicaciones = ViewData["Ubicaciones"] as List<SelectListItem> ?? new List<SelectListItem>();
+}
+
+<form asp-action="AsociarHospedaje" asp-route-id="@Model.id_proveedor" method="post" enctype="multipart/form-data"
+      class="card card-body" style="max-width: 760px">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ServicioCampos.cshtml" model="Model" />
+
+    <hr class="my-4" />
+    <h3 class="h6">Datos del hospedaje</h3>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="id_ubicacion" class="form-label"></label>
+            <select asp-for="id_ubicacion" asp-items="ubicaciones" class="form-select">
+                <option value="">— Sin ubicación —</option>
+            </select>
+            @if (ubicaciones.Count == 0)
+            {
+                <div class="form-text">Aún no hay ubicaciones cargadas.</div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="tipo_ubicacion" class="form-label"></label>
+            <input asp-for="tipo_ubicacion" class="form-control" maxlength="60" placeholder="Hotel, cabaña, departamento..." required />
+            <span asp-validation-for="tipo_ubicacion" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="categoria" class="form-label"></label>
+            <input asp-for="categoria" class="form-control" maxlength="40" placeholder="4 estrellas, boutique..." />
+            <span asp-validation-for="categoria" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="capacidad_huespedes" class="form-label"></label>
+            <input asp-for="capacidad_huespedes" type="number" min="1" max="1000" class="form-control" required />
+            <span asp-validation-for="capacidad_huespedes" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="hora_entrada" class="form-label"></label>
+            <input asp-for="hora_entrada" type="time" asp-format="{0:HH:mm}" class="form-control" />
+            <span asp-validation-for="hora_entrada" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="hora_salida" class="form-label"></label>
+            <input asp-for="hora_salida" type="time" asp-format="{0:HH:mm}" class="form-control" />
+            <span asp-validation-for="hora_salida" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12">
+            <label asp-for="imagen" class="form-label"></label>
+            <input asp-for="imagen" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" />
+            <div class="form-text">JPG, PNG o WEBP, máximo 2 MB.</div>
+            <span asp-validation-for="imagen" class="text-danger small"></span>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Asociar hospedaje</button>
+    </div>
+</form>

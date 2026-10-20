@@ -1,7 +1,4 @@
-// NOTA: [NAMESPACE] Esta clase está en el namespace `fvm`; el estándar acordado es `FlyVibeMex.Models`.
-// Views/_ViewImports.cshtml solo importa FlyVibeMex.Models, así que esta clase no es visible en vistas ni
-// controladores sin un `using fvm;` adicional. No se cambia aquí para no alterar la compilación actual.
-namespace fvm
+namespace FlyVibeMex.Models
 {
     /// <summary>
     /// Encabezado de la operación de reserva de un usuario. Identifica el estado actual y conserva los totales

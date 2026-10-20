@@ -1,0 +1,62 @@
+@model GestionarProveedoresViewModel
+@{
+    ViewData["Title"] = "Gestionar proveedores";
+
+    // Si la búsqueda no encuentra nada, igual se muestra un bloque con los botones
+    // (proveedor de prueba con id 0) para poder probar las pantallas mientras no hay BD.
+    var bloques = Model.Resultados.Count > 0
+        ? Model.Resultados
+        : new List<Proveedores> { new Proveedores { id = 0 } };
+}
+
+<h1 class="h3 mb-1">Gestionar proveedores</h1>
+<p class="text-muted">Escribe el nombre del proveedor y presiona Buscar.</p>
+
+@* Formulario GET: solo consulta, por eso no necesita token antiforgery *@
+<form method="get" asp-action="GestionarProveedores" class="row g-2 mb-2" style="max-width: 760px">
+    <div class="col">
+        <label for="nombre" class="visually-hidden">Nombre del proveedor</label>
+        <input id="nombre" name="nombre" value="@Model.Nombre" class="form-control"
+               maxlength="120" placeholder="Nombre del proveedor" required />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </div>
+</form>
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+@if (Model.Buscado)
+{
+    <h2 class="h5 mt-4">Resultado</h2>
+
+    if (Model.Resultados.Count == 0)
+    {
+        <div class="alert alert-warning">
+            No se encontró ningún proveedor con el nombre <strong>"@Model.Nombre"</strong>.
+        </div>
+    }
+
+    foreach (var p in bloques)
+    {
+        <div class="card mb-3" style="max-width: 760px">
+            <div class="card-body">
+                @if (Model.Resultados.Count > 0)
+                {
+                    <partial name="~/Views/Admin/GestorVentas/_ProveedorResumen.cshtml" model="p" />
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">
+                        Sin conexión a la base de datos: los botones abren las pantallas con un proveedor de prueba.
+                    </p>
+                }
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a class="btn btn-outline-primary" asp-action="Actualizar" asp-route-id="@p.id">Actualizar</a>
+                    <a class="btn btn-outline-danger" asp-action="DarDeBaja" asp-route-id="@p.id">Dar de baja</a>
+                    <a class="btn btn-outline-secondary" asp-action="Asociar" asp-route-id="@p.id">Asociar</a>
+                </div>
+            </div>
+        </div>
+    }
+}

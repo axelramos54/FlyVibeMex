@@ -1,0 +1,51 @@
+@{
+    ViewData["Title"] = "Gestor de ventas";
+}
+
+<div class="p-4 mb-4 bg-light border rounded-3">
+    <h1 class="h2">Panel del gestor de ventas</h1>
+    <p class="lead mb-1">Administra lo que FlyVibeMex ofrece a sus clientes.</p>
+    <p class="mb-0 text-muted">
+        Registra a los proveedores (aerolíneas, hoteles, rentadoras y otros), asóciales sus hospedajes,
+        vehículos y eventos, y arma paquetes y promociones con esos servicios.
+    </p>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Proveedores</h2>
+                <p class="card-text">Da de alta un proveedor nuevo o búscalo para actualizarlo, darlo de baja o asociarle servicios.</p>
+                <div class="mt-auto d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" asp-action="AltaProveedor">Dar de alta</a>
+                    <a class="btn btn-outline-primary" asp-action="GestionarProveedores">Gestionar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Paquetes</h2>
+                <p class="card-text">Combina varios servicios en un paquete con duración, número de personas y política de cancelación.</p>
+                <div class="mt-auto d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" asp-action="CrearPaquete">Crear paquete</a>
+                    <a class="btn btn-outline-primary" asp-action="GestionarPaquetes">Gestionar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Promociones</h2>
+                <p class="card-text">Crea descuentos y aplícalos a los servicios o paquetes.</p>
+                <div class="mt-auto d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" asp-action="Promociones">Nueva promoción</a>
+                    <a class="btn btn-outline-primary" asp-action="GestionarPromociones">Gestionar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

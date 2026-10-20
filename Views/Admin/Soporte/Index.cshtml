@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Soporte";
+}
+
+<div class="p-4 mb-4 bg-light border rounded-3">
+    <h1 class="h2">Panel de soporte</h1>
+    <p class="lead mb-1">Bienvenido al área de atención a clientes.</p>
+    <p class="mb-0 text-muted">
+        Aquí atiendes las solicitudes que levantan los clientes sobre sus reservaciones, pagos y reembolsos.
+        Toma un ticket nuevo, continúa los que ya tienes asignados o revisa los que ya cerraste.
+    </p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Atender nuevo ticket</h2>
+                <p class="card-text">Toma la siguiente solicitud que todavía no tiene un agente asignado.</p>
+                <a class="btn btn-primary mt-auto" asp-action="NuevoTicket">Atender nuevo ticket</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Seguir atendiendo</h2>
+                <p class="card-text">Continúa con los tickets que tienes asignados y que siguen abiertos.</p>
+                <a class="btn btn-outline-primary mt-auto" asp-action="SeguirAtendiendo">Seguir atendiendo</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <h2 class="h5 card-title">Mi historial de tickets</h2>
+                <p class="card-text">Consulta los tickets que ya resolviste.</p>
+                <a class="btn btn-outline-primary mt-auto" asp-action="Historial">Ver historial</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h6">Recuerda</h2>
+        <ul class="mb-0">
+            <li>Nunca pidas al cliente contraseñas ni datos completos de su tarjeta.</li>
+            <li>Antes de cerrar un ticket, confirma con el cliente que su problema quedó resuelto.</li>
+            <li>Si un caso requiere un reembolso, deja registrado el motivo en el ticket.</li>
+        </ul>
+    </div>
+</div>

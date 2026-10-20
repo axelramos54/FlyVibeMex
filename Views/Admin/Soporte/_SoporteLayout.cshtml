@@ -1,0 +1,19 @@
+@* Layout del panel de Soporte: define su menú y se mete dentro del layout general del admin. *@
+@{
+    Layout = "~/Views/Admin/_AdminLayout.cshtml";
+    ViewData["Seccion"] = "Soporte";
+    ViewData["SeccionUrl"] = Url.Action("Index", "Soporte");
+}
+
+@section Menu {
+    <a class="m-1" asp-controller="Soporte" asp-action="NuevoTicket">Atender nuevo ticket</a>
+    <a class="m-1" asp-controller="Soporte" asp-action="SeguirAtendiendo">Seguir atendiendo</a>
+    <a class="m-1" asp-controller="Soporte" asp-action="Historial">Mi historial de tickets</a>
+    <a class="m-1" asp-controller="Admin" asp-action="Index">Regresar</a>
+}
+
+@RenderBody()
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

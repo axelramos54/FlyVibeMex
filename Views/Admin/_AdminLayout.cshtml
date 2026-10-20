@@ -1,0 +1,95 @@
+@*
+    Layout base de todo el panel administrativo.
+    - El menú de la derecha lo pone cada panel con  @section Menu { ... }
+    - El contenido de cada pantalla aparece donde está @RenderBody()
+*@
+@{
+    var seccion = ViewData["Seccion"] as string;       // lo define el layout de cada panel (Soporte, SA, Gestor)
+    var seccionUrl = ViewData["SeccionUrl"] as string;
+    var titulo = ViewData["Title"] as string;
+}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@titulo - Admin FlyVibeMex</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/assets/css/style.css">
+</head>
+
+<body>
+    <header>
+        <section class="navbar" id="navbar">
+            <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
+
+                <div class="navbar-brand d-flex" id="navbar_left">
+                    @* TODO: logo. No dejes un <img src=""> vacío: el navegador vuelve a pedir la misma página. *@
+                    <p class="m-1"><a class="m-1" asp-controller="Home" asp-action="Index">FlyVibeMex</a></p>
+                </div>
+
+                <div class="navbar-item ms-auto d-flex flex-wrap align-items-center" id="navbar_right">
+                    @await RenderSectionAsync("Menu", required: false)
+
+                    <div class="m-1" id="secion">
+                        @* TODO (login): mostrar el nombre del usuario autenticado y el botón de salir (POST) *@
+                        <span class="m-1">Mi cuenta</span>
+                        <img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto">
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </header>
+
+    <div class="container mt-3">
+        @* Migas de pan: le dicen al usuario en qué pantalla está *@
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Panel de administración</a></li>
+                @if (seccion is not null)
+                {
+                    <li class="breadcrumb-item"><a href="@seccionUrl">@seccion</a></li>
+                }
+                @if (titulo is not null && titulo != seccion && titulo != "Panel de administración")
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@titulo</li>
+                }
+            </ol>
+        </nav>
+
+        @* Mensajes que dejan los controladores después de guardar algo (TempData) *@
+        @if (TempData["Exito"] is string exito)
+        {
+            <div class="alert alert-success">@exito</div>
+        }
+        @if (TempData["Aviso"] is string aviso)
+        {
+            <div class="alert alert-warning">@aviso</div>
+        }
+        @if (ViewData["SinBD"] is true)
+        {
+            <div class="alert alert-secondary small">
+                <strong>Modo prueba:</strong> todavía no hay conexión a la base de datos, por eso esta pantalla
+                se muestra con datos vacíos o de prueba.
+            </div>
+        }
+    </div>
+
+    <main id="contenido_main" class="container mb-5">
+        @RenderBody()
+    </main>
+
+    <footer>
+
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+            crossorigin="anonymous"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>

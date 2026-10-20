@@ -1,0 +1,57 @@
+@* Campos del proveedor. Los usan "Dar de alta" y "Actualizar".
+   ViewData["MostrarActivo"] = true  → muestra la casilla de activo (solo al actualizar). *@
+@model ProveedorFormViewModel
+@{
+    var ubicaciones = ViewData["Ubicaciones"] as List<SelectListItem> ?? new List<SelectListItem>();
+    var mostrarActivo = ViewData["MostrarActivo"] is true;
+}
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="tipo_proveedor" class="form-label"></label>
+        <select asp-for="tipo_proveedor" asp-items="ProveedorFormViewModel.OpcionesTipo()" class="form-select" required>
+            <option value="">— Selecciona —</option>
+        </select>
+        <span asp-validation-for="tipo_proveedor" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="id_ubicacion" class="form-label"></label>
+        <select asp-for="id_ubicacion" asp-items="ubicaciones" class="form-select">
+            <option value="">— Sin ubicación —</option>
+        </select>
+        @if (ubicaciones.Count == 0)
+        {
+            <div class="form-text">Aún no hay ubicaciones cargadas (pendiente de conectar la base de datos).</div>
+        }
+        <span asp-validation-for="id_ubicacion" class="text-danger small"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="nombre" class="form-label"></label>
+        <input asp-for="nombre" class="form-control" maxlength="120" required />
+        <span asp-validation-for="nombre" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="telefono" class="form-label"></label>
+        <input asp-for="telefono" type="tel" class="form-control" maxlength="20" required />
+        <span asp-validation-for="telefono" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="correo" class="form-label"></label>
+        <input asp-for="correo" type="email" class="form-control" maxlength="150" required />
+        <span asp-validation-for="correo" class="text-danger small"></span>
+    </div>
+
+    @if (mostrarActivo)
+    {
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="activo" class="form-check-input" />
+                <label asp-for="activo" class="form-check-label"></label>
+            </div>
+        </div>
+    }
+</div>
