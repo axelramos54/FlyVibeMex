@@ -4,6 +4,22 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      Identificador de `dotnet user-secrets` (equivale a ejecutar `dotnet user-secrets init`).
+      NO es un secreto: solo indica en qué carpeta de TU usuario de Windows se guardan los secretos
+      (%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.json), fuera del repositorio.
+    -->
+    <UserSecretsId>flyvibemex-9b6d9483-4ded-4987-a992-d9edf61e015e</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ORM oficial: Entity Framework Core para SQL Server (.NET 10). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <!-- Herramientas de diseño (Add-Migration, Scaffold-DbContext). Solo en desarrollo; no se publican. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
 
 </Project>
