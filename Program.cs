@@ -1,9 +1,71 @@
+using FlyVibeMex.Data;
+using FlyVibeMex.Models;
+using FlyVibeMex.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// =============================================================================================
+// Base de datos (Entity Framework Core + SQL Server)
+// ---------------------------------------------------------------------------------------------
+// "DatabaseMode" decide qué cadena se usa:  "Test" -> ConnectionStrings:FlyVibeMex_Test
+//                                           "Real" -> ConnectionStrings:FlyVibeMex_Real
+// Las cadenas reales NO están en appsettings.json (solo marcadores): cada integrante las registra
+// con `dotnet user-secrets` y en el servidor se pasan por variables de entorno.
+// Ver docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md
+// =============================================================================================
+var configuracionBd = ConfiguracionBaseDatos.Desde(builder.Configuration);
+builder.Services.AddSingleton(configuracionBd);
+
+builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
+{
+    // Se valida aquí (al crear el DbContext) y no al arrancar, para que quien solo trabaja en el
+    // frontend pueda ejecutar la app aunque todavía no tenga SQL Server configurado.
+    if (!configuracionBd.EstaConfigurada)
+    {
+        throw new InvalidOperationException(configuracionBd.MensajeSinConfigurar());
+    }
+
+    opciones.UseSqlServer(configuracionBd.CadenaConexion!, sql =>
+    {
+        // Resiliencia: reintenta automáticamente ante fallos transitorios de red/SQL Server.
+        // IMPORTANTE: con reintentos activos, las transacciones manuales (BeginTransaction) deben
+        // envolverse en `db.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
+        sql.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorNumbersToAdd: null);
+        sql.CommandTimeout(30);
+    });
+
+    // NUNCA registrar en los logs los valores de los parámetros SQL (correos, hashes, datos personales).
+    opciones.EnableSensitiveDataLogging(false);
+
+    if (builder.Environment.IsDevelopment())
+    {
+        // Mensajes de error de EF más claros en desarrollo (no incluye valores de los parámetros).
+        opciones.EnableDetailedErrors();
+    }
+});
+
+// =============================================================================================
+// Servicios de la aplicación
+// =============================================================================================
+// Hash de contraseñas de ASP.NET Core Identity (PBKDF2-HMAC-SHA512). Es seguro como singleton.
+builder.Services.AddSingleton<IPasswordHasher<Usuarios>, PasswordHasher<Usuarios>>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 var app = builder.Build();
+
+app.Logger.LogInformation(
+    "Base de datos: modo {Modo} (cadena \"{Cadena}\", {Estado}).",
+    configuracionBd.Modo,
+    configuracionBd.NombreCadena,
+    configuracionBd.EstaConfigurada ? "configurada" : "SIN CONFIGURAR: ver docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
