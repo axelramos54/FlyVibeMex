@@ -1,6 +1,9 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using FlyVibeMex.Data;
 using FlyVibeMex.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace FlyVibeMex.Controllers;
 
@@ -91,6 +94,117 @@ public class HomeController : Controller
     }
 
 
+
+    /// <summary>
+    /// GET <c>/Home/TestDb</c>. Diagnóstico de la conexión con SQL Server mediante EF Core.
+    /// <b>Solo existe en Development</b>: en cualquier otro entorno responde 404.
+    /// Devuelve un JSON con el modo activo (<c>Test</c> o <c>Real</c>), si hubo conexión y el resultado de una consulta
+    /// LINQ de prueba (roles activos y conteo de usuarios). Nunca devuelve servidor, usuario, contraseña, hashes
+    /// ni datos personales.
+    /// </summary>
+    /// <remarks>
+    /// El DbContext se pide aquí con <c>RequestServices</c> (y no en el constructor) para que el resto de las páginas
+    /// de este controlador sigan funcionando en equipos que aún no configuran SQL Server.
+    /// </remarks>
+    [HttpGet]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public async Task<IActionResult> TestDb(
+        [FromServices] IWebHostEnvironment entorno,
+        [FromServices] ConfiguracionBaseDatos configuracionBd,
+        [FromServices] ILogger<HomeController> logger,
+        CancellationToken cancellationToken)
+    {
+        if (!entorno.IsDevelopment())
+        {
+            return NotFound();
+        }
+
+        var modo = configuracionBd.Modo;
+        var cadena = configuracionBd.NombreCadena;
+        var baseDeDatos = configuracionBd.NombreBaseDeDatos();
+
+        if (!configuracionBd.EstaConfigurada)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                modo,
+                cadena,
+                configurada = false,
+                conectado = false,
+                mensaje = configuracionBd.MensajeSinConfigurar()
+            });
+        }
+
+        var cronometro = Stopwatch.StartNew();
+        try
+        {
+            var db = HttpContext.RequestServices.GetRequiredService<FlyVibeMexDbContext>();
+
+            if (!await db.Database.CanConnectAsync(cancellationToken))
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    modo,
+                    cadena,
+                    baseDeDatos,
+                    configurada = true,
+                    conectado = false,
+                    mensaje = $"No se pudo abrir la conexión. Revisa que SQL Server esté iniciado, el nombre del servidor " +
+                              $"en tu user-secret y que exista la base \"{baseDeDatos}\" (sql/00_db_prueba_conexion.sql)."
+                });
+            }
+
+            // Consulta LINQ de prueba (parametrizada, sin seguimiento de cambios, sin columnas sensibles).
+            var rolesActivos = await db.RolesUsuarios
+                .AsNoTracking()
+                .Where(r => r.activo)
+                .OrderBy(r => r.id)
+                .Select(r => r.nombre)
+                .ToListAsync(cancellationToken);
+
+            var usuariosActivos = await db.Usuarios.AsNoTracking().CountAsync(u => u.activo, cancellationToken);
+            var usuariosInactivos = await db.Usuarios.AsNoTracking().CountAsync(u => !u.activo, cancellationToken);
+
+            cronometro.Stop();
+            return Json(new
+            {
+                modo,
+                cadena,
+                baseDeDatos,
+                configurada = true,
+                conectado = true,
+                tiempoMs = cronometro.ElapsedMilliseconds,
+                consultaPrueba = new { rolesActivos, usuariosActivos, usuariosInactivos },
+                mensaje = "Conexión correcta con Entity Framework Core."
+            });
+        }
+        catch (Exception ex) when (ex is SqlException || ex.InnerException is SqlException)
+        {
+            var errorSql = ex as SqlException ?? (SqlException)ex.InnerException!;
+            logger.LogError(ex, "TestDb: error de SQL Server (número {NumeroSql}).", errorSql.Number);
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                modo,
+                cadena,
+                baseDeDatos,
+                configurada = true,
+                conectado = false,
+                codigoSql = errorSql.Number,
+                mensaje = SugerenciaPorCodigoSql(errorSql.Number)
+            });
+        }
+    }
+
+    /// <summary>Traduce los códigos de error de SQL Server más comunes a una sugerencia (sin datos sensibles).</summary>
+    private static string SugerenciaPorCodigoSql(int numero) => numero switch
+    {
+        4060 => "La base de datos no existe o tu usuario no tiene acceso. Ejecuta sql/00_db_prueba_conexion.sql en SSMS.",
+        18456 => "SQL Server rechazó el inicio de sesión. Revisa usuario/contraseña o usa Trusted_Connection=True.",
+        208 => "Faltan tablas en la base de datos. Ejecuta sql/00_db_prueba_conexion.sql en SSMS.",
+        2 or 53 or -1 or -2 => "No se encontró el servidor o tardó demasiado. Revisa el nombre (localhost, .\\SQLEXPRESS o (localdb)\\MSSQLLocalDB) y que el servicio de SQL Server esté iniciado.",
+        _ => "Error de SQL Server. Revisa la consola de la aplicación para ver el detalle."
+    };
 
     /// <summary>
     /// GET <c>/Home/Error</c>. Devuelve <c>Views/Shared/Error.cshtml</c> (documento completo con <c>_Layout</c>)
