@@ -8,7 +8,6 @@
       Identificador de `dotnet user-secrets` (equivale a ejecutar `dotnet user-secrets init`).
       NO es un secreto: solo indica en qué carpeta de TU usuario de Windows se guardan los secretos
       (%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.json), fuera del repositorio.
-      Ver docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md
     -->
     <UserSecretsId>flyvibemex-9b6d9483-4ded-4987-a992-d9edf61e015e</UserSecretsId>
   </PropertyGroup>
