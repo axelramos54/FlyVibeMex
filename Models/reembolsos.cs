@@ -26,11 +26,11 @@ namespace FlyVibeMex.Models
         public DateTime fecha_solicitud {get; set;}
 
         /// <summary>Fecha de resolución.</summary>
-        // NOTA: vacía hasta resolverse.
-        public DateTime fecha_resolucion {get; set;}
+        // NOTA: vacía hasta resolverse. // Creo que se soluciono 21-10-2026 Por Yamil
+        public DateTime? fecha_resolucion {get; set;}
 
         /// <summary>Referencia del reembolso en el proveedor de pagos.</summary>
-        // NOTA: opcional en el diseño.
-        public string referencia_externa {get; set;} = string.Empty;
+        // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
+        public string? referencia_externa {get; set;}
     }
 }

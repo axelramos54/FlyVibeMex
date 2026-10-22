@@ -16,12 +16,12 @@ namespace FlyVibeMex.Models
         public ulong id_usuario {get; set;}
 
         /// <summary>Llave foránea → <c>Reservaciones.id</c>. Reserva relacionada, si aplica.</summary>
-        // NOTA: opcional en el diseño.
-        public ulong id_reservacion {get; set;}
+        // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
+        public ulong? id_reservacion {get; set;}
 
         /// <summary>Llave foránea → <c>Usuarios.id</c>. Agente responsable (rol AGENTE).</summary>
-        // NOTA: vacío hasta asignarse.
-        public ulong id_agente_asignado {get; set;}
+        // NOTA: vacío hasta asignarse. // Solucionado 21-10-2026 Por Yamil
+        public ulong? id_agente_asignado {get; set;}
 
         /// <summary>ASESORIA o PROBLEMA.</summary>
         public string tipo {get; set;} = string.Empty;

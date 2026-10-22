@@ -14,8 +14,8 @@ namespace FlyVibeMex.Models
         public string nombre {get; set;} = string.Empty;
 
         /// <summary>Descripción funcional del rol.</summary>
-        // NOTA: en el diseño este campo es opcional.
-        public string descripcion {get; set;} = string.Empty;
+        // NOTA: en el diseño este campo es opcional. // Solucionado 21-10-2026 Por Yamil
+        public string? descripcion {get; set;}
 
         /// <summary>Borrado lógico <c>false</c> oculta el registro sin eliminarlo.</summary>
         public bool activo {get; set;}

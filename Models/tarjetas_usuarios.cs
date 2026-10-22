@@ -15,8 +15,8 @@ namespace FlyVibeMex.Models
         public ulong id_usuario {get; set;}
 
         /// <summary>Llave foránea → <c>InstitucionesFinancieras.id</c>. Institución emisora, si se conoce.</summary>
-        // NOTA: opcional en el diseño.
-        public ulong id_institucion {get; set;}
+        // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
+        public ulong? id_institucion {get; set;}
 
         /// <summary>Token único del proveedor de pagos; NO es el número real de la tarjeta.</summary>
         public string token_referencia {get; set;} = string.Empty;
@@ -34,8 +34,8 @@ namespace FlyVibeMex.Models
         public ushort anio_expiracion {get; set;}
 
         /// <summary>Nombre amigable asignado por el usuario.</summary>
-        // NOTA: opcional en el diseño.
-        public string alias {get; set;} = string.Empty;
+        // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
+        public string? alias {get; set;}
 
         /// <summary>Borrado lógico <c>false</c> oculta el registro sin eliminarlo.</summary>
         public bool activo {get; set;}

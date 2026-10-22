@@ -9,8 +9,8 @@ namespace FlyVibeMex.Models
     public class Vehiculos
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
-        // NOTA: debería ser `id_servicio` (ver nota de la clase).
-        public ulong id {get; set;}
+        // NOTA: debería ser `id_servicio` (ver nota de la clase). // Solucionado 21-10-2026 Por Yamil
+        public ulong id_servicio {get; set;}
 
         /// <summary>Llave foránea → <c>Ubicaciones.id</c>. Punto o ciudad de retiro del vehículo.</summary>
         public ulong id_ubicacion_retiro {get; set;}

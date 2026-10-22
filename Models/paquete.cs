@@ -9,8 +9,8 @@ namespace FlyVibeMex.Models
     // la propiedad `id` adicional sobra y permitiría varios paquetes por servicio.
     public class Paquetes
     {
-        // NOTA: identificador redundante (ver nota de la clase).
-        public ulong id {get; set;}
+        // NOTA: identificador redundante (ver nota de la clase). // Solucionado 21-10-2026 Por Yamil
+        // public ulong id {get; set;}
 
         /// <summary>Llave foránea → <c>Servicios.id</c>. Servicio (tipo PAQUETE) al que corresponde este paquete.</summary>
         public ulong id_servicio {get; set;}
