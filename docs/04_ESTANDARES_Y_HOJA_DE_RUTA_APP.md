@@ -234,16 +234,16 @@ Pantallas del diseño de interfaz del documento de avance (30) frente a lo que e
 |  | Resumen de reserva | 🔴 No | — | Resumen con promoción aplicada |
 |  | Pago | 🔴 No | — | Pago con tarjeta tokenizada u otro método |
 |  | Confirmación | 🔴 No | — | Código de reserva |
-| Mis viajes | Mis viajes | 🔴 No | — | Requiere inicio de sesión |
-|  | Actuales | 🔴 No | — | Listado |
-|  | Pasados | 🔴 No | — | Listado |
-|  | Detalle de reservación | 🔴 No | — | Detalle con acciones |
-|  | Cancelar | 🔴 No | — | Confirmación de cancelación |
+| Mis viajes | Mis viajes | 🟡 Maqueta | — | Requiere inicio de sesión |
+|  | Actuales | 🟡 Maqueta | — | Listado |
+|  | Pasados | 🟡 Maqueta | — | Listado |
+|  | Detalle de reservación | 🟡 Maqueta | — | Detalle con acciones |
+|  | Cancelar | 🟡 Maqueta | — | Confirmación de cancelación |
 |  | Solicitar reembolso | 🔴 No | — | Formulario |
 |  | Reportar problema | 🔴 No | — | Formulario (solicitud tipo PROBLEMA) |
-| Soporte | Soporte | 🔴 No | (solo texto en Inicio) | Vista del módulo |
+| Soporte | Soporte | 🟡 Solo redireccion | (solo texto en Inicio) | Vista del módulo |
 |  | Contactar asesor | 🔴 No | — | Formulario (solicitud tipo ASESORIA) |
-| Cuenta | Cuenta | 🔴 No | — | Vista del módulo |
+| Cuenta | Cuenta | 🟡 Solo redireccion | — | Vista del módulo |
 |  | Auth (iniciar sesión / registro) | 🟡 Visual | `sesion.cshtml` | Envío real, registro, cierre de sesión |
 |  | Perfil | 🔴 No | — | Datos del usuario y foto |
 |  | Métodos de pago | 🔴 No | — | Tarjetas tokenizadas guardadas |
