@@ -33,7 +33,7 @@ public class FlyVibeMexDbContext : DbContext
 
     // ===================== Usuarios =====================
     public DbSet<RolesUsuario> RolesUsuarios => Set<RolesUsuario>();
-    public DbSet<Usuarios> Usuarios => Set<Usuarios>();
+    public DbSet<UsuariosGlobales> Usuarios => Set<UsuariosGlobales>();
     public DbSet<Ubicaciones> Ubicaciones => Set<Ubicaciones>();
 
     // ===================== Catálogo / servicios =====================
@@ -116,7 +116,7 @@ public class FlyVibeMexDbContext : DbContext
             e.HasIndex(x => x.nombre).IsUnique();
         });
 
-        modelBuilder.Entity<Usuarios>(e =>
+        modelBuilder.Entity<UsuariosGlobales>(e =>
         {
             e.ToTable("usuarios");
             e.HasKey(x => x.id);
@@ -156,8 +156,8 @@ public class FlyVibeMexDbContext : DbContext
                     : DateTime.Parse(texto, CultureInfo.InvariantCulture),
                 fecha => fecha.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
 
-            e.Property(x => x.creado).HasConversion(conversorFechaTexto).HasColumnType("datetime");
-            e.Property(x => x.actualizado).HasConversion(conversorFechaTexto).HasColumnType("datetime");
+            e.Property(x => x.creado_en).HasConversion(conversorFechaTexto).HasColumnType("datetime");
+            e.Property(x => x.actualizado_en).HasConversion(conversorFechaTexto).HasColumnType("datetime");
         });
     }
 
@@ -189,24 +189,24 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<Hospedajes>(e =>
         {
             e.ToTable("hospedajes");
-            e.HasKey(x => x.id);
-            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.HasKey(x => x.id_servicio);
+            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
             e.Property(x => x.categoria).IsRequired(false);
         });
 
         modelBuilder.Entity<Vehiculos>(e =>
         {
             e.ToTable("vehiculos");
-            e.HasKey(x => x.id);
-            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.HasKey(x => x.id_servicio);
+            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<Paquetes>(e =>
         {
             // En el script actual la PK es compuesta (id, id_servicio) y `id` NO es identity.
             e.ToTable("paquete");
-            e.HasKey(x => new { x.id, x.id_servicio });
-            e.Property(x => x.id).ValueGeneratedNever();
+            e.HasKey(x => new { x.id_servicio });
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.politica_cancelacion).IsRequired(false);
         });
@@ -214,8 +214,8 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<PaqueteServicio>(e =>
         {
             e.ToTable("paquete_servicio");
-            e.HasKey(x => new { x.id, x.id_servicio });
-            e.Property(x => x.id).ValueGeneratedNever();
+            e.HasKey(x => new { x.id_servicio, x.id_servicio_incluido });
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
         });
@@ -276,7 +276,7 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
             // FIXME (modelo): la propiedad tiene la errata `fehca_inicio`; la columna es `fecha_inicio`.
-            e.Property(x => x.fehca_inicio).HasColumnName("fecha_inicio");
+            e.Property(x => x.fecha_inicio).HasColumnName("fecha_inicio");
             e.Property(x => x.cantidad).HasPrecision(8, 2);
         });
     }

@@ -35,7 +35,7 @@ public sealed class AuthService : IAuthService
     private const int LongitudMaximaPassword = 128;
 
     private readonly FlyVibeMexDbContext _db;
-    private readonly IPasswordHasher<Usuarios> _passwordHasher;
+    private readonly IPasswordHasher<UsuariosGlobales> _passwordHasher;
     private readonly ILogger<AuthService> _logger;
 
     /// <summary>
@@ -46,13 +46,13 @@ public sealed class AuthService : IAuthService
 
     public AuthService(
         FlyVibeMexDbContext db,
-        IPasswordHasher<Usuarios> passwordHasher,
+        IPasswordHasher<UsuariosGlobales> passwordHasher,
         ILogger<AuthService> logger)
     {
         _db = db;
         _passwordHasher = passwordHasher;
         _logger = logger;
-        _hashFicticio = new Lazy<string>(() => _passwordHasher.HashPassword(new Usuarios(), Guid.NewGuid().ToString("N")));
+        _hashFicticio = new Lazy<string>(() => _passwordHasher.HashPassword(new UsuariosGlobales(), Guid.NewGuid().ToString("N")));
     }
 
     /// <inheritdoc />
@@ -62,7 +62,7 @@ public sealed class AuthService : IAuthService
     public string GenerarHash(string password)
     {
         ArgumentException.ThrowIfNullOrEmpty(password);
-        return _passwordHasher.HashPassword(new Usuarios(), password);
+        return _passwordHasher.HashPassword(new UsuariosGlobales(), password);
     }
 
     /// <inheritdoc />
@@ -102,7 +102,7 @@ public sealed class AuthService : IAuthService
             if (candidato is null)
             {
                 // Mismo costo que una verificación real (ver _hashFicticio).
-                _passwordHasher.VerifyHashedPassword(new Usuarios(), _hashFicticio.Value, password);
+                _passwordHasher.VerifyHashedPassword(new UsuariosGlobales(), _hashFicticio.Value, password);
                 _logger.LogInformation("Inicio de sesión rechazado: credenciales inválidas.");
                 return ResultadoAutenticacion.Invalido();
             }
@@ -112,7 +112,7 @@ public sealed class AuthService : IAuthService
             try
             {
                 verificacion = _passwordHasher.VerifyHashedPassword(
-                    new Usuarios { id = candidato.id },
+                    new UsuariosGlobales { id = candidato.id },
                     candidato.password_hash,
                     password);
             }
@@ -156,7 +156,7 @@ public sealed class AuthService : IAuthService
     {
         try
         {
-            var nuevoHash = _passwordHasher.HashPassword(new Usuarios { id = idUsuario }, password);
+            var nuevoHash = _passwordHasher.HashPassword(new UsuariosGlobales { id = idUsuario }, password);
 
             // ExecuteUpdate también es parametrizado: UPDATE usuarios SET password_hash = @p WHERE id = @id
             await _db.Usuarios

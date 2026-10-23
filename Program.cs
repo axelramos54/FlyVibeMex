@@ -56,7 +56,7 @@ builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
 // Servicios de la aplicación
 // =============================================================================================
 // Hash de contraseñas de ASP.NET Core Identity (PBKDF2-HMAC-SHA512). Es seguro como singleton.
-builder.Services.AddSingleton<IPasswordHasher<Usuarios>, PasswordHasher<Usuarios>>();
+builder.Services.AddSingleton<IPasswordHasher<UsuariosGlobales>, PasswordHasher<UsuariosGlobales>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
