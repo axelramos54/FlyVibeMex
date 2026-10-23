@@ -66,3 +66,14 @@ build/
 [Ll]ogs/
 TestResults/
 *.nupkg
+
+# ==============================
+# objects de Visual Studio
+# ==============================
+obj/
+
+
+# ==============================
+# Contexto del proyecto
+# ==============================
+docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md
