@@ -13,7 +13,7 @@ namespace FlyVibeMex.Models
         public ulong id {get; set;}
 
         /// <summary>Llave foránea → <c>Usuarios.id</c>. Usuario que abre la solicitud.</summary>
-        public ulong id_usuario {get; set;}
+        public ulong id_usuarioglobal {get; set;}
 
         /// <summary>Llave foránea → <c>Reservaciones.id</c>. Reserva relacionada, si aplica.</summary>
         // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil

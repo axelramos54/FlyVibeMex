@@ -17,7 +17,7 @@ namespace FlyVibeMex.Models
         public ulong id {get; set;}
 
         /// <summary>Llave foránea → <c>Usuarios.id</c>. Usuario propietario de la reserva.</summary>
-        public ulong id_usuario {get; set;}
+        public ulong id_usuarioglobal {get; set;}
 
         /// <summary>Llave foránea → <c>EstadosReservacion.id</c>. Estado actual.</summary>
         public ushort id_estado_reservacion {get; set;}

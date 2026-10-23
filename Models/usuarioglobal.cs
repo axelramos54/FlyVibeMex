@@ -8,7 +8,7 @@ namespace FlyVibeMex.Models
     /// </summary>
     // FIXME: el diseño incluye `actualizado_en` (fecha de última actualización); falta en esta clase.
     // NOTA: la clase está en plural (Usuarios) y el archivo en singular (usuario.cs).
-    public class Usuarios
+    public class UsuariosGlobales
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
         public ulong id {get; set;}

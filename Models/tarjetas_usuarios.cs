@@ -12,7 +12,7 @@ namespace FlyVibeMex.Models
         public ulong id {get; set;}
 
         /// <summary>Llave foránea → <c>Usuarios.id</c>. Propietario de la tarjeta.</summary>
-        public ulong id_usuario {get; set;}
+        public ulong id_usuariog {get; set;}
 
         /// <summary>Llave foránea → <c>InstitucionesFinancieras.id</c>. Institución emisora, si se conoce.</summary>
         // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
