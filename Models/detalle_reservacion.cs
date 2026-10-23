@@ -20,15 +20,15 @@ namespace FlyVibeMex.Models
         public ulong id_servicio {get; set;}
 
         /// <summary>Llave foránea → <c>Promociones.id</c>. Promoción aplicada, si hubo.</summary>
-        // NOTA: debería ser ulong?.
-        public ulong id_promocion {get; set;}
+        // NOTA: debería ser ulong?. // Solucionado 21-10-2026 Por Yamil
+        public ulong? id_promocion {get; set;}
 
         /// <summary>Unidades, personas o noches, según la lógica del servicio.</summary>
         public decimal cantidad {get; set;}
 
         /// <summary>Fecha de inicio del servicio reservado.</summary>
-        // NOTA: error en el nombre: `fehca_inicio` debería ser `fecha_inicio`. No se renombra aquí para no romper la compilación.
-        public DateTime fehca_inicio {get; set;}
+        // NOTA: error en el nombre: `fehca_inicio` debería ser `fecha_inicio`. No se renombra aquí para no romper la compilación. // Solucionado 21-10-2026 Por Yamil
+        public DateTime fecha_inicio {get; set;}
 
         /// <summary>Fecha de fin del servicio reservado.</summary>
         public DateTime fecha_fin {get; set;}

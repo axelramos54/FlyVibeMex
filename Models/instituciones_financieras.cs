@@ -13,13 +13,13 @@ namespace FlyVibeMex.Models
 
         /// <summary>Clave nacional, cuando aplique (única).</summary>
         // NOTA: `clave_institucion`, `codigo_internacional` y `telefono` son opcionales en el diseño.
-        public string clave_institucion {get; set;} = string.Empty;
+        public string? clave_institucion {get; set;}
 
         /// <summary>Código internacional, cuando aplique (único).</summary>
-        public string codigo_internacional {get; set;} = string.Empty;
+        public string? codigo_internacional {get; set;}
 
         /// <summary>Teléfono de referencia.</summary>
-        public string telefono {get; set;} = string.Empty;
+        public string? telefono {get; set;}
 
         /// <summary>Borrado lógico <c>false</c> oculta el registro sin eliminarlo.</summary>
         public bool activo {get; set;}

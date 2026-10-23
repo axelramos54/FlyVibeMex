@@ -24,8 +24,8 @@ namespace FlyVibeMex.Models
         public bool activo {get; set;}
 
         // NOTA: `creado` y `actualizado` son fechas de control pero están declaradas como string;
-        // deberían ser DateTime (y llamarse creado_en / actualizado_en como en el resto de entidades).
-        public string creado {get; set;} = string.Empty;
-        public string actualizado { get; set; } = string.Empty;
+        // deberían ser DateTime (y llamarse creado_en / actualizado_en como en el resto de entidades). // Solucionado 21-10-2026 Por Yamil
+        public DateTime creado_en {get; set;}
+        public DateTime actualizado_en { get; set; }
     }
 }

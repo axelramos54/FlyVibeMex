@@ -12,7 +12,7 @@ namespace FlyVibeMex.Models
 
         /// <summary>Llave foránea → <c>Ubicaciones.id</c>. Ubicación principal o fiscal.</summary>
         // NOTA: en el diseño es opcional.
-        public ulong id_ubicacion {get; set;}
+        public ulong? id_ubicacion {get; set;}
 
         /// <summary>Tipo de proveedor: AEROLINEA, HOTEL, RENTADORA u OTRO.</summary>
         public string tipo_proveedor {get; set;} = string.Empty;

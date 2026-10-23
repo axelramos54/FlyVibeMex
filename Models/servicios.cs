@@ -28,7 +28,7 @@ namespace FlyVibeMex.Models
 
         /// <summary>Descripción comercial y operativa.</summary>
         // NOTA: opcional en el diseño.
-        public string descripcion {get; set;} = string.Empty;
+        public string? descripcion {get; set;}
 
         /// <summary>Precio de referencia antes de promociones (dinero: siempre decimal).</summary>
         public decimal precio_base {get; set;}

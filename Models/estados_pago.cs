@@ -15,7 +15,7 @@ namespace FlyVibeMex.Models
         public string descripcion {get; set;} = string.Empty;
 
         /// <summary>Indica si el estado concluye el flujo del pago.</summary>
-        // NOTA: declarado como byte; en EstadosReservacion el mismo concepto es bool. Unificar a bool.
-        public byte es_final {get; set;}
+        // NOTA: declarado como byte; en EstadosReservacion el mismo concepto es bool. Unificar a bool. // Solucionado 21-10-2026 Por Yamil
+        public bool es_final {get; set;}
     }
 }

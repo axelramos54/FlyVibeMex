@@ -5,7 +5,7 @@ namespace FlyVibeMex.Models
     /// <c>PromocionServicio</c> y, al reservar, queda registrada en <c>DetallesReservacion.id_promocion</c>.
     /// </summary>
     // NOTA: faltan `nombre` (nombre visible de la promoción) y `minimo_compra` (monto mínimo requerido),
-    // que forman parte del diseño.
+    // que forman parte del diseño. // Solucionado 21-10-2026 Por Yamil
     public class Promociones
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
@@ -15,8 +15,8 @@ namespace FlyVibeMex.Models
         public string codigo {get; set;} = string.Empty;
 
         /// <summary>Descripción y condiciones resumidas.</summary>
-        // NOTA: opcional en el diseño.
-        public string descripcion {get; set;} = string.Empty;
+        // NOTA: opcional en el diseño. // Solucionado 21-10-2026 Por Yamil
+        public string? descripcion {get; set;}
 
         /// <summary>PORCENTAJE o MONTO.</summary>
         public string tipo_descuento {get; set;} = string.Empty;
@@ -32,5 +32,9 @@ namespace FlyVibeMex.Models
 
         /// <summary>Borrado lógico <c>false</c> oculta el registro sin eliminarlo.</summary>
         public bool activo {get; set;}
+
+        public string? nombre {get; set;}
+
+        public decimal minimo_compra {get; set;}
     }
 }

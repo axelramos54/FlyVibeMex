@@ -10,14 +10,14 @@ namespace FlyVibeMex.Models
     public class Hospedajes
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
-        // NOTA: debería ser `id_servicio` (ver nota de la clase).
-        public ulong id { get; set; }
+        // NOTA: debería ser `id_servicio` (ver nota de la clase). // Solucionado 21-10-2026 Por Yamil
+        public ulong id_servicio { get; set; }
 
         /// <summary>Llave foránea → <c>Ubicaciones.id</c>. Ubicación del hospedaje.</summary>
         public ulong id_ubicacion {get; set;}
 
         // NOTA: en el diseño este campo es `tipo_habitacion` (tipo de habitación u oferta).
-        public string tipo_ubicacion {get; set;} = string.Empty;
+        public string tipo_habitacion {get; set;} = string.Empty;
 
         /// <summary>Categoría comercial del alojamiento.</summary>
 

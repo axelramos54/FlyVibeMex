@@ -13,8 +13,8 @@ namespace FlyVibeMex.Models
         public ulong id_reembolso {get; set;}
 
         /// <summary>Llave foránea → <c>Usuarios.id</c>. Agente/usuario que hizo el cambio; vacío si fue automático.</summary>
-        // NOTA: debe poder ser nulo (cambio automático).
-        public ulong id_usuario_cambio {get; set;}
+        // NOTA: debe poder ser nulo (cambio automático). //solucionado Yamil Alexei Courtois Paredes 22-10-2026
+        public ulong? id_usuario_cambio {get; set;}
 
         /// <summary>Estado registrado.</summary>
         public string estado {get; set;} = string.Empty;
