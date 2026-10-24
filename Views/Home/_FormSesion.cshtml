@@ -1,0 +1,56 @@
+@*
+ Parcial: Views/Home/_FormSesion.cshtml
+ Formulario de inicio de sesión + botones "Iniciar sesión" y "Crear nueva cuenta".
+ Lo usan:
+   - sesion.cshtml        (fragmento que cargarPagina() mete en el shell)
+   - IniciarSesion.cshtml (página completa; se muestra cuando el login falla)
+ Estilos: style_s.css (#formu_inicio_sesion, #btn_crear_cuenta).
+ Seguridad: POST con token antiforgery (lo agrega el tag helper del <form>); la contraseña es type="password"
+ y nunca se vuelve a escribir en la página.
+*@
+@model LoginViewModel
+
+<p>Inicia sesión para acceder a más funciones</p>
+
+<form asp-controller="Home" asp-action="IniciarSesion" method="post" id="formu_inicio_sesion" class="mt-2">
+    @* Errores generales (credenciales inválidas, BD sin conectar). Solo se pinta si hay alguno. *@
+    @if (ViewData.ModelState.TryGetValue(string.Empty, out var errorGeneral) && errorGeneral.Errors.Count > 0)
+    {
+        <div class="alert alert-danger py-2 small mb-0" role="alert">
+            @foreach (var error in errorGeneral.Errors)
+            {
+                <div>@error.ErrorMessage</div>
+            }
+        </div>
+    }
+
+    <input type="hidden" asp-for="returnUrl" />
+
+    <label asp-for="correo">
+        Correo
+        <input asp-for="correo" type="email" placeholder="ejemplo@gmail.com" autocomplete="username" maxlength="150" required />
+        <span asp-validation-for="correo" class="text-danger small fw-normal"></span>
+    </label>
+
+    <label asp-for="password">
+        Contraseña
+        <input asp-for="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" maxlength="128" required />
+        <span asp-validation-for="password" class="text-danger small fw-normal"></span>
+    </label>
+
+    <div class="form-check">
+        <input asp-for="recordarme" class="form-check-input" />
+        <label asp-for="recordarme" class="form-check-label fw-normal"></label>
+    </div>
+
+    <button type="submit" id="btn_iniciar_sesion">Iniciar sesión</button>
+</form>
+
+<div id="separador_sesion" class="d-flex align-items-center gap-2 my-3">
+    <hr class="flex-grow-1 m-0" />
+    <span class="small text-muted">¿Aún no tienes cuenta?</span>
+    <hr class="flex-grow-1 m-0" />
+</div>
+
+@* Enlace normal (no cargarPagina): el registro es una página completa en /Crearusuario *@
+<a asp-controller="Crearusuario" asp-action="Index" id="btn_crear_cuenta" class="btn w-100">Crear nueva cuenta</a>

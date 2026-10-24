@@ -1,0 +1,22 @@
+@* GET/POST /Admin/GestorVentas/Servicios/{id}/Actualizar (GestorController.ActualizarServicio) *@
+@model ServicioFormViewModel
+@{
+    ViewData["Title"] = "Actualizar servicio";
+    ViewData["EsActualizar"] = true;
+}
+
+<h1 class="h3 mb-1">Actualizar servicio</h1>
+<p class="text-muted">
+    Modifica la información y presiona Confirmar. Cambiar el precio base no afecta a las reservaciones ya hechas.
+</p>
+
+<form asp-action="ActualizarServicio" asp-route-id="@Model.id" method="post" class="card card-body" style="max-width: 760px">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ServicioFormCampos.cshtml" model="Model" />
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Confirmar</button>
+        <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-nombre="@Model.nombre" asp-route-incluirInactivos="true">Cancelar</a>
+    </div>
+</form>

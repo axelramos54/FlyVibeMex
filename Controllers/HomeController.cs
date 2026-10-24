@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
+using FlyVibeMex.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -75,12 +79,97 @@ public class HomeController : Controller
 
     /// <summary>
     /// GET <c>/Home/sesion</c>. Devuelve la <b>vista parcial</b> <c>sesion.cshtml</c> (módulo Cuenta › Iniciar sesión).
-    /// Estado: formulario visual sin envío; no existe acción POST ni autenticación configurada.
+    /// El formulario se envía por POST a <c>IniciarSesion</c>; "Crear nueva cuenta" lleva a <c>/Crearusuario</c>.
     /// </summary>
 
     public IActionResult sesion()
     {
-        return View();
+        return View(new LoginViewModel());
+    }
+
+    // ============================== INICIAR / CERRAR SESIÓN ==============================
+
+    /// <summary>
+    /// GET <c>/Home/IniciarSesion</c>. Versión de <b>página completa</b> del inicio de sesión
+    /// (<c>Views/Home/IniciarSesion.cshtml</c>). Se usa cuando el login falla (para mostrar el error)
+    /// y es la <c>LoginPath</c> de la cookie: a futuro, una página con [Authorize] manda aquí con <c>?ReturnUrl=</c>.
+    /// </summary>
+    [HttpGet]
+    public IActionResult IniciarSesion(string? returnUrl)
+    {
+        return View(new LoginViewModel { returnUrl = returnUrl });
+    }
+
+    /// <summary>
+    /// POST <c>/Home/IniciarSesion</c>. Lo envía el botón "Iniciar sesión" de <c>sesion.cshtml</c>.
+    /// Valida con <see cref="IAuthService"/> (consulta parametrizada + hash) y crea la cookie de sesión.
+    /// </summary>
+    /// <remarks>
+    /// El servicio se pide con <c>RequestServices</c> (no en el constructor) por la misma razón que <c>TestDb</c>:
+    /// el resto de este controlador debe funcionar aunque el equipo aún no configure SQL Server.
+    /// </remarks>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> IniciarSesion(
+        [Bind("correo,password,recordarme,returnUrl")] LoginViewModel datos,
+        [FromServices] ConfiguracionBaseDatos configuracionBd,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(datos);
+        }
+
+        if (!configuracionBd.EstaConfigurada)
+        {
+            ModelState.AddModelError(string.Empty,
+                "El inicio de sesión estará disponible cuando se conecte la base de datos.");
+            return View(datos);
+        }
+
+        var auth = HttpContext.RequestServices.GetRequiredService<IAuthService>();
+        var resultado = await auth.ValidarCredencialesAsync(datos.correo, datos.password, cancellationToken);
+
+        if (!resultado.Exitoso)
+        {
+            // Mensaje genérico: no dice si el correo existe (evita la enumeración de usuarios).
+            ModelState.AddModelError(string.Empty, resultado.Mensaje);
+            return View(datos);
+        }
+
+        var usuario = resultado.Usuario!;
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuario.id.ToString()),
+            new(ClaimTypes.Name, usuario.nombre),
+            new(ClaimTypes.Email, usuario.correo),
+            new("id_rol", usuario.id_rol.ToString())
+        };
+        var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identidad),
+            new AuthenticationProperties { IsPersistent = datos.recordarme });
+
+        // Solo se regresa a direcciones de este mismo sitio (evita "open redirect").
+        if (!string.IsNullOrEmpty(datos.returnUrl) && Url.IsLocalUrl(datos.returnUrl))
+        {
+            return LocalRedirect(datos.returnUrl);
+        }
+        return RedirectToAction("Index", "Miusuario");
+    }
+
+    /// <summary>
+    /// POST <c>/Home/CerrarSesion</c>. Borra la cookie de sesión. Es POST (con token) para que un enlace
+    /// o una imagen de otro sitio no puedan cerrar la sesión del usuario.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CerrarSesion()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
@@ -93,7 +182,10 @@ public class HomeController : Controller
         return View();
     }
 
-
+    public IActionResult vehiculos()
+    {
+        return View();
+    }
 
     /// <summary>
     /// GET <c>/Home/TestDb</c>. Diagnóstico de la conexión con SQL Server mediante EF Core.

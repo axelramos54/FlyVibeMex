@@ -1,0 +1,81 @@
+@* Campos del formulario de servicio. Los usan "Dar de alta servicio" y "Actualizar servicio".
+   ViewData["Proveedores"]   → lista de proveedores para el <select> (la carga el controlador).
+   ViewData["EsActualizar"] = true → bloquea el tipo y muestra la casilla de activo.
+   NOTA: no confundir con _ServicioCampos.cshtml, que usa la pantalla "Asociar" (ServicioFormBase). *@
+@model ServicioFormViewModel
+@{
+    var proveedores = ViewData["Proveedores"] as List<SelectListItem> ?? new List<SelectListItem>();
+    var esActualizar = ViewData["EsActualizar"] is true;
+}
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="id_proveedor" class="form-label"></label>
+        <select asp-for="id_proveedor" asp-items="proveedores" class="form-select" required>
+            <option value="">— Selecciona —</option>
+        </select>
+        @if (proveedores.Count == 0)
+        {
+            <div class="form-text">
+                No hay proveedores activos. <a asp-action="AltaProveedor">Da de alta uno primero</a>.
+            </div>
+        }
+        <span asp-validation-for="id_proveedor" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="tipo_servicio" class="form-label"></label>
+        @if (esActualizar)
+        {
+            @* El tipo no se cambia (regla R1). Se envía oculto para que el servidor lo compare. *@
+            <input type="hidden" asp-for="tipo_servicio" />
+            <input class="form-control" value="@ServicioFormViewModel.NombreTipo(Model.tipo_servicio)" disabled />
+            <div class="form-text">El tipo de un servicio existente no se puede cambiar.</div>
+        }
+        else
+        {
+            <select asp-for="tipo_servicio" asp-items="ServicioFormViewModel.OpcionesTipo()" class="form-select" required>
+                <option value="">— Selecciona —</option>
+            </select>
+        }
+        <span asp-validation-for="tipo_servicio" class="text-danger small"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="nombre" class="form-label"></label>
+        <input asp-for="nombre" class="form-control" maxlength="150" required />
+        <span asp-validation-for="nombre" class="text-danger small"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="descripcion" class="form-label"></label>
+        <textarea asp-for="descripcion" class="form-control" rows="3" maxlength="2000"></textarea>
+        <span asp-validation-for="descripcion" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="precio_base" class="form-label"></label>
+        <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input asp-for="precio_base" type="number" step="0.01" min="0" max="99999999.99" class="form-control" required />
+        </div>
+        <div class="form-text">Precio de referencia. El precio por fecha se maneja en la disponibilidad.</div>
+        <span asp-validation-for="precio_base" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="moneda" class="form-label"></label>
+        <select asp-for="moneda" asp-items="ServicioFormBase.OpcionesMoneda()" class="form-select"></select>
+        <span asp-validation-for="moneda" class="text-danger small"></span>
+    </div>
+
+    @if (esActualizar)
+    {
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="activo" class="form-check-input" />
+                <label asp-for="activo" class="form-check-label"></label>
+            </div>
+        </div>
+    }
+</div>

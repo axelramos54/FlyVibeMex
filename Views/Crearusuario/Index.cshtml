@@ -1,0 +1,112 @@
+@*
+ ============================================================================================
+ Views/Crearusuario/Index.cshtml — GET/POST /Crearusuario (CrearusuarioController.Index)
+ Pantalla del prototipo: Cuenta › Registro ("Crear nueva cuenta").
+ Página COMPLETA (Layout = null, no se carga con cargarPagina). Se llega desde el botón
+ "Crear nueva cuenta" de Views/Home/sesion.cshtml.
+ Estilos: wwwroot/assets/css/style_C.css (letra C = Crear usuario).
+ Seguridad: POST con token antiforgery; la contraseña viaja solo en este formulario y se guarda como hash.
+ ============================================================================================
+*@
+@model CrearUsuarioViewModel
+@{
+    ViewData["Title"] = "Crear nueva cuenta";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear nueva cuenta - FlyVibeMex</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/assets/css/style_C.css">
+</head>
+
+<body>
+    <div class="container card" id="tarjeta_registro">
+        <a asp-controller="Home" asp-action="Index" id="marca_registro" class="d-block text-center text-decoration-none">FlyVibeMex</a>
+        <h1 id="titulo_registro" class="text-center">Crear nueva cuenta</h1>
+        <p id="subtitulo_registro" class="text-center">Regístrate para reservar y consultar tus viajes.</p>
+
+        <form asp-controller="Crearusuario" asp-action="Index" method="post" id="formu_registro">
+            @if (ViewData.ModelState.TryGetValue(string.Empty, out var errorGeneral) && errorGeneral.Errors.Count > 0)
+            {
+                <div class="alert alert-danger py-2 small" role="alert">
+                    @foreach (var error in errorGeneral.Errors)
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                </div>
+            }
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="nombre" class="form-label"></label>
+                    <input asp-for="nombre" class="form-control" maxlength="80" autocomplete="given-name" required />
+                    <span asp-validation-for="nombre" class="text-danger small"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="apellido_paterno" class="form-label"></label>
+                    <input asp-for="apellido_paterno" class="form-control" maxlength="60" autocomplete="family-name" required />
+                    <span asp-validation-for="apellido_paterno" class="text-danger small"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="apellido_materno" class="form-label"></label>
+                    <input asp-for="apellido_materno" class="form-control" maxlength="60" required />
+                    <span asp-validation-for="apellido_materno" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="correo" class="form-label"></label>
+                    <input asp-for="correo" type="email" class="form-control" maxlength="150" placeholder="ejemplo@gmail.com" autocomplete="email" required />
+                    <span asp-validation-for="correo" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="telefono" class="form-label"></label>
+                    <input asp-for="telefono" type="tel" class="form-control" maxlength="20" placeholder="961 123 4567" autocomplete="tel" required />
+                    <span asp-validation-for="telefono" class="text-danger small"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="password" class="form-label"></label>
+                    <input asp-for="password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required />
+                    <span asp-validation-for="password" class="text-danger small"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="confirmar_password" class="form-label"></label>
+                    <input asp-for="confirmar_password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required />
+                    <span asp-validation-for="confirmar_password" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-text mt-0">Mínimo 8 caracteres, con al menos una letra y un número.</div>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="acepto_terminos" class="form-check-input" required />
+                        <label asp-for="acepto_terminos" class="form-check-label"></label>
+                        (<a asp-controller="Otros" asp-action="Politicas" target="_blank" rel="noopener">ver políticas</a>)
+                    </div>
+                    <span asp-validation-for="acepto_terminos" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <button type="submit" id="btn_registrar" class="w-100">Crear cuenta</button>
+        </form>
+
+        <p id="ya_tengo_cuenta" class="text-center mb-0">
+            ¿Ya tienes cuenta?
+            <a asp-controller="Home" asp-action="IniciarSesion">Inicia sesión</a>
+        </p>
+    </div>
+</body>
+
+</html>

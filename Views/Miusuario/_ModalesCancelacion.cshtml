@@ -1,0 +1,133 @@
+@*
+ ============================================================================================
+ Parcial: Views/Miusuario/_ModalesCancelacion.cshtml
+ Modales de "Cancelar" y "Cancelar y reembolsar". Lo usan Misreservaciones/index.cshtml y Miscompras/index.cshtml.
+ Cómo se usa (al final del <body> de la página):
+     <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
+ y los botones de cada tarjeta llevan data-accion, data-id (id de la reservación) y data-nombre:
+     <button type="button" class="btn btn-card-action" data-accion="cancelar"   data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
+     <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
+ Flujo:
+   Cancelar               → paso 1: clic en "Sí, continuar" → paso 2: mantener presionado el botón.
+   Cancelar y reembolsar  → paso 1: clic en "Sí, continuar" → paso 2: escribir el motivo + mantener presionado.
+ Archivos asociados (letra R): wwwroot/assets/css/style_R.css y wwwroot/assets/js/script_R.js
+ Seguridad: los dos formularios son POST con token antiforgery. El servidor vuelve a validar todo
+ (el clic sostenido es solo para evitar cancelaciones por accidente, no es una medida de seguridad).
+ ============================================================================================
+*@
+@{
+    var exito = TempData["CancelacionExito"] as string;
+    var error = TempData["CancelacionError"] as string;
+    // Para regresar a la misma pantalla (Mis reservaciones o Mis compras) después del POST.
+    var regreso = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+<link rel="stylesheet" href="~/assets/css/style_R.css">
+
+@* ---- Mensaje después de cancelar / pedir reembolso ---- *@
+@if (exito is not null || error is not null)
+{
+    <div id="aviso_cancelacion" class="alert @(exito is not null ? "alert-success" : "alert-danger") alert-dismissible fade show shadow" role="alert">
+        @(exito ?? error)
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* =============================== MODAL: CANCELAR =============================== *@
+<div class="modal fade" id="modal_cancelar" tabindex="-1" aria-labelledby="titulo_modal_cancelar" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-controller="Miusuario" asp-action="CancelarReservacion" method="post" id="form_cancelar">
+                <input type="hidden" name="id" data-campo="id" />
+                <input type="hidden" name="returnUrl" value="@regreso" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo_modal_cancelar">Cancelar reservación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                @* ---- Paso 1: confirmación con un clic ---- *@
+                <div class="modal-body" data-paso="1">
+                    <p class="small text-muted mb-2">Confirmación 1 de 2</p>
+                    <p class="mb-2">¿Seguro que quieres cancelar <strong data-campo="nombre"></strong>?</p>
+                    <p class="small text-muted mb-0">Revisa la política de cancelación de tu reservación antes de continuar.</p>
+                </div>
+                <div class="modal-footer" data-paso="1">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, volver</button>
+                    <button type="button" class="btn btn-danger" data-ir-paso="2">Sí, continuar</button>
+                </div>
+
+                @* ---- Paso 2: confirmación con clic sostenido ---- *@
+                <div class="modal-body d-none" data-paso="2">
+                    <p class="small text-muted mb-2">Confirmación 2 de 2</p>
+                    <p class="mb-3">
+                        Esta es la confirmación final. <strong>Mantén presionado</strong> el botón para cancelar
+                        <strong data-campo="nombre"></strong>.
+                    </p>
+                    <button type="button" class="btn btn-danger w-100" id="btn_sostener_cancelar" data-sostener>
+                        <span data-texto>Mantén presionado para cancelar</span>
+                    </button>
+                </div>
+                <div class="modal-footer d-none" data-paso="2">
+                    <button type="button" class="btn btn-outline-secondary" data-ir-paso="1">Atrás</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* =========================== MODAL: CANCELAR Y REEMBOLSAR =========================== *@
+<div class="modal fade" id="modal_reembolsar" tabindex="-1" aria-labelledby="titulo_modal_reembolsar" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-controller="Miusuario" asp-action="SolicitarReembolso" method="post" id="form_reembolsar">
+                <input type="hidden" name="id" data-campo="id" />
+                <input type="hidden" name="returnUrl" value="@regreso" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo_modal_reembolsar">Cancelar y reembolsar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                @* ---- Paso 1: confirmación con un clic ---- *@
+                <div class="modal-body" data-paso="1">
+                    <p class="small text-muted mb-2">Confirmación 1 de 2</p>
+                    <p class="mb-2">¿Seguro que quieres cancelar <strong data-campo="nombre"></strong> y pedir el reembolso?</p>
+                    <p class="small text-muted mb-0">El reembolso queda como <em>solicitado</em> hasta que un agente lo revise.</p>
+                </div>
+                <div class="modal-footer" data-paso="1">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, volver</button>
+                    <button type="button" class="btn btn-danger" data-ir-paso="2">Sí, continuar</button>
+                </div>
+
+                @* ---- Paso 2: motivo + confirmación con clic sostenido ---- *@
+                <div class="modal-body d-none" data-paso="2">
+                    <p class="small text-muted mb-2">Confirmación 2 de 2</p>
+
+                    <label for="motivo_reembolso" class="form-label fw-semibold">Motivo del reembolso</label>
+                    @* reembolsos.motivo es varchar(250) NOT NULL *@
+                    <textarea id="motivo_reembolso" name="motivo" class="form-control" rows="3"
+                              minlength="10" maxlength="250" required
+                              placeholder="Ej. Cambié mis fechas de viaje y ya no podré asistir."></textarea>
+                    <div class="d-flex justify-content-between small mt-1 mb-3">
+                        <span class="text-muted" id="ayuda_motivo">Mínimo 10 caracteres.</span>
+                        <span class="text-muted" id="contador_motivo">0 / 250</span>
+                    </div>
+
+                    <button type="button" class="btn btn-danger w-100" id="btn_sostener_reembolsar" data-sostener disabled>
+                        <span data-texto>Mantén presionado para confirmar</span>
+                    </button>
+                </div>
+                <div class="modal-footer d-none" data-paso="2">
+                    <button type="button" class="btn btn-outline-secondary" data-ir-paso="1">Atrás</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Los modales necesitan el JS de Bootstrap. Si la página ya lo carga, quita esta línea para no cargarlo dos veces. *@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
+<script src="~/assets/js/script_R.js"></script>

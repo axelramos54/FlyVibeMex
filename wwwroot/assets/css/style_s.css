@@ -65,7 +65,7 @@ body {
 }
 
 #formu_inicio_sesion input[type="text"],
-/* NOTA: hoy no aplica: el campo de contraseña de sesion.cshtml es type="text". */
+#formu_inicio_sesion input[type="email"],
 #formu_inicio_sesion input[type="password"] {
     width: 100%;
     padding: 12px 14px;
@@ -83,9 +83,8 @@ body {
     box-shadow: 0 0 0 3px rgba(62, 143, 214, 0.25);
 }
 
+/* ---- Botón de envío "Iniciar sesión" ---- */
 #formu_inicio_sesion button,
-/* ---- Botón de envío ----
- * NOTA: hoy no aplica: el formulario no tiene botón de envío. */
 #formu_inicio_sesion input[type="submit"] {
     margin-top: 10px;
     background-color: #e62b4a;
@@ -103,4 +102,34 @@ body {
 #formu_inicio_sesion input[type="submit"]:hover {
     background-color: #d0203d;
     transform: translateY(-1px);
+}
+
+/* ---- Casilla "Mantener la sesión iniciada": la etiqueta no debe usar el estilo en columna de arriba ---- */
+#formu_inicio_sesion .form-check-label {
+    display: inline;
+    font-weight: 500;
+}
+
+/* ---- Botón secundario "Crear nueva cuenta" (enlace a /Crearusuario) ---- */
+#btn_crear_cuenta {
+    border: 2px solid #3E8FD6;
+    color: #3E8FD6;
+    background-color: transparent;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#btn_crear_cuenta:hover {
+    background-color: #3E8FD6;
+    color: #ffffff;
+}
+
+/* ---- Nombre de la marca en la página completa IniciarSesion.cshtml ---- */
+#marca_sesion {
+    color: #3E8FD6;
+    font-weight: 800;
+    font-size: 1.5rem;
 }
