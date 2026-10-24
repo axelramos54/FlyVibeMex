@@ -1,6 +1,7 @@
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,6 +60,24 @@ builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
 builder.Services.AddSingleton<IPasswordHasher<UsuariosGlobales>, PasswordHasher<UsuariosGlobales>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
+// La cookie solo guarda id, nombre, correo e id_rol; nunca la contraseña ni el hash.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(opciones =>
+    {
+        opciones.LoginPath = "/Home/IniciarSesion";
+        opciones.AccessDeniedPath = "/Home/Index";
+        opciones.Cookie.Name = "FlyVibeMex.Sesion";
+        opciones.Cookie.HttpOnly = true;                              // JavaScript no puede leerla
+        // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.
+        opciones.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        opciones.Cookie.SameSite = SameSiteMode.Lax;
+        opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
+        opciones.SlidingExpiration = true;
+    });
+
 var app = builder.Build();
 
 app.Logger.LogInformation(
@@ -78,6 +97,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();   // debe ir antes de UseAuthorization
 app.UseAuthorization();
 
 app.MapStaticAssets();

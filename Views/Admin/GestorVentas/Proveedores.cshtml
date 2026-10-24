@@ -1,0 +1,111 @@
+@*
+ Views/Admin/GestorVentas/Proveedores.cshtml — GET /Admin/GestorVentas/Proveedores/Lista (GestorController.ListaProveedores)
+ Listado general de proveedores con filtros. Desde aquí se da de alta, se actualiza, se da de baja / reactiva
+ y se ven los servicios de cada proveedor.
+*@
+@model ListaProveedoresViewModel
+@{
+    ViewData["Title"] = "Proveedores";
+
+    // Opciones del filtro con la elegida marcada (asp-items sin asp-for respeta SelectListItem.Selected).
+    var opcionesTipo = ProveedorFormViewModel.OpcionesTipo();
+    opcionesTipo.ForEach(o => o.Selected = o.Value == Model.Tipo);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Proveedores</h1>
+        <p class="text-muted mb-0">Aerolíneas, hoteles, rentadoras y otros proveedores registrados.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="AltaProveedor">+ Dar de alta proveedor</a>
+</div>
+
+@* Filtros: formulario GET (solo consulta, no necesita token antiforgery) *@
+<form method="get" asp-action="ListaProveedores" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label for="nombre" class="form-label">Nombre</label>
+            <input id="nombre" name="nombre" value="@Model.Nombre" class="form-control" maxlength="120" placeholder="Buscar por nombre" />
+        </div>
+        <div class="col-md-3">
+            <label for="tipo" class="form-label">Tipo</label>
+            <select id="tipo" name="tipo" class="form-select" asp-items="opcionesTipo">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="incluirInactivos" name="incluirInactivos" value="true" checked="@Model.IncluirInactivos" />
+                <label class="form-check-label" for="incluirInactivos">Ver inactivos</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">
+        No hay proveedores que coincidan con el filtro.
+        <a asp-action="AltaProveedor" class="alert-link">Da de alta el primero</a>.
+    </div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Resultados.Count proveedor(es)</p>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Resultados)
+                {
+                    <tr class="@(p.activo ? "" : "table-secondary")">
+                        <td class="fw-semibold">@p.nombre</td>
+                        <td>@(ProveedorFormViewModel.OpcionesTipo().FirstOrDefault(o => o.Value == p.tipo_proveedor)?.Text ?? p.tipo_proveedor)</td>
+                        <td>@p.telefono</td>
+                        <td>@p.correo</td>
+                        <td>
+                            @if (p.activo)
+                            {
+                                <span class="badge text-bg-success">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactivo</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                                <a class="btn btn-sm btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@p.id" asp-route-incluirInactivos="true">Servicios</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Actualizar" asp-route-id="@p.id">Actualizar</a>
+                                @if (p.activo)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" asp-action="Asociar" asp-route-id="@p.id">Asociar</a>
+                                    <a class="btn btn-sm btn-outline-danger" asp-action="DarDeBaja" asp-route-id="@p.id">Dar de baja</a>
+                                }
+                                else
+                                {
+                                    @* Reactivar modifica datos: POST con token antiforgery *@
+                                    <form asp-action="ReactivarProveedor" asp-route-id="@p.id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Reactivar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,55 @@
+@*
+ Views/Crearusuario/Creado.cshtml — GET /Crearusuario/Creado (CrearusuarioController.Creado)
+ Confirmación después de crear la cuenta. Muestra el mensaje que dejó el POST en TempData.
+ Si alguien entra directo (sin TempData), se muestra un mensaje genérico.
+*@
+@{
+    ViewData["Title"] = "Cuenta creada";
+    Layout = null;
+    var exito = TempData["Exito"] as string;
+    var aviso = TempData["Aviso"] as string;
+    var nombre = TempData["NombreNuevo"] as string;
+}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta creada - FlyVibeMex</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/assets/css/style_C.css">
+</head>
+
+<body>
+    <div class="container card text-center" id="tarjeta_registro">
+        <a asp-controller="Home" asp-action="Index" id="marca_registro" class="d-block text-decoration-none">FlyVibeMex</a>
+
+        <div id="icono_creado" aria-hidden="true">✓</div>
+
+        <h1 id="titulo_registro">
+            @(string.IsNullOrEmpty(nombre) ? "¡Bienvenido!" : $"¡Bienvenido, {nombre}!")
+        </h1>
+
+        @if (exito is not null)
+        {
+            <div class="alert alert-success">@exito</div>
+        }
+        @if (aviso is not null)
+        {
+            <div class="alert alert-warning small">@aviso</div>
+        }
+        @if (exito is null && aviso is null)
+        {
+            <p id="subtitulo_registro">Si ya creaste tu cuenta, inicia sesión para continuar.</p>
+        }
+
+        <div class="d-grid gap-2 mt-3">
+            <a asp-controller="Home" asp-action="IniciarSesion" id="btn_registrar" class="btn">Iniciar sesión</a>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Ir al inicio</a>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -20,44 +20,43 @@
 
 7. [Hoja de ruta](#7-hoja-de-ruta)
 
-
 ## 1. Convenciones de código
 
 ### 1.1 C\#
 
 | Elemento | Regla |
 | - | - |
-| Namespace | `FlyVibeMex.\<Carpeta\>` (`FlyVibeMex.Models`, `FlyVibeMex.Controllers`, `FlyVibeMex.ViewModels`, `FlyVibeMex.Services`). Preferir namespace de archivo: `namespace FlyVibeMex.Models;` |
-| Controladores | `\<Nombre\>Controller`, **siempre** con el sufijo `Controller` |
+| Namespace | `FlyVibeMex.\\\\\\\<Carpeta\\\\\\\>` (`FlyVibeMex.Models`, `FlyVibeMex.Controllers`, `FlyVibeMex.ViewModels`, `FlyVibeMex.Services`). Preferir namespace de archivo: `namespace FlyVibeMex.Models;` |
+| Controladores | `\\\\\\\<Nombre\\\\\\\>Controller`, **siempre** con el sufijo `Controller` |
 | Acciones | PascalCase (`Hoteles`, `Detalle`). Las existentes `sesion()` y `card()` se mantienen hasta coordinar el cambio con las llamadas de `cargarPagina` |
 | Clases de modelo | PascalCase (hoy en plural: `Usuarios`, `Reservaciones`) |
-| Propiedades de modelo | Hoy en snake\_case igual al diseño de datos (`id\_usuario`). Ver [decisión pendiente](#5-decisiones-pendientes-del-equipo) |
-| Valores de estado o tipo | MAYÚSCULAS con guion bajo: `EN\_PROCESO`, `HOSPEDAJE`, `PORCENTAJE` |
+| Propiedades de modelo | Hoy en snake\_case igual al diseño de datos (`id\\\\\\\_usuario`). Ver [decisión pendiente](#5-decisiones-pendientes-del-equipo) |
+| Valores de estado o tipo | MAYÚSCULAS con guion bajo: `EN\\\\\\\_PROCESO`, `HOSPEDAJE`, `PORCENTAJE` |
 | Dinero | Siempre `decimal`, nunca `double` ni `float`. Los totales se calculan en el servidor |
 | Opcionales | Si un dato puede faltar, la propiedad es nullable (`string?`, `ulong?`, `DateTime?`) |
-| Formularios | Nunca enlazar entidades directamente: usar **ViewModels** con validaciones (`\[Required\]`, `\[EmailAddress\]`, `\[Range\]`) |
-| POST | `\[HttpPost\]` + `\[ValidateAntiForgeryToken\]` + comprobar `ModelState.IsValid` |
-| Datos sensibles | Nunca enviar `password\_hash` a una vista; nunca manejar PAN ni CVV (regla R5) |
+| Formularios | Nunca enlazar entidades directamente: usar **ViewModels** con validaciones (`\\\\\\\[Required\\\\\\\]`, `\\\\\\\[EmailAddress\\\\\\\]`, `\\\\\\\[Range\\\\\\\]`) |
+| POST | `\\\\\\\[HttpPost\\\\\\\]` + `\\\\\\\[ValidateAntiForgeryToken\\\\\\\]` + comprobar `ModelState.IsValid` |
+| Datos sensibles | Nunca enviar `password\\\\\\\_hash` a una vista; nunca manejar PAN ni CVV (regla R5) |
 
 
 ### 1.2 Razor / vistas
 
 | Regla | Detalle |
 | - | - |
-| Ubicación | `Views/\<Controlador\>/\<Accion\>.cshtml` |
+| Ubicación | `Views/\\\\\\\<Controlador\\\\\\\>/\\\\\\\<Accion\\\\\\\>.cshtml` |
 | Secciones del shell | `Layout = null;` obligatorio |
-| Parciales reutilizables | Prefijo `\_` (`\_TarjetaServicio.cshtml`) |
+| Parciales reutilizables | Prefijo `\\\\\\\_` (`\\\\\\\_TarjetaServicio.cshtml`) |
 | Ids | Únicos en el documento (hoy se repiten `secion` y `tarjetas`) |
-| Encabezado | Cada vista inicia con un comentario `@\* … \*@` que dice qué pantalla es, su ruta, su CSS/JS y su estado |
+| Encabezado | Cada vista inicia con un comentario `@\\\\\\\* … \\\\\\\*@` que dice qué pantalla es, su ruta, su CSS/JS y su estado |
 
 
 ### 1.3 CSS y JavaScript
 
 | Regla | Detalle |
 | - | - |
-| Letra de sección | `style\_\<L\>.css` y `script\_\<L\>.js` (D, V, H, T, P, s). Registrar cualquier letra nueva en el documento 02 |
+| Letra de sección | `style\\\\\\\_\\\\\\\<L\\\\\\\>.css` y `script\\\\\\\_\\\\\\\<L\\\\\\\>.js` (D, V, H, T, P, s). Registrar cualquier letra nueva en el documento 02 |
 | Globales | `style.css` y `script.js` afectan a toda la página |
-| Estilos | `class` para Bootstrap, `\#id` para diseño propio |
+| Estilos | `class` para Bootstrap, `\\\\\\\#id` para diseño propio |
 | JS de sección | Cargarlo desde `Index.cshtml`; dentro de una vista parcial **no se ejecuta** |
 | Recursos nuevos en `wwwroot/` | Recompilar (`dotnet run`) y refrescar con Ctrl + F5 |
 | Textos visibles | Revisar ortografía y acentos ("sesión", "acceder", "FlyVibe Mex") |
@@ -71,13 +70,13 @@ Español en nombres de dominio, interfaz, comentarios, commits y documentación.
 
 | Etiqueta | Cuándo usarla | Ejemplo |
 | - | - | - |
-| `/// \<summary\>` | Documentar clases, acciones y propiedades en C\# | Qué representa, qué regla de negocio aplica |
-| `@\* … \*@` | Comentarios en Razor (no llegan al navegador) | Encabezado de cada vista |
-| `/\*\* … \*/` | JSDoc en funciones JS y encabezados de archivo | `cargarPagina(url)` |
+| `/// \\\\\\\<summary\\\\\\\>` | Documentar clases, acciones y propiedades en C\# | Qué representa, qué regla de negocio aplica |
+| `@\\\\\\\* … \\\\\\\*@` | Comentarios en Razor (no llegan al navegador) | Encabezado de cada vista |
+| `/\\\\\\\*\\\\\\\* … \\\\\\\*/` | JSDoc en funciones JS y encabezados de archivo | `cargarPagina(url)` |
 | `// NOTA:` | Información importante que no es un error | "La clase está en plural y el archivo en singular" |
 | `// TODO:` | Algo que falta construir | "Falta la acción Privacy()" |
 | `// FIXME:` | Algo que está mal y debe corregirse | "Errata: fehca\_inicio" |
-| `FIXME: \[DEUDA TÉCNICA\]` | Problema estructural que afecta a varias partes | `DefaultController` |
+| `FIXME: \\\\\\\[DEUDA TÉCNICA\\\\\\\]` | Problema estructural que afecta a varias partes | `DefaultController` |
 
 
 Para ver todos los pendientes marcados en el código:
@@ -95,17 +94,17 @@ El historial muestra ramas por persona o por aportación (`testingyamil`, `mvcte
 ### 3.2 Flujo recomendado
 
 ```
-gitGraph  
-    commit id: "main estable"  
-    branch feature/vehiculos-vista  
-    checkout feature/vehiculos-vista  
-    commit id: "Agrega vista Vehiculos"  
-    commit id: "Estilos style\_A.css"  
-    checkout main  
-    merge feature/vehiculos-vista id: "PR revisado"  
-    branch fix/ids-duplicados  
-    commit id: "Corrige id secion"  
-    checkout main  
+gitGraph      
+    commit id: "main estable"      
+    branch feature/vehiculos-vista      
+    checkout feature/vehiculos-vista      
+    commit id: "Agrega vista Vehiculos"      
+    commit id: "Estilos style\\\\\\\_A.css"      
+    checkout main      
+    merge feature/vehiculos-vista id: "PR revisado"      
+    branch fix/ids-duplicados      
+    commit id: "Corrige id secion"      
+    checkout main      
     merge fix/ids-duplicados
 ```
 
@@ -113,13 +112,13 @@ gitGraph
 
 2. Crear una rama corta con prefijo según el tipo de cambio:
 
-   - `feature/\<modulo\>-\<descripcion\>` → funcionalidad nueva (`feature/mis-viajes-listado`)
+   - `feature/\\\\\\\<modulo\\\\\\\>-\\\\\\\<descripcion\\\\\\\>` → funcionalidad nueva (`feature/mis-viajes-listado`)
 
-   - `fix/\<descripcion\>` → corrección (`fix/password-type`)
+   - `fix/\\\\\\\<descripcion\\\\\\\>` → corrección (`fix/password-type`)
 
-   - `docs/\<descripcion\>` → documentación
+   - `docs/\\\\\\\<descripcion\\\\\\\>` → documentación
 
-   - `refactor/\<descripcion\>` → reorganización sin cambiar comportamiento (`refactor/namespaces-models`)
+   - `refactor/\\\\\\\<descripcion\\\\\\\>` → reorganización sin cambiar comportamiento (`refactor/namespaces-models`)
 
 3. Commits pequeños, en español y en imperativo, una intención por commit: `Agrega acción Privacy en HomeController`.
 
@@ -137,82 +136,122 @@ gitGraph
 
 - Archivos comprimidos (`.rar`, `.zip`) con código: se suben los archivos en texto plano para poder revisarlos.
 
-- Archivos temporales de Office (`~$\*.docx`).
+- Archivos temporales de Office (`~$\\\\\\\*.docx`).
 
 ## 4. Limpieza pendiente del repositorio
 
 ### 4.1 Git
 
-- [ ] Agregar al `.gitignore`:
+- [ ] 
 
-- ```
+- Agregar al `.gitignore`:
+
 \# Compilación y Visual Studio  
 bin/  
 obj/  
 .vs/  
 \# Temporales de Office  
 ~$\*
+
 ```
-
-- [ ] Quitar del índice lo ya versionado (no borra los archivos locales):
-
-- ```
-git rm -r --cached bin obj  
+    
+- \\\[ \\\] Quitar del índice lo ya versionado (no borra los archivos locales):    
+    
+- \\\`\\\`\\\`    
+git rm -r --cached bin obj      
 git commit -m "Deja de versionar bin/ y obj/"
 ```
 
 ### 4.2 Código y archivos sin uso
 
-- [ ] Eliminar `Controllers/DefaultController.cs` (duplicado; `/Default/\*` da error 500).
+- [ ] 
 
-- [ ] Agregar la acción `Privacy()` o eliminar `Views/Home/Privacy.cshtml` y sus enlaces.
+- Eliminar `Controllers/DefaultController.cs` (duplicado; `/Default/\\\\\\\*` da error 500).
 
-- [ ] Eliminar `Views/Home/exIndex.cshtml`.
+- [ ] 
 
-- [ ] Reparar o eliminar `Views/Shared/\_Layout.cshtml` (rutas `~/lib/.../dist`, `~/css/site.css`, `~/js/site.js` inexistentes); si se elimina, dar a `Error.cshtml` su propio HTML.
+- Agregar la acción `Privacy()` o eliminar `Views/Home/Privacy.cshtml` y sus enlaces.
 
-- [ ] Eliminar o completar los JS vacíos: `app.js`, `script\_D.js`, `script\_H.js`, `script\_P.js`, `script\_T.js`, `script\_V.js`; y `site.js`.
+- [ ] 
 
-- [ ] Eliminar `originalstyles.css` (vacío) y `site.css` (plantilla, no se carga).
+- Eliminar `Views/Home/exIndex.cshtml`.
 
-- [ ] Unificar `style\_H.css`, `style\_P.css`, `style\_T.css` y `style\_V.css` (son idénticos) en una hoja común para buscadores.
+- [ ] 
 
-- [ ] Quitar el enlace de prueba **"VER TARJETA test"** del menú.
+- Reparar o eliminar `Views/Shared/\\\\\\\_Layout.cshtml` (rutas `~/lib/.../dist`, `~/css/site.css`, `~/js/site.js` inexistentes); si se elimina, dar a `Error.cshtml` su propio HTML.
 
-- [ ] Vaciar o completar `wwwroot/lib/` (solo contiene archivos LICENSE).
+- [ ] 
+
+- Eliminar o completar los JS vacíos: `app.js`, `script\\\\\\\_D.js`, `script\\\\\\\_H.js`, `script\\\\\\\_P.js`, `script\\\\\\\_T.js`, `script\\\\\\\_V.js`; y `site.js`.
+
+- [ ] 
+
+- Eliminar `originalstyles.css` (vacío) y `site.css` (plantilla, no se carga).
+
+- [ ] 
+
+- Unificar `style\\\\\\\_H.css`, `style\\\\\\\_P.css`, `style\\\\\\\_T.css` y `style\\\\\\\_V.css` (son idénticos) en una hoja común para buscadores.
+
+- [ ] 
+
+- Quitar el enlace de prueba **"VER TARJETA test"** del menú.
+
+- [ ] 
+
+- Vaciar o completar `wwwroot/lib/` (solo contiene archivos LICENSE).
 
 ### 4.3 Interfaz (errores visibles)
 
-- [ ] "FlyVideMex" → **FlyVibe Mex** (marca del navbar).
+- [ ] 
 
-- [ ] "Iniciar secion" → **Iniciar sesión**; "Inicia sesion para aceder" → **Inicia sesión para acceder**.
+- "FlyVideMex" → **FlyVibe Mex** (marca del navbar).
 
-- [ ] Contraseña con `type="password"` en `sesion.cshtml`.
+- [ ] 
 
-- [ ] Logo: `\<img src=""\>` vacío en el navbar.
+- "Iniciar secion" → **Iniciar sesión**; "Inicia sesion para aceder" → **Inicia sesión para acceder**.
 
-- [ ] Ids duplicados: `secion` (Index) y `tarjetas` (card).
+- [ ] 
 
-- [ ] Clase `imf-fluid` → `img-fluid`.
+- Contraseña con `type="password"` en `sesion.cshtml`.
 
-- [ ] Botones con `href="\#"` sin acción en Inicio ("Explorar opciones", "Mis Viajes").
+- [ ] 
 
-- [ ] Título de la pestaña: "Proyecto final" → "FlyVibe Mex".
+- Logo: `\\\\\\\<img src=""\\\\\\\>` vacío en el navbar.
+
+- [ ] 
+
+- Ids duplicados: `secion` (Index) y `tarjetas` (card).
+
+- [ ] 
+
+- Clase `imf-fluid` → `img-fluid`.
+
+- [ ] 
+
+- Botones con `href="\\\\\\\#"` sin acción en Inicio ("Explorar opciones", "Mis Viajes").
+
+- [ ] 
+
+- Título de la pestaña: "Proyecto final" → "FlyVibe Mex".
 
 ### 4.4 Documentación
 
-- [x] Migrar `documento explicativos.txt` y el `.docx` a `docs/\*.md`.
+- [x] 
 
-- [ ] Mantener este conjunto de documentos y `CONTEXTO\_PROYECTO\_FLYVIBEMEX.md` actualizados en el mismo PR que cambie la estructura.
+- Migrar `documento explicativos.txt` y el `.docx` a `docs/\\\\\\\*.md`.
+
+- [ ] 
+
+- Mantener este conjunto de documentos y `CONTEXTO\\\\\\\_PROYECTO\\\\\\\_FLYVIBEMEX.md` actualizados en el mismo PR que cambie la estructura.
 
 ## 5. Decisiones pendientes del equipo
 
 | \# | Decisión | Opciones | Recomendación |
 | - | - | - | - |
 | 1 | **Tours** | (a) Modelarlos como PAQUETE; (b) crear un tipo de servicio nuevo; (c) quitar la sección | (a): un tour es un paquete de un día sin cambiar el dominio |
-| 2 | **Estilo de propiedades C\#** | (a) Mantener snake\_case (`id\_usuario`); (b) PascalCase (`IdUsuario`) con mapeo explícito | Elegir una y aplicarla en un solo PR junto con la unificación de namespaces |
+| 2 | **Estilo de propiedades C\#** | (a) Mantener snake\_case (`id\\\\\\\_usuario`); (b) PascalCase (`IdUsuario`) con mapeo explícito | Elegir una y aplicarla en un solo PR junto con la unificación de namespaces |
 | 3 | **Regla class/\#id** | (a) Mantenerla estricta y migrar `.mi-tarjeta`, `.search-card`…; (b) permitir clases propias con prefijo (`fv-`) | (b) es más práctica para componentes que se repiten (tarjetas) |
-| 4 | **Navegación** | (a) Seguir con `cargarPagina` + `innerHTML`; (b) mejorarla con `history.pushState` y carga de scripts; (c) páginas MVC normales con `\_Layout` | (c) simplifica formularios, validación, login y enlaces directos; (b) si se quiere conservar la experiencia sin recarga |
+| 4 | **Navegación** | (a) Seguir con `cargarPagina` + `innerHTML`; (b) mejorarla con `history.pushState` y carga de scripts; (c) páginas MVC normales con `\\\\\\\_Layout` | (c) simplifica formularios, validación, login y enlaces directos; (b) si se quiere conservar la experiencia sin recarga |
 | 5 | **Letra para Vehículos** y otras secciones nuevas | Libre | Registrar en la tabla de letras del documento 02 |
 
 
@@ -227,9 +266,9 @@ Pantallas del diseño de interfaz del documento de avance (30) frente a lo que e
 |  | Paquetes | 🟡 Visual | `Paquetes.cshtml` | Búsqueda funcional |
 |  | Vuelos | 🟡 Visual | `Viajes.cshtml` | Búsqueda funcional; modelo `Vuelos` |
 |  | Hospedaje | 🟡 Visual | `Hoteles.cshtml` | Búsqueda funcional |
-|  | Vehículos | 🔴 No | — | Vista, acción, enlace en menú |
-|  | Promociones | 🔴 No | (solo banner en Inicio) | Vista de promociones vigentes |
-|  | Resultados | 🟡 Maqueta | columna `\#tarjetas` + `card.cshtml` | Resultados reales y filtros |
+|  | Vehículos | 🟡 Visual | — | Vista, acción, enlace en menú |
+|  | Promociones | 🟡 Visual | (solo banner en Inicio) | Vista de promociones vigentes |
+|  | Resultados | 🟡 Maqueta | columna `\\\\\\\#tarjetas` + `card.cshtml` | Resultados reales y filtros |
 |  | Detalle | 🔴 No | — | Detalle del servicio con política de cancelación |
 |  | Resumen de reserva | 🔴 No | — | Resumen con promoción aplicada |
 |  | Pago | 🔴 No | — | Pago con tarjeta tokenizada u otro método |
@@ -239,39 +278,39 @@ Pantallas del diseño de interfaz del documento de avance (30) frente a lo que e
 |  | Pasados | 🟡 Maqueta | — | Listado |
 |  | Detalle de reservación | 🟡 Maqueta | — | Detalle con acciones |
 |  | Cancelar | 🟡 Maqueta | — | Confirmación de cancelación |
-|  | Solicitar reembolso | 🔴 No | — | Formulario |
+|  | Solicitar reembolso | 🟡 Maqueta | — | Formulario |
 |  | Reportar problema | 🔴 No | — | Formulario (solicitud tipo PROBLEMA) |
 | Soporte | Soporte | 🟡 Solo redireccion | (solo texto en Inicio) | Vista del módulo |
 |  | Contactar asesor | 🔴 No | — | Formulario (solicitud tipo ASESORIA) |
 | Cuenta | Cuenta | 🟡 Solo redireccion | — | Vista del módulo |
 |  | Auth (iniciar sesión / registro) | 🟡 Visual | `sesion.cshtml` | Envío real, registro, cierre de sesión |
-|  | Perfil | 🔴 No | — | Datos del usuario y foto |
-|  | Métodos de pago | 🔴 No | — | Tarjetas tokenizadas guardadas |
+|  | Perfil | 🟡 Visual | — | Datos del usuario y foto |
+|  | Métodos de pago | 🟡 Visual | — | Tarjetas tokenizadas guardadas |
 | Panel interno | Panel | 🟡 Visual | — | Acceso solo AGENTE/ADMINISTRADOR |
 |  | Reservaciones | 🟡 Visual | — | Gestión |
-|  | Servicios y proveedores | 🔴 No | — | Catálogo e inventario por fecha |
+|  | Servicios y proveedores | 🟡 Visual | — | Catálogo e inventario por fecha |
 |  | Paquetes y promociones | 🟡 Visual | — | Gestión |
 |  | Solicitudes de soporte | 🟡 Visual | — | Asignación y seguimiento |
 
 
-**Resumen:** 🟡 9 pantallas con avance visual o parcial · 🔴 19 por construir · fuera del diseño: **Tours** (`Tours.cshtml`).
+**Resumen:** 🟡 24 pantallas con avance visual o parcial · 🔴 6 por construir · fuera del diseño: **Tours** (`Tours.cshtml`).
 
 ## 7. Hoja de ruta
 
 Alineada con el cronograma del proyecto (las fechas de las etapas 1 a 5 ya pasaron; el desarrollo del backend aún no inicia).
 
 ```
-gantt  
-    title FlyVibe Mex — etapas restantes (2026)  
-    dateFormat YYYY-MM-DD  
-    section Aplicación  
-    Limpieza y estandarización        :a1, 2026-10-18, 2d  
-    Primeras pruebas                  :a2, 2026-10-19, 4d  
-    section Integraciones  
-    Implementación de bots            :b1, 2026-10-23, 4d  
-    Implementación de IA              :b2, 2026-10-27, 4d  
-    section Cierre  
-    Pruebas finales                   :c1, 2026-10-31, 2d  
+gantt      
+    title FlyVibe Mex — etapas restantes (2026)      
+    dateFormat YYYY-MM-DD      
+    section Aplicación      
+    Limpieza y estandarización        :a1, 2026-10-18, 2d      
+    Primeras pruebas                  :a2, 2026-10-19, 4d      
+    section Integraciones      
+    Implementación de bots            :b1, 2026-10-23, 4d      
+    Implementación de IA              :b2, 2026-10-27, 4d      
+    section Cierre      
+    Pruebas finales                   :c1, 2026-10-31, 2d      
     Entrega                           :c2, 2026-11-02, 5d
 ```
 
@@ -313,7 +352,7 @@ gantt
 
 ### Fase F — Pruebas finales y entrega (31 oct – 6 nov)
 
-- Recorrer los 5 módulos completos, actualizar `README.md`, estos documentos y `CONTEXTO\_PROYECTO\_FLYVIBEMEX.md`.
+- Recorrer los 5 módulos completos, actualizar `README.md`, estos documentos y `CONTEXTO\\\\\\\_PROYECTO\\\\\\\_FLYVIBEMEX.md`.
 
 > La conexión a la base de datos y su versión final se planificarán en una etapa posterior y se documentarán por separado.
 

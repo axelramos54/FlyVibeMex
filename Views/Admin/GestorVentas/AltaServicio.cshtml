@@ -1,0 +1,22 @@
+@* GET/POST /Admin/GestorVentas/Servicios/Alta (GestorController.AltaServicio) *@
+@model ServicioFormViewModel
+@{
+    ViewData["Title"] = "Dar de alta servicio";
+}
+
+<h1 class="h3 mb-1">Dar de alta servicio</h1>
+<p class="text-muted">
+    Captura los datos generales del servicio. Los detalles de hospedaje o vehículo (capacidad, horarios, imagen…)
+    se agregan desde <strong>Proveedores › Asociar</strong>.
+</p>
+
+<form asp-action="AltaServicio" method="post" class="card card-body" style="max-width: 760px">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ServicioFormCampos.cshtml" model="Model" />
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Dar de alta</button>
+        <a class="btn btn-outline-secondary" asp-action="ListaServicios">Cancelar</a>
+    </div>
+</form>

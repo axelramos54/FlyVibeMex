@@ -148,16 +148,15 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
 
-            // FIXME (modelo): `creado` y `actualizado` son string en C# pero datetime en SQL Server.
-            // Mientras se corrige la clase Ubicaciones, se convierten aquí para que EF pueda leerlas.
-            var conversorFechaTexto = new ValueConverter<string, DateTime>(
-                texto => string.IsNullOrWhiteSpace(texto)
-                    ? DateTime.Now
-                    : DateTime.Parse(texto, CultureInfo.InvariantCulture),
-                fecha => fecha.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+            // La clase Ubicaciones ya usa DateTime (corregido el 21-10-2026), así que ya no hace falta el conversor
+            // string <-> DateTime que había aquí. Además, ese conversor ya no coincidía con el tipo de la propiedad
+            // y EF Core lanzaba InvalidOperationException al construir el modelo (fallaba CUALQUIER consulta).
+            // En el script T-SQL las columnas se llaman `creado` y `actualizado`.
+            e.Property(x => x.creado_en).HasColumnName("creado").HasColumnType("datetime");
+            e.Property(x => x.actualizado_en).HasColumnName("actualizado").HasColumnType("datetime");
 
-            e.Property(x => x.creado_en).HasConversion(conversorFechaTexto).HasColumnType("datetime");
-            e.Property(x => x.actualizado_en).HasConversion(conversorFechaTexto).HasColumnType("datetime");
+            // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
+            e.Ignore(x => x.correo);
         });
     }
 
@@ -171,9 +170,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("proveedores");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            // FIXME (script SQL): la columna se llama `tipo_proveerdor` (errata). Se mapea al nombre real
-            // de la columna para no romper la clase; quitar esta línea cuando se corrija el script.
-            e.Property(x => x.tipo_proveedor).HasColumnName("tipo_proveerdor");
+            // FIXME (script SQL): en script_base_de_datos.sql la columna se llama `tipo_prooverdor` (errata).
+            // Se mapea al nombre real de la columna para no romper la clase; quitar esta línea cuando se corrija el script.
+            e.Property(x => x.tipo_proveedor).HasColumnName("tipo_prooverdor");
         });
 
         modelBuilder.Entity<Servicios>(e =>

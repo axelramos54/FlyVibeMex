@@ -8,7 +8,7 @@
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
     <link rel="stylesheet" href="~/assets/css/style.css">
-
+    <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
 <body>
     @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ----
          Cada enlace usa onclick="cargarPagina('/Home/<Accion>'); return false;" — el return false evita que el
@@ -28,12 +28,13 @@
                 @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
                      NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
                 <div class="navbar-item ms-auto d-flex" id="navbar_right">
-                    <a href="#viajes_actuales">Actuales</a>
-                    <a href="#viajes_pasados">Pasados</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Index">Regresar</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Index">Home</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Miscompras">Mis compras</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Misreservaciones">Reservaciones</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Mistarjetas">Tarjetas</a>
+                    <a class="m-1" asp-controller="Solicitar" asp-action="Index">Soporte</a>           
                     <div class="m-1" id="secion">
-                        <!-- Cuando inicia secion modificar el logo y de "iniciar secion" -> "mi perfil" -->
-                        <a class="m-1" asp-controller="Miusuario" asp-action="index"><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a>
+                        <a class="m-1" asp-controller="" asp-action=""><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a> <!-- Aqui poner el panel de configuracion-->
                     </div>
                 </div>
 
@@ -68,8 +69,9 @@
                                     <div class="price-box">
                                         <span class="price-value">$3,250 <small>MXN</small></span>
                                     </div>
-                                    <a href="#" class="btn btn-card-action">Cancelar</a>
-                                    <a href="#" class="btn btn-card-action">Cancelar y reembolsar</a>
+                                    <button type="button" class="btn btn-card-action" data-accion="cancelar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
+                                    <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
+                                    <a href="#" class="btn btn-card-action">⋮</a> <!-- aqui poner la politica de reembolso y otros datos-->
                                 </div>
                             </div>
                         </div>

@@ -28,12 +28,13 @@
                 @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
                      NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
                 <div class="navbar-item ms-auto d-flex" id="navbar_right">
-                    <a href="#viajes_actuales">Actuales</a>
-                    <a href="#viajes_pasados">Pasados</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Index">Regresar</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Index">Home</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Miscompras">Mis compras</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Misreservaciones">Reservaciones</a>
+                    <a class="m-1" asp-controller="Miusuario" asp-action="Mistarjetas">Tarjetas</a>
+                    <a class="m-1" asp-controller="Solicitar" asp-action="Index">Soporte</a>           
                     <div class="m-1" id="secion">
-                        <!-- Cuando inicia secion modificar el logo y de "iniciar secion" -> "mi perfil" -->
-                        <a class="m-1" asp-controller="Miusuario" asp-action="index"><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a>
+                        <a class="m-1" asp-controller="" asp-action=""><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a> <!-- Aqui poner el panel de configuracion-->
                     </div>
                 </div>
 
@@ -48,7 +49,6 @@
         <!--maqueta toda rancia-->
        <h2>Mis tarjetas</h2>
 
-       <h3 id="viajes_actuales">Actuales</h3>
 
        <div>
                         <div class="col-12 col-md-6 col-xl-4">
@@ -68,38 +68,16 @@
                                     <div class="price-box">
                                         <span class="price-value">$3,250 <small>MXN</small></span>
                                     </div>
-                                    <a href="#" class="btn btn-card-action">Cancelar</a>
-                                    <a href="#" class="btn btn-card-action">Cancelar y reembolsar</a>
+                                    <a href="#" class="btn btn-card-action">Info</a>
+                                    <a href="#" class="btn btn-card-action">Actualizar</a>
+                                    <a href="#" class="btn btn-card-action">Eliminar</a>
                                 </div>
                             </div>
                         </div>
                     </div>
        </div>
-       <h3 id="viajes_pasados">Pasadas</h3>
-       <div>
-            <div>
-                        <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                                 class="card-img-top" alt="Grand Oasis Cancún">
-                            <div class="route-badge">
-                                <span class="route-text">Cancún • 5★ All Inclusive</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Grand Oasis Cancún</h5>
-                            <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                                especialidades y vista panorámica al mar Caribe.</p>
-                                <div class="card-footer-box">
-                                    <div class="price-box">
-                                        <span class="price-value">$3,250 <small>MXN</small></span>
-                                    </div>
-                
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
+      
        </div>
        </div>
     </main>
