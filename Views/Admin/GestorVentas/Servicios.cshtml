@@ -1,0 +1,125 @@
+@*
+ Views/Admin/GestorVentas/Servicios.cshtml — GET /Admin/GestorVentas/Servicios (GestorController.ListaServicios)
+ Catálogo de servicios (tabla servicios) con filtros por nombre, tipo y proveedor.
+ Desde aquí se da de alta, se actualiza y se da de baja / reactiva cada servicio.
+*@
+@model ListaServiciosViewModel
+@{
+    ViewData["Title"] = "Servicios";
+    var proveedores = ViewData["Proveedores"] as List<SelectListItem> ?? new List<SelectListItem>();
+
+    // Opciones de los filtros con la elegida marcada (asp-items sin asp-for respeta SelectListItem.Selected).
+    var opcionesTipo = ServicioFormViewModel.OpcionesTipo();
+    opcionesTipo.ForEach(o => o.Selected = o.Value == Model.Tipo);
+    var idProveedorTexto = Model.IdProveedor?.ToString();
+    var opcionesProveedor = proveedores
+        .Select(o => new SelectListItem(o.Text, o.Value, o.Value == idProveedorTexto))
+        .ToList();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Servicios</h1>
+        <p class="text-muted mb-0">Todo lo que se puede reservar: vuelos, hospedajes, vehículos, paquetes y eventos.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="AltaServicio" asp-route-idProveedor="@Model.IdProveedor">+ Dar de alta servicio</a>
+</div>
+
+@* Filtros: formulario GET (solo consulta) *@
+<form method="get" asp-action="ListaServicios" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label for="nombre" class="form-label">Nombre</label>
+            <input id="nombre" name="nombre" value="@Model.Nombre" class="form-control" maxlength="150" placeholder="Buscar por nombre" />
+        </div>
+        <div class="col-md-2">
+            <label for="tipo" class="form-label">Tipo</label>
+            <select id="tipo" name="tipo" class="form-select" asp-items="opcionesTipo">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="idProveedor" class="form-label">Proveedor</label>
+            <select id="idProveedor" name="idProveedor" class="form-select" asp-items="opcionesProveedor">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="incluirInactivos" name="incluirInactivos" value="true" checked="@Model.IncluirInactivos" />
+                <label class="form-check-label" for="incluirInactivos">Inactivos</label>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">
+        No hay servicios que coincidan con el filtro.
+        <a asp-action="AltaServicio" asp-route-idProveedor="@Model.IdProveedor" class="alert-link">Da de alta uno</a>.
+    </div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Resultados.Count servicio(s)</p>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Proveedor</th>
+                    <th class="text-end">Precio base</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Resultados)
+                {
+                    <tr class="@(s.activo ? "" : "table-secondary")">
+                        <td>
+                            <div class="fw-semibold">@s.nombre</div>
+                            @if (!string.IsNullOrWhiteSpace(s.descripcion))
+                            {
+                                <div class="text-muted small text-truncate" style="max-width: 320px">@s.descripcion</div>
+                            }
+                        </td>
+                        <td>@ServicioFormViewModel.NombreTipo(s.tipo_servicio)</td>
+                        <td>@Model.NombreProveedor(s.id_proveedor)</td>
+                        <td class="text-end text-nowrap">$@s.precio_base.ToString("N2") @s.moneda</td>
+                        <td>
+                            @if (s.activo)
+                            {
+                                <span class="badge text-bg-success">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactivo</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="ActualizarServicio" asp-route-id="@s.id">Actualizar</a>
+                                @if (s.activo)
+                                {
+                                    <a class="btn btn-sm btn-outline-danger" asp-action="DarDeBajaServicio" asp-route-id="@s.id">Dar de baja</a>
+                                }
+                                else
+                                {
+                                    <form asp-action="ReactivarServicio" asp-route-id="@s.id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Reactivar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

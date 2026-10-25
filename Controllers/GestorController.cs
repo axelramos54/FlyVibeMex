@@ -17,7 +17,9 @@ namespace FlyVibeMex.Controllers;
 [Route("Admin/GestorVentas")]
 [AutoValidateAntiforgeryToken]
 // TODO (cuando exista el login): [Authorize(Roles = "GestorVentas,SA")]
-public class GestorController : Controller
+// NOTA: es "partial" porque el listado de proveedores y el CRUD de servicios están en
+//       Controllers/GestorController.ProveedoresServicios.cs (misma clase, otro archivo).
+public partial class GestorController : Controller
 {
     private const string Carpeta = "~/Views/Admin/GestorVentas/";
 
@@ -343,14 +345,16 @@ public class GestorController : Controller
     private List<Proveedores> BuscarProveedoresPorNombre(string nombre)
     {
         // TODO BD: _db.Proveedores.Where(p => p.nombre.Contains(nombre)).OrderBy(p => p.nombre).Take(20).ToList();
-        if (ModoSinBD) ViewData["SinBD"] = true;
-        return new List<Proveedores>();
+        // Sin BD busca entre los proveedores de prueba (ver GestorController.ProveedoresServicios.cs).
+        return ObtenerProveedores(nombre, null, incluirInactivos: true).Take(20).ToList();
     }
 
     private Proveedores? ObtenerProveedor(ulong id)
     {
         // TODO BD: _db.Proveedores.Find(id);
-        return null;
+        if (!ModoSinBD) return null;
+        ViewData["SinBD"] = true;
+        return ProveedoresDePrueba().FirstOrDefault(p => p.id == id);
     }
 
     private List<Ubicaciones> ObtenerUbicaciones()

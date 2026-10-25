@@ -1,0 +1,39 @@
+@*
+ ============================================================================================
+ Views/Home/IniciarSesion.cshtml — GET/POST /Home/IniciarSesion (HomeController.IniciarSesion)
+ Página COMPLETA de inicio de sesión (no se carga con cargarPagina). Se muestra:
+   - cuando el POST del login falla (datos incompletos o credenciales inválidas), con el mensaje de error;
+   - cuando una página protegida con [Authorize] manda al usuario a iniciar sesión (LoginPath en Program.cs).
+ Reutiliza el formulario de _FormSesion.cshtml y los estilos de style_s.css.
+ ============================================================================================
+*@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión - FlyVibeMex</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/assets/css/style_s.css">
+</head>
+
+<body>
+    <div class="container card" id="tarjeta_sesion">
+        <a asp-controller="Home" asp-action="Index" id="marca_sesion" class="d-block text-center mb-3 text-decoration-none">FlyVibeMex</a>
+
+        <partial name="~/Views/Home/_FormSesion.cshtml" model="Model" />
+
+        <div class="text-center mt-3">
+            <a asp-controller="Home" asp-action="Index" class="small">← Volver al inicio</a>
+        </div>
+    </div>
+</body>
+
+</html>

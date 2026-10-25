@@ -1,0 +1,117 @@
+/* ============================================================================================
+ * style_C.css — Sección C: Crear usuario (registro).
+ * Vistas que estiliza: Views/Crearusuario/Index.cshtml y Views/Crearusuario/Creado.cshtml
+ * (páginas completas, se enlaza desde su <head>; no se carga con cargarPagina).
+ * Mismo look que el inicio de sesión (style_s.css): fondo degradado de la marca y tarjeta blanca.
+ * Regla del equipo: `class` para utilidades de Bootstrap, `#id` para el diseño propio.
+ * ============================================================================================ */
+
+* {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(115deg, #3E8FD6 0%, #7FC4F2 45%, #F07B3F 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px 16px;
+    margin: 0;
+}
+
+/* ---- Tarjeta contenedora ---- */
+#tarjeta_registro {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    padding: 36px 30px;
+    max-width: 560px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 15px 35px rgba(13, 27, 84, 0.25);
+}
+
+#marca_registro {
+    color: #3E8FD6;
+    font-weight: 800;
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+}
+
+#titulo_registro {
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+#subtitulo_registro {
+    color: #475569;
+    margin-bottom: 24px;
+}
+
+/* ---- Formulario ---- */
+#formu_registro .form-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 4px;
+}
+
+#formu_registro .form-control {
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+}
+
+#formu_registro .form-control:focus {
+    border-color: #3E8FD6;
+    box-shadow: 0 0 0 3px rgba(62, 143, 214, 0.25);
+}
+
+#formu_registro .form-check-label {
+    font-size: 0.9rem;
+}
+
+/* ---- Botón principal (mismo rojo que "Iniciar sesión") ---- */
+#btn_registrar {
+    margin-top: 22px;
+    background-color: #e62b4a;
+    color: #ffffff;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+#btn_registrar:hover {
+    background-color: #d0203d;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+#ya_tengo_cuenta {
+    margin-top: 18px;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+/* ---- Pantalla "Cuenta creada" ---- */
+#icono_creado {
+    width: 64px;
+    height: 64px;
+    margin: 12px auto 16px;
+    border-radius: 50%;
+    background-color: #16a34a;
+    color: #ffffff;
+    font-size: 2rem;
+    line-height: 64px;
+    font-weight: 700;
+}

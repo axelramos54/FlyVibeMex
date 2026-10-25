@@ -33,7 +33,7 @@ public class FlyVibeMexDbContext : DbContext
 
     // ===================== Usuarios =====================
     public DbSet<RolesUsuario> RolesUsuarios => Set<RolesUsuario>();
-    public DbSet<Usuarios> Usuarios => Set<Usuarios>();
+    public DbSet<UsuariosGlobales> Usuarios => Set<UsuariosGlobales>();
     public DbSet<Ubicaciones> Ubicaciones => Set<Ubicaciones>();
 
     // ===================== Catálogo / servicios =====================
@@ -116,7 +116,7 @@ public class FlyVibeMexDbContext : DbContext
             e.HasIndex(x => x.nombre).IsUnique();
         });
 
-        modelBuilder.Entity<Usuarios>(e =>
+        modelBuilder.Entity<UsuariosGlobales>(e =>
         {
             e.ToTable("usuarios");
             e.HasKey(x => x.id);
@@ -148,16 +148,15 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
 
-            // FIXME (modelo): `creado` y `actualizado` son string en C# pero datetime en SQL Server.
-            // Mientras se corrige la clase Ubicaciones, se convierten aquí para que EF pueda leerlas.
-            var conversorFechaTexto = new ValueConverter<string, DateTime>(
-                texto => string.IsNullOrWhiteSpace(texto)
-                    ? DateTime.Now
-                    : DateTime.Parse(texto, CultureInfo.InvariantCulture),
-                fecha => fecha.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+            // La clase Ubicaciones ya usa DateTime (corregido el 21-10-2026), así que ya no hace falta el conversor
+            // string <-> DateTime que había aquí. Además, ese conversor ya no coincidía con el tipo de la propiedad
+            // y EF Core lanzaba InvalidOperationException al construir el modelo (fallaba CUALQUIER consulta).
+            // En el script T-SQL las columnas se llaman `creado` y `actualizado`.
+            e.Property(x => x.creado_en).HasColumnName("creado").HasColumnType("datetime");
+            e.Property(x => x.actualizado_en).HasColumnName("actualizado").HasColumnType("datetime");
 
-            e.Property(x => x.creado).HasConversion(conversorFechaTexto).HasColumnType("datetime");
-            e.Property(x => x.actualizado).HasConversion(conversorFechaTexto).HasColumnType("datetime");
+            // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
+            e.Ignore(x => x.correo);
         });
     }
 
@@ -171,9 +170,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("proveedores");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            // FIXME (script SQL): la columna se llama `tipo_proveerdor` (errata). Se mapea al nombre real
-            // de la columna para no romper la clase; quitar esta línea cuando se corrija el script.
-            e.Property(x => x.tipo_proveedor).HasColumnName("tipo_proveerdor");
+            // FIXME (script SQL): en script_base_de_datos.sql la columna se llama `tipo_prooverdor` (errata).
+            // Se mapea al nombre real de la columna para no romper la clase; quitar esta línea cuando se corrija el script.
+            e.Property(x => x.tipo_proveedor).HasColumnName("tipo_prooverdor");
         });
 
         modelBuilder.Entity<Servicios>(e =>
@@ -189,24 +188,24 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<Hospedajes>(e =>
         {
             e.ToTable("hospedajes");
-            e.HasKey(x => x.id);
-            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.HasKey(x => x.id_servicio);
+            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
             e.Property(x => x.categoria).IsRequired(false);
         });
 
         modelBuilder.Entity<Vehiculos>(e =>
         {
             e.ToTable("vehiculos");
-            e.HasKey(x => x.id);
-            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.HasKey(x => x.id_servicio);
+            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<Paquetes>(e =>
         {
             // En el script actual la PK es compuesta (id, id_servicio) y `id` NO es identity.
             e.ToTable("paquete");
-            e.HasKey(x => new { x.id, x.id_servicio });
-            e.Property(x => x.id).ValueGeneratedNever();
+            e.HasKey(x => new { x.id_servicio });
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.politica_cancelacion).IsRequired(false);
         });
@@ -214,8 +213,8 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<PaqueteServicio>(e =>
         {
             e.ToTable("paquete_servicio");
-            e.HasKey(x => new { x.id, x.id_servicio });
-            e.Property(x => x.id).ValueGeneratedNever();
+            e.HasKey(x => new { x.id_servicio, x.id_servicio_incluido });
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
         });
@@ -276,7 +275,7 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
             // FIXME (modelo): la propiedad tiene la errata `fehca_inicio`; la columna es `fecha_inicio`.
-            e.Property(x => x.fehca_inicio).HasColumnName("fecha_inicio");
+            e.Property(x => x.fecha_inicio).HasColumnName("fecha_inicio");
             e.Property(x => x.cantidad).HasPrecision(8, 2);
         });
     }
