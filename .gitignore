@@ -77,3 +77,8 @@ obj/
 # Contexto del proyecto
 # ==============================
 docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md
+
+# ==============================
+# Imágenes subidas desde la app 
+# ==============================
+wwwroot/uploads/

@@ -38,6 +38,6 @@ namespace FlyVibeMex.Models
 
         /// <summary>Foto de perfil (opcional).</summary>
         // NOTA: campo agregado por el equipo; no aparece en el diccionario de datos del PDF. // Wazaaa por Yamil 21-10-2026
-        public byte[]? imagen {get; set;} //imagen
+        public string? imagen_ruta {get; set;}
     }
 }

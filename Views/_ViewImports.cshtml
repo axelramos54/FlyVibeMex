@@ -1,8 +1,9 @@
 ﻿@*
  _ViewImports.cshtml: usings y Tag Helpers disponibles en todas las vistas.
- NOTA: solo importa FlyVibeMex.Models. Las 21 clases de Models/ declaradas en los namespaces `fvm` y
-        `fvm.models` no son visibles en las vistas sin un @using adicional (pendiente: unificar namespaces).
+ Todas las clases de Models/ están en el namespace FlyVibeMex.Models.
+ FlyVibeMex.Services se importa para usar Imagenes.UrlOGenerica(...) en las vistas.
 *@
 @using FlyVibeMex
 @using FlyVibeMex.Models
+@using FlyVibeMex.Services
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers

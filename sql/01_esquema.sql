@@ -13,7 +13,7 @@
    Tipos: también coinciden con C# (si no, EF Core falla al leer):
        ulong -> BIGINT · ushort -> SMALLINT · int -> INT · byte -> TINYINT · bool -> BIT
        decimal -> DECIMAL(12,2) (cantidad: 8,2) · DateTime -> DATETIME · DateOnly -> DATE
-       TimeOnly -> TIME · byte[] -> VARBINARY(MAX) · string -> NVARCHAR
+       TimeOnly -> TIME · string -> NVARCHAR (imagen_ruta: ruta del archivo en wwwroot, no los bytes)
    Una columna es NULL solo si la propiedad es nullable (ulong?, string?, DateTime?) o si el
    DbContext la marca IsRequired(false).
 
@@ -157,7 +157,7 @@ CREATE TABLE dbo.hospedajes(
                         CONSTRAINT ck_hospedajes_capacidad CHECK (capacidad_huespedes > 0),
     hora_entrada        TIME(0)      NOT NULL,
     hora_salida         TIME(0)      NOT NULL,
-    imagen              VARBINARY(MAX) NULL
+    imagen_ruta         NVARCHAR(260) NULL  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp 
 );
 GO
 
@@ -169,7 +169,7 @@ CREATE TABLE dbo.vehiculos(
     marca               NVARCHAR(50) NOT NULL,
     modelo              NVARCHAR(60) NOT NULL,
     capacidad_pasajeros TINYINT      NOT NULL CONSTRAINT ck_vehiculos_capacidad CHECK (capacidad_pasajeros > 0),
-    imagen              VARBINARY(MAX) NULL
+    imagen_ruta         NVARCHAR(260) NULL  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
 );
 GO
 
@@ -182,7 +182,7 @@ CREATE TABLE dbo.paquete(
                          CONSTRAINT ck_paquete_min CHECK (min_personas > 0),
     max_personas         SMALLINT      NOT NULL,
     politica_cancelacion NVARCHAR(MAX) NULL,
-    imagen               VARBINARY(MAX) NULL,
+    imagen_ruta          NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
     CONSTRAINT ck_paquete_personas CHECK (max_personas >= min_personas)
 );
 GO

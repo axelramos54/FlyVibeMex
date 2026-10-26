@@ -23,7 +23,8 @@ namespace FlyVibeMex.Data;
 /// o <c>FromSqlRaw</c> con objetos <c>SqlParameter</c> explícitos.</item>
 /// </list>
 /// <para>Las clases de <c>Models/</c> no tienen propiedades de navegación: las relaciones se resuelven con
-/// joins LINQ por llave foránea (<c>id_rol</c>, <c>id_usuarioglobal</c>, <c>id_servicio</c>…).</para>
+/// joins LINQ por llave foránea (<c>id_rol</c>, <c>id_usuarioglobal</c>, <c>id_servicio</c>…). Aun así, todas las FK
+/// del script están declaradas abajo con <c>HasOne&lt;T&gt;().WithMany()</c>.</para>
 /// <para>Si una base de datos se creó con un script anterior (tabla <c>UsuariosGlobales</c>, columnas
 /// <c>tipo_prooverdor</c>, <c>creado</c>, <c>id_usuario</c>…), ejecutar <c>sql/03_alinear_nombres_legado.sql</c>.</para>
 /// </remarks>
@@ -109,6 +110,10 @@ public class FlyVibeMexDbContext : DbContext
         AplicarConversoresSinSignoNullables(modelBuilder);
     }
 
+
+    /// <summary>Longitud de <c>imagen_ruta</c> (NVARCHAR(260)) en usuarios, hospedajes, vehiculos y paquete (T2.5).</summary>
+    private const int LongitudRutaImagen = 260;
+
     // ---------------------------------------------------------------------------------------------
     // Usuarios, roles y ubicaciones
     // ---------------------------------------------------------------------------------------------
@@ -138,6 +143,7 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.correo).HasMaxLength(150).IsUnicode(false);
             e.Property(x => x.telefono).HasMaxLength(20).IsUnicode(false);
             e.Property(x => x.password_hash).HasMaxLength(255).IsUnicode(false);
+            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);   // NVARCHAR(260) NULL
             e.Property(x => x.creado_en).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             e.HasIndex(x => x.correo).IsUnique();
@@ -155,9 +161,10 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("ubicaciones");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-
-            // La clase usa DateTime desde el 21-10-2026 y sql/01_esquema.sql ya nombra las columnas
-            // `creado_en` / `actualizado_en` (antes `creado` / `actualizado`), así que no se necesita HasColumnName.
+            e.Property(x => x.pais).HasMaxLength(60);
+            e.Property(x => x.estado).HasMaxLength(60);
+            e.Property(x => x.municipio_ciudad).HasMaxLength(100);
+            e.Property(x => x.codigo_postal).HasMaxLength(10);
 
             // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
             e.Ignore(x => x.correo);
@@ -174,9 +181,14 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("proveedores");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            // La columna se llama `tipo_proveedor` en sql/01_esquema.sql (sin las erratas `tipo_proveerdor` /
-            // `tipo_prooverdor` de scripts anteriores; para bases viejas ver sql/03_alinear_nombres_legado.sql).
+            e.Property(x => x.tipo_proveedor).HasMaxLength(20);
+            e.Property(x => x.nombre).HasMaxLength(120);
+            e.Property(x => x.telefono).HasMaxLength(20);
+            e.Property(x => x.correo).HasMaxLength(150);
             e.Property(x => x.id_ubicacion).IsRequired(false);
+
+            // proveedores.id_ubicacion (opcional) -> ubicaciones.id
+            e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Servicios>(e =>
@@ -184,11 +196,17 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("servicios");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.tipo_servicio).HasMaxLength(20);
+            e.Property(x => x.nombre).HasMaxLength(150);
+            e.Property(x => x.descripcion).HasMaxLength(2000).IsRequired(false);
+            e.Property(x => x.moneda).HasMaxLength(3);
             // precio_base usa la precisión global decimal(12,2), igual que la columna del esquema.
-            e.Property(x => x.descripcion).IsRequired(false);
+
+            // servicios.id_proveedor -> proveedores.id
+            e.HasOne<Proveedores>().WithMany().HasForeignKey(x => x.id_proveedor).OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Subtipos (regla R1): la llave es `id_servicio`, que es a la vez FK hacia servicios.id.
+        // Subtipos: la llave es `id_servicio`, que es a la vez FK hacia servicios.id (relación 1:1).
         // NO es identity: primero se inserta el servicio y luego el subtipo con el MISMO id. Por eso
         // ValueGeneratedNever (con ValueGeneratedOnAdd EF no enviaría el id y el INSERT fallaría).
         modelBuilder.Entity<Vuelos>(e =>
@@ -196,6 +214,12 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("vuelos");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
+            e.Property(x => x.codigo_vuelo).HasMaxLength(10);
+            e.Property(x => x.clase).HasMaxLength(20);
+
+            e.HasOne<Servicios>().WithOne().HasForeignKey<Vuelos>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_origen).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_destino).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Hospedajes>(e =>
@@ -203,7 +227,12 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("hospedajes");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
-            e.Property(x => x.categoria).IsRequired(false);
+            e.Property(x => x.tipo_habitacion).HasMaxLength(60);
+            e.Property(x => x.categoria).HasMaxLength(40).IsRequired(false);
+            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
+
+            e.HasOne<Servicios>().WithOne().HasForeignKey<Hospedajes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Vehiculos>(e =>
@@ -211,6 +240,13 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("vehiculos");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
+            e.Property(x => x.categoria).HasMaxLength(50);
+            e.Property(x => x.marca).HasMaxLength(50);
+            e.Property(x => x.modelo).HasMaxLength(60);
+            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
+
+            e.HasOne<Servicios>().WithOne().HasForeignKey<Vehiculos>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion_retiro).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Paquetes>(e =>
@@ -218,7 +254,10 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("paquete");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
-            e.Property(x => x.politica_cancelacion).IsRequired(false);
+            e.Property(x => x.politica_cancelacion).IsRequired(false);   // NVARCHAR(MAX)
+            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
+
+            e.HasOne<Servicios>().WithOne().HasForeignKey<Paquetes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PaqueteServicio>(e =>
@@ -229,6 +268,9 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.id_servicio_incluido).ValueGeneratedNever();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
+
+            e.HasOne<Paquetes>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Servicios>().WithMany().HasForeignKey(x => x.id_servicio_incluido).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DisponibilidadServicio>(e =>
@@ -238,6 +280,8 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.id).ValueGeneratedOnAdd();
             // Regla R3: una sola fila por servicio y día.
             e.HasIndex(x => new { x.id_servicio, x.fecha }).IsUnique();
+
+            e.HasOne<Servicios>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
@@ -251,7 +295,10 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("promociones");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.descripcion).IsRequired(false);
+            e.Property(x => x.codigo).HasMaxLength(30);
+            e.Property(x => x.nombre).HasMaxLength(120);
+            e.Property(x => x.descripcion).HasMaxLength(500).IsRequired(false);
+            e.Property(x => x.tipo_descuento).HasMaxLength(15);
             e.HasIndex(x => x.codigo).IsUnique();
         });
 
@@ -259,6 +306,9 @@ public class FlyVibeMexDbContext : DbContext
         {
             e.ToTable("promocion_servicio");
             e.HasKey(x => new { x.id_promocion, x.id_servicio });
+
+            e.HasOne<Promociones>().WithMany().HasForeignKey(x => x.id_promocion).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Servicios>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
@@ -272,7 +322,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("estados_reservacion");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.descripcion).IsRequired(false);
+            e.Property(x => x.nombre).HasMaxLength(30);
+            e.Property(x => x.descripcion).HasMaxLength(150).IsRequired(false);
+            e.HasIndex(x => x.nombre).IsUnique();
         });
 
         modelBuilder.Entity<Reservaciones>(e =>
@@ -281,7 +333,12 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("reservaciones");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.codigo_reserva).HasMaxLength(30);
+            e.Property(x => x.moneda).HasMaxLength(3);
             e.HasIndex(x => x.codigo_reserva).IsUnique();
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<EstadosReservacion>().WithMany().HasForeignKey(x => x.id_estado_reservacion).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DetallesReservacion>(e =>
@@ -290,6 +347,11 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
+            e.Property(x => x.descripcion_snapshot).HasMaxLength(250);
+
+            e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Servicios>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Promociones>().WithMany().HasForeignKey(x => x.id_promocion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<HistorialEstadoReservacion>(e =>
@@ -298,6 +360,11 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("historial_estado_reservacion");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.motivo).HasMaxLength(250);
+
+            e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<EstadosReservacion>().WithMany().HasForeignKey(x => x.id_estado_reservacion).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario_cambio).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
@@ -311,7 +378,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("metodos_pago");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.descripcion).IsRequired(false);
+            e.Property(x => x.nombre).HasMaxLength(40);
+            e.Property(x => x.descripcion).HasMaxLength(150).IsRequired(false);
+            e.HasIndex(x => x.nombre).IsUnique();
         });
 
         modelBuilder.Entity<InstitucionesFinancieras>(e =>
@@ -319,10 +388,10 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("instituciones_financieras");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.nombre).IsRequired(false);
-            e.Property(x => x.clave_institucion).IsRequired(false);
-            e.Property(x => x.codigo_internacional).IsRequired(false);
-            e.Property(x => x.telefono).IsRequired(false);
+            e.Property(x => x.nombre).HasMaxLength(120).IsRequired(false);
+            e.Property(x => x.clave_institucion).HasMaxLength(10).IsRequired(false);
+            e.Property(x => x.codigo_internacional).HasMaxLength(15).IsRequired(false);
+            e.Property(x => x.telefono).HasMaxLength(20).IsRequired(false);
         });
 
         modelBuilder.Entity<TarjetasUsuarios>(e =>
@@ -332,8 +401,14 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("tarjetas_usuarios");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.alias).IsRequired(false);
+            e.Property(x => x.token_referencia).HasMaxLength(100);
+            e.Property(x => x.marca).HasMaxLength(20);
+            e.Property(x => x.ultimos4).HasMaxLength(4);
+            e.Property(x => x.alias).HasMaxLength(40).IsRequired(false);
             e.HasIndex(x => x.token_referencia).IsUnique();
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuariog).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<InstitucionesFinancieras>().WithMany().HasForeignKey(x => x.id_institucion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<EstadosPago>(e =>
@@ -341,7 +416,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("estados_pago");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.descripcion).IsRequired(false);
+            e.Property(x => x.nombre).HasMaxLength(30);
+            e.Property(x => x.descripcion).HasMaxLength(150).IsRequired(false);
+            e.HasIndex(x => x.nombre).IsUnique();
         });
 
         modelBuilder.Entity<Pagos>(e =>
@@ -349,7 +426,13 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("pagos");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.referencia_externa).IsRequired(false);
+            e.Property(x => x.moneda).HasMaxLength(3);
+            e.Property(x => x.referencia_externa).HasMaxLength(100).IsRequired(false);
+
+            e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MetodosPago>().WithMany().HasForeignKey(x => x.id_metodo_pago).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<TarjetasUsuarios>().WithMany().HasForeignKey(x => x.id_tarjeta).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<EstadosPago>().WithMany().HasForeignKey(x => x.id_estado_pago).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<HistorialEstadoPago>(e =>
@@ -357,7 +440,10 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("historial_estado_pago");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.detalle).IsRequired(false);
+            e.Property(x => x.detalle).HasMaxLength(250).IsRequired(false);
+
+            e.HasOne<Pagos>().WithMany().HasForeignKey(x => x.id_pago).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<EstadosPago>().WithMany().HasForeignKey(x => x.id_estado_pago).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Reembolsos>(e =>
@@ -365,7 +451,12 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("reembolsos");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.referencia_externa).IsRequired(false);
+            e.Property(x => x.motivo).HasMaxLength(250);
+            e.Property(x => x.estado).HasMaxLength(15);
+            e.Property(x => x.referencia_externa).HasMaxLength(100).IsRequired(false);
+
+            // Regla R8: el reembolso deriva del PAGO, no de la reservación.
+            e.HasOne<Pagos>().WithMany().HasForeignKey(x => x.id_pago).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<HistorialEstadoReembolso>(e =>
@@ -373,7 +464,11 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("historial_estado_reembolso");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.detalle).IsRequired(false);
+            e.Property(x => x.estado).HasMaxLength(15);
+            e.Property(x => x.detalle).HasMaxLength(250).IsRequired(false);
+
+            e.HasOne<Reembolsos>().WithMany().HasForeignKey(x => x.id_reembolso).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario_cambio).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
     }
 
@@ -388,6 +483,15 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("solicitudes_soporte");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.tipo).HasMaxLength(20);
+            e.Property(x => x.asunto).HasMaxLength(120);
+            e.Property(x => x.mensaje).HasMaxLength(2000);
+            e.Property(x => x.estado).HasMaxLength(20);
+
+            // Dos FK distintas hacia usuarios: el cliente que abre el ticket y el agente que lo atiende.
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_agente_asignado).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

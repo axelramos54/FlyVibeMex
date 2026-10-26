@@ -29,7 +29,7 @@ namespace FlyVibeMex.Models
         // NOTA: opcional en el diseño.
         public string politica_cancelacion {get; set;} = string.Empty;
         
-        /// <summary>Imagen del paquete (opcional; agregada por el equipo).</summary>
-        public byte[]? imagen {get; set;} //imagen
+        /// <summary>Ruta pública de la imagen (opcional), p. ej. <c>/uploads/paquetes/&lt;guid&gt;.jpg</c>.</summary>
+        public string? imagen_ruta {get; set;}
     }
 }

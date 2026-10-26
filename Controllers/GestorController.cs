@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using FlyVibeMex.Models;
+using FlyVibeMex.Services;
 
 namespace FlyVibeMex.Controllers;
 
@@ -28,8 +29,14 @@ public partial class GestorController : Controller
     // Cuando conectes la BD cámbialo a false: un id que no existe devolverá 404.
     private static readonly bool ModoSinBD = true;
 
-    // Imágenes: máximo 2 MB y solo JPG / PNG / WEBP.
-    private const long MaxImagenBytes = 2 * 1024 * 1024;
+    // Imágenes: se guardan como archivo en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
+    private readonly IAlmacenImagenes _imagenes;
+
+    // NOTA: el constructor va SOLO en este archivo (la otra parte de la clase "partial" no debe declarar otro).
+    public GestorController(IAlmacenImagenes imagenes)
+    {
+        _imagenes = imagenes;
+    }
 
     private IActionResult Vista(string nombre, object? modelo = null) => View(Carpeta + nombre + ".cshtml", modelo);
 
@@ -201,7 +208,8 @@ public partial class GestorController : Controller
 
         // TODO BD (en una transacción):
         //   1) INSERT servicios (id_proveedor = @id, tipo_servicio = 'HOSPEDAJE', nombre, descripcion, precio_base, moneda)
-        //   2) INSERT hospedajes (...) con la imagen leída de datos.imagen
+        //   2) string? ruta = datos.imagen is { Length: > 0 } ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Hospedajes) : null;
+        //   3) INSERT hospedajes (..., imagen_ruta = ruta)   — si la transacción falla: _imagenes.Eliminar(ruta)
         return ExitoAsociacion(id, proveedor, "hospedaje", datos.nombre);
     }
 
@@ -219,7 +227,8 @@ public partial class GestorController : Controller
 
         // TODO BD (en una transacción):
         //   1) INSERT servicios (id_proveedor = @id, tipo_servicio = 'VEHICULO', ...)
-        //   2) INSERT vehiculos (...)
+        //   2) string? ruta = datos.imagen is { Length: > 0 } ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Vehiculos) : null;
+        //   3) INSERT vehiculos (..., imagen_ruta = ruta)    — si la transacción falla: _imagenes.Eliminar(ruta)
         return ExitoAsociacion(id, proveedor, "vehiculo", datos.nombre);
     }
 
@@ -286,31 +295,11 @@ public partial class GestorController : Controller
         return RedirectToAction(nameof(Asociar), new { id, tipo });
     }
 
-    /// <summary>Valida tamaño y tipo REAL de la imagen (revisa los primeros bytes, no solo la extensión).</summary>
+    /// <summary>Valida tamaño (2 MB) y tipo REAL de la imagen con <see cref="IAlmacenImagenes"/>.</summary>
     private void ValidarImagen(IFormFile? imagen, string campo)
     {
-        if (imagen is null || imagen.Length == 0) return;
-
-        if (imagen.Length > MaxImagenBytes)
-        {
-            ModelState.AddModelError(campo, "La imagen no debe pesar más de 2 MB.");
-            return;
-        }
-
-        Span<byte> cabecera = stackalloc byte[12];
-        int leidos;
-        using (var stream = imagen.OpenReadStream())
-        {
-            leidos = stream.ReadAtLeast(cabecera, cabecera.Length, throwOnEndOfStream: false);
-        }
-
-        bool esJpg = leidos >= 3 && cabecera[0] == 0xFF && cabecera[1] == 0xD8 && cabecera[2] == 0xFF;
-        bool esPng = leidos >= 4 && cabecera[0] == 0x89 && cabecera[1] == 0x50 && cabecera[2] == 0x4E && cabecera[3] == 0x47;
-        bool esWebp = leidos >= 12 && cabecera[0] == 'R' && cabecera[1] == 'I' && cabecera[2] == 'F' && cabecera[3] == 'F'
-                                   && cabecera[8] == 'W' && cabecera[9] == 'E' && cabecera[10] == 'B' && cabecera[11] == 'P';
-
-        if (!esJpg && !esPng && !esWebp)
-            ModelState.AddModelError(campo, "Formato no permitido. Usa una imagen JPG, PNG o WEBP.");
+        var error = _imagenes.Validar(imagen);
+        if (error is not null) ModelState.AddModelError(campo, error);
     }
 
     private Proveedores? ObtenerProveedorOPrueba(ulong id)

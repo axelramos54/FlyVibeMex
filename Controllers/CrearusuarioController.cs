@@ -115,7 +115,7 @@ public class CrearusuarioController : Controller
                 password_hash = _passwordHasher.HashPassword(new UsuariosGlobales(), datos.password),
                 activo = true,
                 creado_en = DateTime.Now,
-                imagen = null
+                imagen_ruta = null
             };
 
             db.Usuarios.Add(usuario);

@@ -4,6 +4,7 @@ using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +61,9 @@ builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
 builder.Services.AddSingleton<IPasswordHasher<UsuariosGlobales>, PasswordHasher<UsuariosGlobales>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Imágenes subidas: se guardan en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
+builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
+
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
 // nunca la contraseña ni el hash.
@@ -96,6 +100,18 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Imágenes subidas mientras la app corre. MapStaticAssets() solo sirve los archivos que existían al compilar,
+// así que /uploads se sirve aparte con UseStaticFiles, limitado a esa carpeta.
+var carpetaUploads = AlmacenImagenes.ObtenerRaizUploads(app.Environment);
+Directory.CreateDirectory(carpetaUploads);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(carpetaUploads),
+    RequestPath = "/uploads",
+    // El navegador no debe "adivinar" el tipo: un archivo .jpg siempre se trata como imagen.
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.XContentTypeOptions = "nosniff"
+});
 app.UseRouting();
 
 app.UseAuthentication();   // debe ir antes de UseAuthorization

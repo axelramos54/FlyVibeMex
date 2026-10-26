@@ -9,7 +9,7 @@
    Se puede ejecutar varias veces: VACÍA las 24 tablas de 01_esquema.sql y las vuelve a llenar.
    No borra usuarios: solo agrega 2 si no existen (agente.prueba y ana.lopez).
 
-   Las fechas son RELATIVAS al día en que se ejecuta (disponibilidad de hoy a +13 días,
+   Las fechas son RELATIVAS al día en que se ejecuta (disponibilidad de hoy a +29 días,
    vuelos en +3 y +7 días, viaje "urgente" en +2 días), salvo FV-260901 (12 al 15 de diciembre
    de 2026), que es el ejemplo de docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md.
 
@@ -204,7 +204,8 @@ VALUES
     (@sPaqChis, @sVueloTgz, 1, 3);
 
 /* =====================================================================================
-   Disponibilidad (R3): hoy .. +13 días. Fin de semana +15 %. Un día agotado para probar.
+   Disponibilidad (R3): hoy .. +29 días (30 días: cubre la entrega aunque el seed se ejecute
+   unas semanas antes). Fin de semana +15 %. Un día agotado para probar.
    1900-01-01 fue lunes: (días desde esa fecha) % 7 = 5 sábado, 6 domingo.
    ===================================================================================== */
 DECLARE @inventario TABLE (id_servicio BIGINT, total INT, precio DECIMAL(12,2));
@@ -213,7 +214,9 @@ INSERT INTO @inventario VALUES
     (@sSuvTgz, 3, 1150.00), (@sPaqCun, 10, 9800.00), (@sPaqChis, 10, 6500.00);
 
 DECLARE @dias TABLE (d INT);
-INSERT INTO @dias VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13);
+INSERT INTO @dias VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),
+                         (10),(11),(12),(13),(14),(15),(16),(17),(18),(19),
+                         (20),(21),(22),(23),(24),(25),(26),(27),(28),(29);
 
 INSERT INTO dbo.disponibilidad_servicio (id_servicio, fecha, cantidad_total, cantidad_disponible, precio_fecha)
 SELECT i.id_servicio,

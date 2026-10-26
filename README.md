@@ -90,6 +90,33 @@ El detalle completo está en [docs/02_GUIA_ARQUITECTURA_MVC_Y_FRONTEND.md](docs/
 
 ---
 
+## 🗄️ Base de datos: scripts SQL (fuente de verdad)
+
+El proyecto **no usa migraciones de EF Core**: el esquema vive en `sql/` y los modelos de `Models/` se escriben a mano para que coincidan columna por columna.
+
+**Crear la base de prueba desde cero** (SSMS, en este orden):
+
+| Script | Qué hace |
+|---|---|
+| `sql/00_db_prueba_conexion.sql` | Crea `FlyVibeMex_Test`, `roles_usuarios` (CLIENTE, AGENTE, ADMINISTRADOR) y `usuarios` |
+| `sql/01_esquema.sql` | Crea las otras 24 tablas (borra y recrea; solo en `FlyVibeMex_Test`) |
+| `sql/02_seed_demo.sql` | Datos de demostración: 4 usuarios, catálogo, 30 días de disponibilidad, reservaciones, pagos y tickets |
+| `sql/03_alinear_nombres_legado.sql` | Solo para bases creadas con el script viejo del equipo |
+| `sql/04_imagenes_como_archivo.sql` | Solo para una `FlyVibeMex_Test` creada antes del 26-10-2026: cambia `imagen` (bytes) por `imagen_ruta` |
+
+> Las fechas del seed son relativas al día en que se ejecuta. **Vuelvan a ejecutar `00 → 01 → 02` el día anterior a la presentación.**
+
+**Regla para cambiar el esquema (todo el equipo):**
+1. Nunca editar a mano la base de otro integrante ni modificar tablas desde SSMS sin script.
+2. Crear un script nuevo `sql/NN_descripcion.sql` (siguiente número libre) con `ALTER TABLE`, **idempotente** (`IF COL_LENGTH(...) IS NULL`) y con el candado de `FlyVibeMex_Test`. Si la tabla se crea en `00`/`01`, actualizar también ese `CREATE TABLE` para que una base nueva quede igual.
+3. Ajustar la clase en `Models/` (mismo nombre de columna; nullable si la columna admite `NULL`) y, si aplica, `Data/FlyVibeMexDbContext.cs` (`HasMaxLength`, FK con `HasOne<...>().WithMany()`).
+4. Ejecutar el script, correr la app y abrir `/Home/TestDb`: debe responder `"esquemaCompleto": true`.
+5. Subir script + modelo + DbContext en el **mismo** commit/PR.
+
+**Imágenes:** se guardan como archivo en `wwwroot/uploads/<carpeta>/` (ignorada por Git) y en la BD solo va la ruta (`imagen_ruta`). Ver `Services/IAlmacenImagenes.cs`. Las imágenes de demostración que sí deban subirse al repositorio van en `wwwroot/assets/img/demo/`.
+
+---
+
 ## 📚 Documentación
 
 | Documento | Contenido |

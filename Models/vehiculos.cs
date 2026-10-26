@@ -25,7 +25,7 @@ namespace FlyVibeMex.Models
         /// <summary>Capacidad de pasajeros.</summary>
         public byte capacidad_pasajeros {get; set;}
 
-        /// <summary>Imagen del vehículo (opcional; agregada por el equipo).</summary>
-        public byte[]? imagen {get; set;} //imagen
+        /// <summary>Ruta pública de la imagen (opcional), p. ej. <c>/uploads/vehiculos/&lt;guid&gt;.jpg</c>.</summary>
+        public string? imagen_ruta {get; set;}
     }
 }

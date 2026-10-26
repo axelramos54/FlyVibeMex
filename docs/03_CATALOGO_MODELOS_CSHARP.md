@@ -43,7 +43,7 @@ Cada clase tiene ya comentarios XML (`/// \\\<summary\\\>`) con la regla de nego
 | Llave primaria | `id` | `public ulong id \\\{get; set;\\\}` |
 | Llaves foráneas | `id\\\_\\\<entidad\\\>` | `id\\\_usuario`, `id\\\_servicio` |
 | Textos | `string` inicializado con `string.Empty` | `public string nombre \\\{get; set;\\\} = string.Empty;` |
-| Imágenes | `byte\\\[\\\]?` | `public byte\\\[\\\]? imagen \\\{get; set;\\\}` |
+| Imágenes (desde 26-10-2026) | `string?` con la ruta del archivo en `wwwroot/uploads/` | `public string? imagen_ruta {get; set;}` |
 
 
 **Tipos C\# usados**

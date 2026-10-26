@@ -102,7 +102,7 @@ CREATE TABLE dbo.usuarios(
     password_hash    VARCHAR(255)  NOT NULL,
     activo           BIT           NOT NULL CONSTRAINT df_usuarios_activo DEFAULT(1),
     creado_en        DATETIME      NOT NULL CONSTRAINT df_usuarios_creado_en DEFAULT(CURRENT_TIMESTAMP),
-    imagen           VARBINARY(MAX) NULL,
+    imagen_ruta      NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp (T2.5)
 
     -- El correo se guarda normalizado (sin espacios y en minúsculas) para que el login sea consistente.
     CONSTRAINT ck_usuarios_correo_formato CHECK (correo LIKE '%_@_%._%' AND correo NOT LIKE '% %'),
