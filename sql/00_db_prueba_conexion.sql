@@ -12,11 +12,15 @@
 
    Cómo ejecutarlo (SSMS): abrir este archivo, conectarse a tu servidor local y presionar F5.
    Se puede ejecutar varias veces: borra y vuelve a crear SOLO las tablas de FlyVibeMex_Test.
+   Si ya habías ejecutado sql/01_esquema.sql, también borra esas 24 tablas (dependen de
+   usuarios): después vuelve a ejecutar 01_esquema.sql y 02_seed_demo.sql.
+
+   Orden completo:  00_db_prueba_conexion.sql -> 01_esquema.sql -> 02_seed_demo.sql
 
    Datos semilla de prueba:
        Contraseña de prueba de los 3 usuarios: FlyVibe#Prueba2026
        (es SOLO para esta base de prueba; nunca usarla en la base real ni en otro sistema).
-       password_hash = hash de ASP.NET Core Identity PasswordHasher<Usuarios> formato V3
+       password_hash = hash de ASP.NET Core Identity PasswordHasher<UsuariosGlobales> formato V3
        (PBKDF2-HMAC-SHA512, 100 000 iteraciones, sal aleatoria de 128 bits). La contraseña
        en texto plano NO se guarda en ninguna tabla (regla R10).
 
@@ -45,6 +49,32 @@ END
 GO
 
 /* ---------- Limpieza (solo en la base de prueba) ---------- */
+/* Primero las tablas de sql/01_esquema.sql (si existen), porque tienen FK hacia usuarios. */
+DROP TABLE IF EXISTS dbo.solicitudes_soporte;
+DROP TABLE IF EXISTS dbo.historial_estado_reembolso;
+DROP TABLE IF EXISTS dbo.reembolsos;
+DROP TABLE IF EXISTS dbo.historial_estado_pago;
+DROP TABLE IF EXISTS dbo.pagos;
+DROP TABLE IF EXISTS dbo.estados_pago;
+DROP TABLE IF EXISTS dbo.tarjetas_usuarios;
+DROP TABLE IF EXISTS dbo.instituciones_financieras;
+DROP TABLE IF EXISTS dbo.metodos_pago;
+DROP TABLE IF EXISTS dbo.historial_estado_reservacion;
+DROP TABLE IF EXISTS dbo.detalle_reservacion;
+DROP TABLE IF EXISTS dbo.reservaciones;
+DROP TABLE IF EXISTS dbo.estados_reservacion;
+DROP TABLE IF EXISTS dbo.promocion_servicio;
+DROP TABLE IF EXISTS dbo.promociones;
+DROP TABLE IF EXISTS dbo.disponibilidad_servicio;
+DROP TABLE IF EXISTS dbo.paquete_servicio;
+DROP TABLE IF EXISTS dbo.paquete;
+DROP TABLE IF EXISTS dbo.vehiculos;
+DROP TABLE IF EXISTS dbo.hospedajes;
+DROP TABLE IF EXISTS dbo.vuelos;
+DROP TABLE IF EXISTS dbo.servicios;
+DROP TABLE IF EXISTS dbo.proveedores;
+DROP TABLE IF EXISTS dbo.ubicaciones;
+GO
 IF OBJECT_ID(N'dbo.usuarios', N'U') IS NOT NULL
     DROP TABLE dbo.usuarios;
 GO
