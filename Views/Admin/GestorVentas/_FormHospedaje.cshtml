@@ -1,4 +1,5 @@
 @model HospedajeFormViewModel
+
 @{
     var ubicaciones = ViewData["Ubicaciones"] as List<SelectListItem> ?? new List<SelectListItem>();
 }
@@ -24,9 +25,9 @@
         </div>
 
         <div class="col-md-6">
-            <label asp-for="tipo_ubicacion" class="form-label"></label>
-            <input asp-for="tipo_ubicacion" class="form-control" maxlength="60" placeholder="Hotel, cabaña, departamento..." required />
-            <span asp-validation-for="tipo_ubicacion" class="text-danger small"></span>
+            <label asp-for="tipo_habitacion" class="form-label"></label>
+            <input asp-for="tipo_habitacion" class="form-control" maxlength="60" placeholder="Sencilla, doble, suite, cabaña..." required />
+            <span asp-validation-for="tipo_habitacion" class="text-danger small"></span>
         </div>
 
         <div class="col-md-6">

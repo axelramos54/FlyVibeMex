@@ -61,12 +61,13 @@ builder.Services.AddSingleton<IPasswordHasher<UsuariosGlobales>, PasswordHasher<
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
-// La cookie solo guarda id, nombre, correo e id_rol; nunca la contraseña ni el hash.
+// La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
+// nunca la contraseña ni el hash.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(opciones =>
     {
         opciones.LoginPath = "/Home/IniciarSesion";
-        opciones.AccessDeniedPath = "/Home/Index";
+        opciones.AccessDeniedPath = "/Home/AccesoDenegado";   
         opciones.Cookie.Name = "FlyVibeMex.Sesion";
         opciones.Cookie.HttpOnly = true;                              // JavaScript no puede leerla
         // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.

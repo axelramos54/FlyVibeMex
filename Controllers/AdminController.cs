@@ -1,3 +1,5 @@
+using FlyVibeMex.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlyVibeMex.Controllers;
@@ -13,7 +15,7 @@ namespace FlyVibeMex.Controllers;
 /// <item><c>/Admin/GestorVentas</c> → <see cref="GestorController"/></item>
 /// </list>
 /// </remarks>
-// TODO (cuando exista el login): [Authorize(Roles = "Admin,SA,Soporte,GestorVentas")]
+[Authorize(Roles = Roles.PanelInterno)]   
 public class AdminController : Controller
 {
     // GET /Admin

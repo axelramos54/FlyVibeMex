@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using FlyVibeMex.Models;
 
@@ -8,7 +9,7 @@ namespace FlyVibeMex.Controllers;
 /// </summary>
 [Route("Admin/Soporte")]
 [AutoValidateAntiforgeryToken]   // todo POST de este controlador exige el token antiforgery
-// TODO (cuando exista el login): [Authorize(Roles = "Soporte,SA")]
+[Authorize(Roles = Roles.PanelSoporte)] 
 public class SoporteController : Controller
 {
     private const string Carpeta = "~/Views/Admin/Soporte/";
@@ -32,7 +33,7 @@ public class SoporteController : Controller
     [HttpPost("Tomar/{id}")]
     public IActionResult Tomar(ulong id)
     {
-        // TODO BD: UPDATE solicitudes_soporte SET id_agente_asignado = @agente, estado = 'EN PROCESO'
+        // TODO BD: UPDATE solicitudes_soporte SET id_agente_asignado = @agente, estado = 'EN_PROCESO'
         //          WHERE id = @id AND id_agente_asignado IS NULL   ← evita que dos agentes tomen el mismo ticket
         // El id del agente debe salir del usuario autenticado, nunca del formulario.
         TempData["Aviso"] = "Tomar tickets se activará cuando se conecte la base de datos.";

@@ -86,15 +86,17 @@ public sealed class AuthService : IAuthService
         {
             // 2) Consulta 100 % parametrizada con LINQ. Solo se leen las columnas necesarias.
             //    El password_hash se proyecta para verificarlo aquí y NO sale de este método.
-            var candidato = await _db.Usuarios
-                .AsNoTracking()
-                .Where(u => u.correo == correoNormalizado && u.activo)
-                .Select(u => new
+            var candidato = await(
+                from u in _db.Usuarios.AsNoTracking()
+                join r in _db.RolesUsuarios.AsNoTracking() on u.id_rol equals r.id
+                where u.correo == correoNormalizado && u.activo
+                select new
                 {
                     u.id,
                     u.nombre,
                     u.correo,
                     u.id_rol,
+                    rol = r.nombre,
                     u.password_hash
                 })
                 .FirstOrDefaultAsync(cancellationToken);
@@ -137,7 +139,7 @@ public sealed class AuthService : IAuthService
 
             // 4) Solo datos públicos de sesión hacia el controlador.
             return ResultadoAutenticacion.Correcto(
-                new UsuarioSesion(candidato.id, candidato.nombre, candidato.correo, candidato.id_rol));
+                new UsuarioSesion(candidato.id, candidato.nombre, candidato.correo, candidato.id_rol, candidato.rol));
         }
         catch (OperationCanceledException)
         {

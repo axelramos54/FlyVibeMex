@@ -1,0 +1,46 @@
+@*
+ Views/Home/AccesoDenegado.cshtml — página completa (Layout = null).
+ La muestra la cookie de autenticación (Program.cs, AccessDeniedPath) cuando el usuario SÍ inició sesión
+ pero no tiene el rol que pide [Authorize(Roles = ...)] (p. ej. un CLIENTE que abre /Admin).
+ Si no hay sesión, ASP.NET no viene aquí: manda a /Home/IniciarSesion.
+*@
+@{
+    ViewData["Title"] = "Acceso denegado";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - FlyVibeMex</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="~/assets/css/style.css">
+</head>
+
+<body>
+    <main class="container py-5" style="max-width: 640px">
+        <div class="card shadow-sm">
+            <div class="card-body text-center p-4">
+                <h1 class="h3 mb-3">Acceso denegado</h1>
+                <p class="mb-1">Tu cuenta no tiene permiso para ver esta sección.</p>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <p class="text-muted small mb-4">Sesión iniciada como <strong>@User.Identity.Name</strong>.</p>
+                }
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+                    <a class="btn btn-outline-primary" asp-controller="Miusuario" asp-action="Index">Mi cuenta</a>
+                    <form asp-controller="Home" asp-action="CerrarSesion" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary">Cerrar sesión y entrar con otra
+                            cuenta</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </body>
+
+</html>

@@ -1,3 +1,5 @@
+using FlyVibeMex.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlyVibeMex.Controllers;
@@ -8,7 +10,7 @@ namespace FlyVibeMex.Controllers;
 /// </summary>
 [Route("Admin/SA")]
 [AutoValidateAntiforgeryToken]
-// TODO (cuando exista el login): [Authorize(Roles = "SA")]
+[Authorize(Roles = Roles.Administrador)]
 public class SAController : Controller
 {
     // GET /Admin/SA

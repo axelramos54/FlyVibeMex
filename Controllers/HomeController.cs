@@ -40,6 +40,11 @@ public class HomeController : Controller
         return View();
     }
 
+    public IActionResult AccesoDenegado()
+    {
+        return View();
+    }
+
     /// <summary>
     /// GET <c>/Home/Hoteles</c>. Devuelve la <b>vista parcial</b> <c>Hoteles.cshtml</c>
     /// (módulo Explorar y reservar › Hospedaje). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
@@ -143,8 +148,11 @@ public class HomeController : Controller
             new(ClaimTypes.NameIdentifier, usuario.id.ToString()),
             new(ClaimTypes.Name, usuario.nombre),
             new(ClaimTypes.Email, usuario.correo),
+            new(ClaimTypes.Role, usuario.rol),
             new("id_rol", usuario.id_rol.ToString())
+            
         };
+
         var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
         await HttpContext.SignInAsync(
@@ -157,6 +165,11 @@ public class HomeController : Controller
         {
             return LocalRedirect(datos.returnUrl);
         }
+        if (usuario.rol is Roles.Agente or Roles.Soporte or Roles.Administrador)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
         return RedirectToAction("Index", "Miusuario");
     }
 

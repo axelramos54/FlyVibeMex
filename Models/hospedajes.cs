@@ -21,7 +21,7 @@ namespace FlyVibeMex.Models
 
         /// <summary>Categoría comercial del alojamiento.</summary>
 
-        public string categoria {get; set; } = string.Empty;
+        public string? categoria {get; set; }   // la columna admite NULL
 
         /// <summary>Capacidad máxima de huéspedes de la oferta.</summary>
         public int capacidad_huespedes {get; set;}

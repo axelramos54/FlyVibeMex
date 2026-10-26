@@ -154,12 +154,13 @@ namespace FlyVibeMex.Models
     public class HospedajeFormViewModel : ServicioFormBase
     {
         [Display(Name = "Ubicación")]
+        [Required(ErrorMessage = "Selecciona la ubicación.")]
         public ulong? id_ubicacion { get; set; }
 
-        [Display(Name = "Tipo de hospedaje")]
+        [Display(Name = "Tipo de habitación")]
         [Required(ErrorMessage = "Indica el tipo (hotel, cabaña, departamento...).")]
         [StringLength(60, ErrorMessage = "Máximo 60 caracteres.")]
-        public string tipo_ubicacion { get; set; } = string.Empty;
+        public string tipo_habitacion { get; set; } = string.Empty;
 
         [Display(Name = "Categoría")]
         [StringLength(40, ErrorMessage = "Máximo 40 caracteres.")]
@@ -170,9 +171,11 @@ namespace FlyVibeMex.Models
         public int capacidad_huespedes { get; set; } = 1;
 
         [Display(Name = "Hora de entrada")]
+        [Required(ErrorMessage = "Indica la hora de entrada.")]
         public TimeOnly? hora_entrada { get; set; }
 
         [Display(Name = "Hora de salida")]
+        [Required(ErrorMessage = "Indica la hora de salida.")]
         public TimeOnly? hora_salida { get; set; }
 
         [Display(Name = "Imagen")]
@@ -183,6 +186,7 @@ namespace FlyVibeMex.Models
     public class VehiculoFormViewModel : ServicioFormBase
     {
         [Display(Name = "Ubicación de retiro")]
+        [Required(ErrorMessage = "Selecciona la ubicación de retiro.")]
         public ulong? id_ubicacion_retiro { get; set; }
 
         [Display(Name = "Categoría")]

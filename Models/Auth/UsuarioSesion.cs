@@ -11,7 +11,7 @@ namespace FlyVibeMex.Models
     /// <param name="nombre">Nombre para mostrar en la interfaz.</param>
     /// <param name="correo">Correo normalizado con el que inició sesión.</param>
     /// <param name="id_rol">Rol del usuario (<c>roles_usuarios.id</c>) para la autorización.</param>
-    public sealed record UsuarioSesion(ulong id, string nombre, string correo, ulong id_rol);
+    public sealed record UsuarioSesion(ulong id, string nombre, string correo, ulong id_rol, string rol);
 
     /// <summary>Resultado posible de un intento de inicio de sesión.</summary>
     public enum EstadoAutenticacion

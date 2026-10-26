@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using FlyVibeMex.Models;
@@ -16,7 +17,7 @@ namespace FlyVibeMex.Controllers;
 /// </remarks>
 [Route("Admin/GestorVentas")]
 [AutoValidateAntiforgeryToken]
-// TODO (cuando exista el login): [Authorize(Roles = "GestorVentas,SA")]
+[Authorize(Roles = Roles.Administrador)]   // el atributo aplica también a GestorController.ProveedoresServicios.cs
 // NOTA: es "partial" porque el listado de proveedores y el CRUD de servicios están en
 //       Controllers/GestorController.ProveedoresServicios.cs (misma clase, otro archivo).
 public partial class GestorController : Controller
