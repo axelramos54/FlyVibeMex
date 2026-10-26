@@ -257,6 +257,11 @@ public class HomeController : Controller
             var usuariosActivos = await db.Usuarios.AsNoTracking().CountAsync(u => u.activo, cancellationToken);
             var usuariosInactivos = await db.Usuarios.AsNoTracking().CountAsync(u => !u.activo, cancellationToken);
 
+            // Verificación del esquema completo: lee 1 fila de cada tabla con TODAS sus columnas.
+            // Si un nombre o tipo de columna no coincide con el modelo, aquí aparece la tabla y el motivo.
+            var tablas = await VerificarTablasAsync(db, cancellationToken);
+            var tablasConError = tablas.Count(t => !t.ok);
+
             cronometro.Stop();
             return Json(new
             {
@@ -267,7 +272,12 @@ public class HomeController : Controller
                 conectado = true,
                 tiempoMs = cronometro.ElapsedMilliseconds,
                 consultaPrueba = new { rolesActivos, usuariosActivos, usuariosInactivos },
-                mensaje = "Conexión correcta con Entity Framework Core."
+                esquemaCompleto = tablasConError == 0,
+                tablas,
+                mensaje = tablasConError == 0
+                    ? "Conexión correcta con Entity Framework Core y las 26 tablas coinciden con los modelos."
+                    : $"Conexión correcta, pero {tablasConError} tabla(s) no coinciden con los modelos. " +
+                      "Ejecuta sql/01_esquema.sql (base de prueba) o sql/03_alinear_nombres_legado.sql (base creada con un script anterior)."
             });
         }
         catch (Exception ex) when (ex is SqlException || ex.InnerException is SqlException)
@@ -288,12 +298,75 @@ public class HomeController : Controller
         }
     }
 
+    /// <summary>Resultado de la verificación de una tabla en <see cref="TestDb"/>.</summary>
+    private sealed record VerificacionTabla(string tabla, bool ok, int? filas, string? error);
+
+    /// <summary>
+    /// Lee una fila (todas las columnas) y cuenta las filas de cada tabla mapeada en <see cref="FlyVibeMexDbContext"/>.
+    /// Solo se usa en Development desde <see cref="TestDb"/>; no devuelve contenido de las filas, solo el conteo
+    /// y, si falla, el mensaje de SQL Server/EF (p. ej. <c>Invalid column name 'tipo_proveedor'</c>).
+    /// </summary>
+    private static async Task<List<VerificacionTabla>> VerificarTablasAsync(FlyVibeMexDbContext db, CancellationToken ct)
+    {
+        var pruebas = new (string Tabla, Func<Task<int>> Prueba)[]
+        {
+            ("roles_usuarios", Probar(db.RolesUsuarios)),
+            ("usuarios", Probar(db.Usuarios)),
+            ("ubicaciones", Probar(db.Ubicaciones)),
+            ("proveedores", Probar(db.Proveedores)),
+            ("servicios", Probar(db.Servicios)),
+            ("vuelos", Probar(db.Vuelos)),
+            ("hospedajes", Probar(db.Hospedajes)),
+            ("vehiculos", Probar(db.Vehiculos)),
+            ("paquete", Probar(db.Paquetes)),
+            ("paquete_servicio", Probar(db.PaquetesServicios)),
+            ("disponibilidad_servicio", Probar(db.DisponibilidadServicios)),
+            ("promociones", Probar(db.Promociones)),
+            ("promocion_servicio", Probar(db.PromocionesServicios)),
+            ("estados_reservacion", Probar(db.EstadosReservacion)),
+            ("reservaciones", Probar(db.Reservaciones)),
+            ("detalle_reservacion", Probar(db.DetallesReservacion)),
+            ("historial_estado_reservacion", Probar(db.HistorialEstadosReservacion)),
+            ("metodos_pago", Probar(db.MetodosPago)),
+            ("instituciones_financieras", Probar(db.InstitucionesFinancieras)),
+            ("tarjetas_usuarios", Probar(db.TarjetasUsuarios)),
+            ("estados_pago", Probar(db.EstadosPago)),
+            ("pagos", Probar(db.Pagos)),
+            ("historial_estado_pago", Probar(db.HistorialEstadosPago)),
+            ("reembolsos", Probar(db.Reembolsos)),
+            ("historial_estado_reembolso", Probar(db.HistorialEstadosReembolso)),
+            ("solicitudes_soporte", Probar(db.SolicitudesSoporte)),
+        };
+
+        var resultado = new List<VerificacionTabla>(pruebas.Length);
+        foreach (var (tabla, probar) in pruebas)
+        {
+            try
+            {
+                resultado.Add(new VerificacionTabla(tabla, true, await probar(), null));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Exception causa = ex.InnerException is SqlException interna ? interna : ex;
+                resultado.Add(new VerificacionTabla(tabla, false, null, $"{causa.GetType().Name}: {causa.Message}"));
+            }
+        }
+        return resultado;
+
+        // Materializa una fila (así EF lee y convierte cada columna) y después cuenta.
+        Func<Task<int>> Probar<T>(DbSet<T> conjunto) where T : class => async () =>
+        {
+            await conjunto.AsNoTracking().Take(1).ToListAsync(ct);
+            return await conjunto.CountAsync(ct);
+        };
+    }
+
     /// <summary>Traduce los códigos de error de SQL Server más comunes a una sugerencia (sin datos sensibles).</summary>
     private static string SugerenciaPorCodigoSql(int numero) => numero switch
     {
         4060 => "La base de datos no existe o tu usuario no tiene acceso. Ejecuta sql/00_db_prueba_conexion.sql en SSMS.",
         18456 => "SQL Server rechazó el inicio de sesión. Revisa usuario/contraseña o usa Trusted_Connection=True.",
-        208 => "Faltan tablas en la base de datos. Ejecuta sql/00_db_prueba_conexion.sql en SSMS.",
+        208 => "Faltan tablas en la base de datos. Ejecuta en SSMS sql/00_db_prueba_conexion.sql y después sql/01_esquema.sql.",
         2 or 53 or -1 or -2 => "No se encontró el servidor o tardó demasiado. Revisa el nombre (localhost, .\\SQLEXPRESS o (localdb)\\MSSQLLocalDB) y que el servicio de SQL Server esté iniciado.",
         _ => "Error de SQL Server. Revisa la consola de la aplicación para ver el detalle."
     };

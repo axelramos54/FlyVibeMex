@@ -10,13 +10,27 @@
 | Rama local auditada | `main` — último commit `414c77e` ("Merge pull request #7 from axelramos54/Aportación-de-Ruth", 17/10/2026) |
 | Ramas remotas relevantes | `origin/sqlyamil` (1 commit adelante: `3abf58b`, **no fusionado**), `origin/testingyamilmvc` (estructura previa a MVC, obsoleta) |
 | Equipo | Yamil Alexei Courtois Paredes, Axel Ramos Monroy, Ruth Carolina Moscoso Villatoro, Alonso Gómez Burguete — UNACH, Lic. Sistemas Computacionales, 5° "K", materia *Administración de bases de datos* (Mtro. Rigoberto Pérez Ovando) |
-| Documentación previa en el repo | `docs/01..04_*.md` + `README.md` (17/10/2026, migración y mejora de la documentación del equipo); `docs/FlyVibeMex – Documento explicativo del proyecto.docx` (10/10/2026, @Yamil 07) — respaldo histórico; `docs/documento explicativos.txt` — eliminado, era obsoleto (describe `pages/` y `assets/` en raíz) |
+| Documentación previa en el repo | `docs/01..06_*.md` + `README.md` (17/10/2026, migración y mejora de la documentación del equipo); `docs/FlyVibeMex – Documento explicativo del proyecto.docx` (10/10/2026, @Yamil 07) — respaldo histórico; `docs/documento explicativos.txt` — eliminado, era obsoleto (describe `pages/` y `assets/` en raíz) |
 
 **Veredicto en una línea:** el proyecto es hoy un **prototipo de frontend servido por ASP.NET Core MVC (.NET 10)**, con 24 clases de modelo y un script T‑SQL de 24 tablas, pero **sin ninguna conexión a base de datos, sin autenticación, sin lógica de negocio y sin capa de datos**. Todo el contenido visible está escrito a mano en las vistas Razor.
 
 ---
 
 ## 0. Cambios recientes
+
+### 25/10/2026 · Paso 0 del bot: base de datos completa con los nombres nuevos (`main` en `949f1ae`, PR #13)
+- **Esquema completo en el repositorio:** `sql/01_esquema.sql` crea las 24 tablas que faltaban (26 en total con `roles_usuarios` y `usuarios` de `00`). Cada columna se llama **igual que la propiedad del modelo** (`reservaciones.id_usuarioglobal`, `solicitudes_soporte.id_usuarioglobal`, `tarjetas_usuarios.id_usuariog`, `detalle_reservacion.fecha_inicio`, `proveedores.tipo_proveedor`, `ubicaciones.creado_en`/`actualizado_en`) y con el tipo SQL que corresponde al tipo C#. Incluye las correcciones de 4.2/4.3: subtipos con `id_servicio` PK+FK, `vuelos`, `historial_estado_reservacion`, `UNIQUE(id_servicio, fecha)`, CHECK de catálogos e importes, UNIQUE filtrados para columnas opcionales. `servicios.tipo_servicio` admite también `EVENTO` (lo usa el gestor de ventas).
+- **Datos demo:** `sql/02_seed_demo.sql` (6 ubicaciones, 5 proveedores ficticios, 9 servicios con sus subtipos, 14 días de disponibilidad, 3 promociones, 3 reservaciones `FV-260901..03` con detalle, pagos, reembolso, bitácoras y 3 tickets). Agrega `agente.prueba@` y `ana.lopez@flyvibemex.test` (contraseña de prueba `FlyVibe#Prueba2026`). Orden: **00 → 01 → 02**; `00` ahora también borra las tablas de `01` si existen.
+- **Bases creadas con el script anterior** (`UsuariosGlobales`, `tipo_prooverdor`, `creado`, `id_usuario`…): `sql/03_alinear_nombres_legado.sql` solo renombra (condicional, sin borrar). El script fuente de Yamil (`script base de datos.sql` dentro de `sql/db.rar` en `origin/sqlyamil`) no se pudo abrir en la auditoría; si su base real difiere en estructura, hay que recrearla con `01`.
+- **Código:** `Models/vuelos.cs` completada (ER); `HistorialEstadoReservacion.id_estado_reservacion` `ulong`→`ushort`; `FlyVibeMexDbContext` mapea 26 entidades, subtipos con `ValueGeneratedNever`, sin `HasColumnName` de erratas, `precio_base` 12,2 y fechas de control con `CURRENT_TIMESTAMP`. `/Home/TestDb` lee una fila de cada tabla y devuelve `esquemaCompleto` + `tablas[]` con el error exacto de la que no coincida.
+- **Sin compilar en la auditoría** (no hay SDK de .NET en el entorno): falta `dotnet build` y `/Home/TestDb` en una PC del equipo. Docs actualizados: 05 (pasos 5–6, respuesta de TestDb, sección 10) y 06 (estado de B1–B8).
+
+### 23/10/2026 · Etapa 7: análisis y diseño del bot de Telegram (`main` en `c816f2d`)
+- Nuevo documento: `docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md` (evaluación de 7 librerías, catálogo de funciones del bot en 4 módulos, flujos en Mermaid, reglas de seguridad y plan MVP de 3 días). **Diseño; aún no hay código del bot.**
+- Decisión propuesta: **`Telegram.Bot` 22.10.x** con `BackgroundService` + *long polling* en el mismo `Program.cs` (alternativa: `PRTelegramBot` 1.1.x). Token solo en `dotnet user-secrets` (`TelegramBot:Token`), interruptor `TelegramBot:Habilitado`; un bot de pruebas por integrante (un token solo admite un proceso de *polling*).
+- El bot usará servicios nuevos en `Services/` (`ICatalogoService`, `IReservacionConsultaService`, `ISoporteService`) que también servirán a la web; no pasa por la API JSON propuesta en 6.4 porque corre en el mismo proceso.
+- Estado detectado tras el PR #12 de Yamil (21–22/10): modelos renombrados (`Usuarios`→`UsuariosGlobales` en `usuarioglobal.cs`; FK `id_usuario`→`id_usuarioglobal`; `fehca_inicio`→`fecha_inicio`; subtipos `Hospedajes`/`Vehiculos`/`Paquetes` con `id_servicio` como identidad; `PaqueteServicio` sin `id`; `Ubicaciones.creado_en`/`actualizado_en` como `DateTime`; `Promociones.nombre`/`minimo_compra`; nuevos `HistorialEstadoReservacion` y `Vuelos` (vacía)). **`Data/FlyVibeMexDbContext.cs`, `Services/AuthService.cs`, `Program.cs` y `HomeController.TestDb` no se actualizaron**: por análisis estático `main` no compila (detalle y correcciones en la sección 1.2 del doc 06). Las columnas SQL siguen llamándose `id_usuario`, así que `id_usuarioglobal` necesita `HasColumnName("id_usuario")`.
+- En `main` no hay script completo del esquema (solo `sql/00_db_prueba_conexion.sql`); el script histórico está en el commit `3ccf80d`.
 
 ### 20/10/2026 · Conexión EF Core y seguridad (rama `feature/efcore-conexion-segura`, base `96e6632` = PR #10)
 - Antes de este cambio, `main` ya traía el PR #10 de Yamil: namespaces unificados en `FlyVibeMex.Models`, paneles `Admin`/`Gestor`/`SA`/`Soporte` (sin BD, `ModoSinBD = true`), `DefaultController.cs` y `Models/script base de datos.sql` **eliminados** (el script sigue disponible en el historial, commit `3ccf80d`).
@@ -224,6 +238,8 @@ Proyecto/                                   ← carpeta contenedora (sin .sln)
     │   ├── 02_GUIA_ARQUITECTURA_MVC_Y_FRONTEND.md   ← cómo funciona hoy (sustituye al .docx)
     │   ├── 03_CATALOGO_MODELOS_CSHARP.md            ← las 24 clases de Models/ por dominio
     │   ├── 04_ESTANDARES_Y_HOJA_DE_RUTA_APP.md      ← convenciones, Git, limpieza, pantallas faltantes
+    │   ├── 05_CONEXION_EFCORE_Y_SEGURIDAD.md        ← BD de prueba, user-secrets, EF Core, login seguro
+    │   ├── 06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md     ← librería elegida, funciones del bot, seguridad, plan MVP (Etapa 7)
     │   └── FlyVibeMex – Documento explicativo del proyecto.docx ← respaldo histórico (10/10/2026)
     ├── bin/, obj/                          ← artefactos de compilación (versionados por error)
     └── (solo en origin/sqlyamil) sql/db.rar ← 24 archivos db/procedures/<tabla>.sql + db/script base de datos.sql (RAR, no auditado: ver 5.2)
@@ -663,7 +679,7 @@ FlyVibeMex/
 5. Primer flujo vertical completo: búsqueda de hospedaje/vuelo con datos reales → resultados → detalle.
 6. Pruebas: xUnit para cálculo de totales/descuentos, transición de estados y descuento de inventario; prueba de integración de la búsqueda.
 
-**Bots (23–26 oct)**
+**Bots (23–26 oct)** — diseño completo y plan por días en `docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md`.
 - Exponer API JSON estable y documentada: `GET /api/servicios?tipo=&destino=&desde=&hasta=&personas=`, `GET /api/reservaciones/{codigo}` (solo propietario autenticado), `POST /api/soporte`.
 - El bot crea `solicitudes_soporte` (tipo `ASESORIA` o `PROBLEMA`) y consulta el estado de una reserva por `codigo_reserva` + verificación del usuario; **nunca** procesa pagos ni ve datos de tarjetas.
 - Escalado a humano = `id_agente_asignado` + `estado = 'EN_PROCESO'`.

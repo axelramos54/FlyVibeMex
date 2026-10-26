@@ -25,12 +25,15 @@
 | `appsettings.json` | `"DatabaseMode": "Test"` y dos cadenas **de ejemplo** (`FlyVibeMex_Test`, `FlyVibeMex_Real`) con el marcador `__SERVIDOR__`. **No contienen servidores ni contraseñas reales.** |
 | `appsettings.Development.json` | Solo niveles de log (EF Core en `Warning`). No lleva cadenas de conexión. |
 | `Data/ConfiguracionBaseDatos.cs` | Lee `DatabaseMode` y elige la cadena correcta. Detecta si la cadena sigue siendo el marcador. |
-| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 24 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y compatibilidad con los modelos actuales. |
-| `Services/IAuthService.cs`, `Services/AuthService.cs` | Servicio de autenticación seguro (LINQ parametrizado + `PasswordHasher<Usuarios>`). |
+| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 26 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y fechas de control con `CURRENT_TIMESTAMP` por defecto. |
+| `Services/IAuthService.cs`, `Services/AuthService.cs` | Servicio de autenticación seguro (LINQ parametrizado + `PasswordHasher<UsuariosGlobales>`). |
 | `Models/Auth/UsuarioSesion.cs` | DTO `UsuarioSesion` (id, nombre, correo, id_rol) y `ResultadoAutenticacion`. **Sin** `password_hash`. |
 | `Controllers/HomeController.cs` | Nueva acción `GET /Home/TestDb` (solo en Development). |
 | `Program.cs` | Registro del `DbContext` (Test/Real, `EnableRetryOnFailure`, `EnableSensitiveDataLogging(false)`) y de los servicios. |
 | `sql/00_db_prueba_conexion.sql` | Crea `FlyVibeMex_Test` con `roles_usuarios` y `usuarios` + datos semilla. |
+| `sql/01_esquema.sql` (25/10/2026) | Crea las otras 24 tablas con los **nombres nuevos de los modelos** (`id_usuarioglobal`, `id_usuariog`, `fecha_inicio`, `tipo_proveedor`…), subtipos con `id_servicio` como PK/FK, `vuelos` e `historial_estado_reservacion`. |
+| `sql/02_seed_demo.sql` (25/10/2026) | Datos de demostración coherentes (catálogo, disponibilidad, promociones, 3 reservaciones, pagos, reembolso y tickets). |
+| `sql/03_alinear_nombres_legado.sql` (25/10/2026) | Solo para bases creadas con un script anterior: renombra `UsuariosGlobales`, `tipo_prooverdor`, `creado`, `id_usuario`… a los nombres actuales. No borra nada. |
 | `.gitignore` | Ahora ignora `bin/`, `obj/`, `.vs/`, `*.user`, `*.suo`, `appsettings.*.local.json`, `.env`, `secrets.json`. |
 
 > La app **sigue funcionando sin base de datos**: si no has configurado tu cadena, todas las vistas cargan igual; solo fallará lo que use el `DbContext` (con un mensaje que te dice qué comando ejecutar).
@@ -49,6 +52,10 @@ Requisitos: SQL Server (Developer, Express o LocalDB) y SQL Server Management St
 2. `Archivo › Abrir › Archivo…` y selecciona `sql/00_db_prueba_conexion.sql`.
 3. Presiona **F5** (Ejecutar).
 4. Al final debe aparecer una tabla con 3 roles: `ADMINISTRADOR` (1 usuario), `AGENTE` (0) y `CLIENTE` (2).
+5. Abre y ejecuta (F5) `sql/01_esquema.sql`. Al final debe decir `tablas_creadas = 26`.
+6. Abre y ejecuta (F5) `sql/02_seed_demo.sql`. Al final verás el conteo por tabla y las promociones vigentes (`BIENVENIDA10`, `CARIBE500`).
+
+Orden obligatorio: **00 → 01 → 02**. Si vuelves a ejecutar `00`, también borra las tablas de `01` (dependen de `usuarios`): repite `01` y `02` después.
 
 El script se puede ejecutar las veces que quieras: borra y vuelve a crear **solo** las tablas de `FlyVibeMex_Test` (tiene un candado que detiene la ejecución si no está en esa base). **No toca la base real.**
 
@@ -59,6 +66,10 @@ El script se puede ejecutar las veces que quieras: borra y vuelve a crear **solo
 | `admin.prueba@flyvibemex.test` | ADMINISTRADOR | Sí | Éxito |
 | `cliente.prueba@flyvibemex.test` | CLIENTE | Sí | Éxito |
 | `inactivo.prueba@flyvibemex.test` | CLIENTE | **No** | "Credenciales inválidas." |
+| `agente.prueba@flyvibemex.test` | AGENTE | Sí | Éxito (lo crea `02_seed_demo.sql`; atiende el ticket `EN_PROCESO`) |
+| `ana.lopez@flyvibemex.test` | CLIENTE | Sí | Éxito (lo crea `02_seed_demo.sql`; reservaciones `FV-260901` y `FV-260903`) |
+
+`cliente.prueba` es titular de `FV-260902` (viaje dentro de 2 días).
 
 En la tabla solo está el **hash** (`AQAAAAIAAYag…`, 84 caracteres, formato V3 de ASP.NET Core Identity: PBKDF2‑HMAC‑SHA512, 100 000 iteraciones, sal aleatoria). La contraseña en texto plano no está guardada en ningún lado de la BD.
 
@@ -138,9 +149,17 @@ Respuesta esperada si todo está bien:
     "usuariosActivos": 2,
     "usuariosInactivos": 1
   },
-  "mensaje": "Conexión correcta con Entity Framework Core."
+  "esquemaCompleto": true,
+  "tablas": [
+    { "tabla": "roles_usuarios", "ok": true, "filas": 3, "error": null },
+    { "tabla": "usuarios", "ok": true, "filas": 5, "error": null },
+    "… (las 26 tablas)"
+  ],
+  "mensaje": "Conexión correcta con Entity Framework Core y las 26 tablas coinciden con los modelos."
 }
 ```
+
+`tablas` lee **una fila con todas sus columnas** de cada tabla: si una columna no existe o su tipo no coincide con la propiedad del modelo, esa tabla sale con `"ok": false` y el motivo en `error` (por ejemplo `SqlException: Invalid column name 'tipo_proveedor'.`).
 
 Si algo falla, la respuesta trae `"conectado": false` y un `mensaje` con la sugerencia:
 
@@ -148,7 +167,8 @@ Si algo falla, la respuesta trae `"conectado": false` y un `mensaje` con la suge
 |---|---|
 | `"configurada": false` | No registraste tu cadena: paso 3. |
 | `codigoSql` 4060 | La base no existe: ejecuta `sql/00_db_prueba_conexion.sql` (paso 2). |
-| `codigoSql` 208 | La base existe pero faltan tablas: ejecuta el script. |
+| `codigoSql` 208 | La base existe pero faltan tablas: ejecuta los scripts `00`, `01` y `02`. |
+| `"esquemaCompleto": false` | Conecta, pero alguna tabla no coincide con los modelos: revisa `tablas[].error`. En la base de prueba vuelve a ejecutar `01` y `02`; en una base creada con un script anterior ejecuta `sql/03_alinear_nombres_legado.sql`. |
 | `codigoSql` 18456 | SQL Server rechazó el usuario: revisa usuario/contraseña o usa `Trusted_Connection=True`. |
 | `codigoSql` 2, 53, -1 o -2 | No encontró el servidor: revisa el nombre (`localhost`, `.\SQLEXPRESS`, `(localdb)\MSSQLLocalDB`) y que el servicio de SQL Server esté iniciado. |
 
@@ -160,7 +180,7 @@ Seguridad de este endpoint: **solo existe en Development** (en cualquier otro en
 
 Cuando el esquema final esté listo:
 
-1. Crear la base real `FlyVibeMex` con el script definitivo del equipo (en SSMS).
+1. Crear la base real `FlyVibeMex` con el script definitivo del equipo (en SSMS). Si ya existe y se creó con un script anterior, respaldarla y ejecutar `sql/03_alinear_nombres_legado.sql`; después revisar `/Home/TestDb`.
 2. Registrar la cadena real en tu PC:
    ```powershell
    dotnet user-secrets set "ConnectionStrings:FlyVibeMex_Real" "Server=localhost;Database=FlyVibeMex;Trusted_Connection=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=15;Application Name=FlyVibeMex"
@@ -306,22 +326,23 @@ Pendiente para cuando se implemente la sesión completa: `AddAuthentication().Ad
 
 ## 10. Compatibilidad de los modelos actuales con EF Core
 
-`FlyVibeMexDbContext` mapea las clases tal como están, sin modificarlas:
+Actualizado el 25/10/2026 (Paso 0 de `docs/06`). Desde los cambios de Yamil del 21–24/10, los modelos usan los nombres definitivos y **`sql/01_esquema.sql` nombra cada columna igual que su propiedad**, así que el `DbContext` ya no necesita parches de nombres.
 
-| Situación en el código | Cómo se resolvió |
+| Situación en el código | Cómo se resuelve |
 |---|---|
-| IDs `ulong` / `ushort` vs `bigint` / `smallint` con signo | Conversores globales en `ConfigureConventions` (`ulong↔long`, `ushort↔short`); también para `ulong?` / `ushort?` si se agregan. |
-| Propiedades en snake_case | Coinciden con las columnas; no requieren configuración. |
-| Nombres de tabla (`roles_usuarios`, `paquete`, `detalle_reservacion`…) | `ToTable(...)` explícito para las 24 entidades. |
-| `decimal` | `decimal(12,2)` por defecto; `servicios.precio_base` `(10,2)`, `cantidad` `(8,2)`. |
-| `DateTime` | Columna `datetime`, igual que el script del equipo. |
-| PK compuestas (`paquete`, `paquete_servicio`, `promocion_servicio`) | `HasKey(x => new { ... })` sin autoincremento. |
-| Errata `tipo_proveerdor` (columna) | `HasColumnName("tipo_proveerdor")` sobre `Proveedores.tipo_proveedor`. |
-| Errata `fehca_inicio` (propiedad) | `HasColumnName("fecha_inicio")`. |
-| `Ubicaciones.creado` / `actualizado` son `string` pero la columna es `datetime` | Conversor `string↔DateTime` temporal. |
-| Columnas de texto que aceptan NULL (`descripcion`, `alias`, `detalle`, `referencia_externa`…) | `IsRequired(false)` para que EF pueda leer los NULL. |
+| IDs `ulong` / `ushort` vs `bigint` / `smallint` con signo | Conversores globales en `ConfigureConventions` (`ulong↔long`, `ushort↔short`); también para `ulong?` / `ushort?`. |
+| Propiedades en snake_case | Coinciden con las columnas (incluidos `id_usuarioglobal`, `id_usuariog`, `fecha_inicio`, `tipo_proveedor`, `creado_en`). Ya no hay `HasColumnName`. |
+| Nombres de tabla (`roles_usuarios`, `usuarios`, `paquete`, `detalle_reservacion`…) | `ToTable(...)` explícito para las 26 entidades. La clase `UsuariosGlobales` se guarda en la tabla `usuarios`. |
+| Subtipos `vuelos`, `hospedajes`, `vehiculos`, `paquete` | PK = `id_servicio` (también FK a `servicios`) con `ValueGeneratedNever`: primero se inserta el servicio y después el subtipo con el mismo id. |
+| `paquete_servicio`, `promocion_servicio` | PK compuestas sin autoincremento. |
+| `decimal` | `decimal(12,2)` por defecto (también `precio_base`); `cantidad` `(8,2)`. |
+| `DateTime` / `DateOnly` / `TimeOnly` | `datetime` / `date` / `time`. |
+| Fechas de control (`creado_en`, `actualizada_en`, `fecha_cambio`, `fecha_solicitud`…) | `HasDefaultValueSql("CURRENT_TIMESTAMP")`: si el código no las asigna, las llena SQL Server (evita guardar `0001-01-01`). |
+| Columnas de texto que aceptan NULL (`descripcion`, `alias`, `detalle`, `referencia_externa`…) | `IsRequired(false)` o `string?`. |
+| `Ubicaciones.correo` | No es parte del diseño: `Ignore(...)`, no tiene columna. |
 
-**Pendientes de los modelos** (no se corrigieron aquí para no romper el código existente; hacerlo en un commit de refactor):
-- Columnas numéricas/fecha que aceptan NULL pero cuya propiedad no es nullable: `detalle_reservacion.id_promocion`, `fecha_inicio`, `fecha_fin`; `pagos.id_tarjeta`, `id_estado_pago`, `fecha_pago`; `reembolsos.fecha_resolucion`; `historial_estado_reembolso.id_usuario_cambio`; `solicitudes_soporte.id_reservacion`, `id_agente_asignado`; `hospedajes.hora_entrada`; FKs como `usuarios.id_rol` en el script original. **Si la base real trae NULL en esas columnas, EF lanzará error al leerlas** hasta que la propiedad se cambie a `ulong?` / `DateTime?` / `TimeOnly?`.
-- Tablas del diseño que aún no existen: `vuelos`, `historial_estado_reservacion`.
-- Cuando el esquema real esté definido, se recomienda generar un script de migración versionado (`sql/migraciones/NNN_*.sql` o `Add-Migration` de EF Core).
+**Pendientes de los modelos** (decisiones del equipo; el esquema refleja los modelos tal como están):
+- `pagos.id_tarjeta` es `ulong` (obligatorio): hoy no se puede registrar un pago sin tarjeta (transferencia, efectivo). Si se aceptan, cambiar a `ulong?` y la columna a `NULL`.
+- `paquete.max_personas` es `ushort` (obligatorio) aunque el diseño lo marca opcional.
+- `usuarios.actualizado_en` y `reservaciones.actualizada_en` (diseño) no existen en los modelos; `vehiculos.transmision` y las columnas de dirección de `ubicaciones` (colonia, calle…) tampoco.
+- La base **real** debe crearse con estos mismos scripts (o migrarse con `03_alinear_nombres_legado.sql` + `/Home/TestDb`) antes de cambiar `DatabaseMode` a `Real`.

@@ -99,6 +99,7 @@ El detalle completo está en [docs/02_GUIA_ARQUITECTURA_MVC_Y_FRONTEND.md](docs/
 | [03 · Catálogo de modelos C#](docs/03_CATALOGO_MODELOS_CSHARP.md) | Las 24 clases de `Models/` agrupadas por dominio, con su namespace y pendientes de estandarización |
 | [04 · Estándares y hoja de ruta](docs/04_ESTANDARES_Y_HOJA_DE_RUTA_APP.md) | Convenciones de código, flujo de Git, limpieza pendiente y pantallas por construir |
 | [05 · Conexión EF Core y seguridad](docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md) | Crear `FlyVibeMex_Test`, registrar tu cadena con `dotnet user-secrets`, probar `/Home/TestDb`, cambiar a la BD real, reglas anti SQL Injection y login seguro |
+| [06 · Análisis y diseño del bot de Telegram](docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md) | Evaluación de 7 librerías .NET, librería elegida, funciones del bot por módulo, flujos, reglas de seguridad y plan MVP de 3 días (Etapa 7) |
 
 
 ---

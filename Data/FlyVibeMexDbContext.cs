@@ -1,4 +1,3 @@
-using System.Globalization;
 using FlyVibeMex.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -7,9 +6,10 @@ namespace FlyVibeMex.Data;
 
 /// <summary>
 /// Contexto de Entity Framework Core de FlyVibe Mex (SQL Server).
-/// Mapea las 24 clases existentes de <c>Models/</c> a sus tablas <b>sin modificar las clases</b>:
-/// propiedades en snake_case = nombre de columna, tablas con el nombre exacto del script T-SQL
-/// y conversores globales para los tipos sin signo que SQL Server no tiene.
+/// Mapea las 26 clases de <c>Models/</c> a las tablas de <c>sql/00_db_prueba_conexion.sql</c> +
+/// <c>sql/01_esquema.sql</c>: <b>cada propiedad se llama igual que su columna</b> (snake_case, con los nombres
+/// nuevos de los modelos: <c>id_usuarioglobal</c>, <c>id_usuariog</c>, <c>fecha_inicio</c>…), por eso no se usa
+/// <c>HasColumnName</c>. Incluye conversores globales para los tipos sin signo que SQL Server no tiene.
 /// </summary>
 /// <remarks>
 /// <para><b>Regla anti SQL Injection (obligatoria para todo el equipo):</b></para>
@@ -23,7 +23,9 @@ namespace FlyVibeMex.Data;
 /// o <c>FromSqlRaw</c> con objetos <c>SqlParameter</c> explícitos.</item>
 /// </list>
 /// <para>Las clases de <c>Models/</c> no tienen propiedades de navegación: las relaciones se resuelven con
-/// joins LINQ por llave foránea (<c>id_rol</c>, <c>id_usuario</c>…).</para>
+/// joins LINQ por llave foránea (<c>id_rol</c>, <c>id_usuarioglobal</c>, <c>id_servicio</c>…).</para>
+/// <para>Si una base de datos se creó con un script anterior (tabla <c>UsuariosGlobales</c>, columnas
+/// <c>tipo_prooverdor</c>, <c>creado</c>, <c>id_usuario</c>…), ejecutar <c>sql/03_alinear_nombres_legado.sql</c>.</para>
 /// </remarks>
 public class FlyVibeMexDbContext : DbContext
 {
@@ -41,6 +43,7 @@ public class FlyVibeMexDbContext : DbContext
     public DbSet<Servicios> Servicios => Set<Servicios>();
     public DbSet<Hospedajes> Hospedajes => Set<Hospedajes>();
     public DbSet<Vehiculos> Vehiculos => Set<Vehiculos>();
+    public DbSet<Vuelos> Vuelos => Set<Vuelos>();
     public DbSet<Paquetes> Paquetes => Set<Paquetes>();
     public DbSet<PaqueteServicio> PaquetesServicios => Set<PaqueteServicio>();
     public DbSet<DisponibilidadServicio> DisponibilidadServicios => Set<DisponibilidadServicio>();
@@ -53,6 +56,7 @@ public class FlyVibeMexDbContext : DbContext
     public DbSet<EstadosReservacion> EstadosReservacion => Set<EstadosReservacion>();
     public DbSet<Reservaciones> Reservaciones => Set<Reservaciones>();
     public DbSet<DetallesReservacion> DetallesReservacion => Set<DetallesReservacion>();
+    public DbSet<HistorialEstadoReservacion> HistorialEstadosReservacion => Set<HistorialEstadoReservacion>();
 
     // ===================== Pagos / reembolsos =====================
     public DbSet<MetodosPago> MetodosPago => Set<MetodosPago>();
@@ -95,6 +99,10 @@ public class FlyVibeMexDbContext : DbContext
         ConfigurarReservaciones(modelBuilder);
         ConfigurarPagos(modelBuilder);
         ConfigurarSoporte(modelBuilder);
+
+        // Fechas de control (creado_en, actualizada_en, fecha_cambio…): si el código no las asigna,
+        // las llena SQL Server con CURRENT_TIMESTAMP (evita insertar 0001-01-01, que `datetime` no admite).
+        AplicarFechasDeControlPorDefecto(modelBuilder);
 
         // Red de seguridad: si en el futuro algún modelo usa ulong? / ushort? (FK opcionales), se les aplica
         // el mismo conversor que a ulong / ushort.
@@ -148,12 +156,8 @@ public class FlyVibeMexDbContext : DbContext
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
 
-            // La clase Ubicaciones ya usa DateTime (corregido el 21-10-2026), así que ya no hace falta el conversor
-            // string <-> DateTime que había aquí. Además, ese conversor ya no coincidía con el tipo de la propiedad
-            // y EF Core lanzaba InvalidOperationException al construir el modelo (fallaba CUALQUIER consulta).
-            // En el script T-SQL las columnas se llaman `creado` y `actualizado`.
-            e.Property(x => x.creado_en).HasColumnName("creado").HasColumnType("datetime");
-            e.Property(x => x.actualizado_en).HasColumnName("actualizado").HasColumnType("datetime");
+            // La clase usa DateTime desde el 21-10-2026 y sql/01_esquema.sql ya nombra las columnas
+            // `creado_en` / `actualizado_en` (antes `creado` / `actualizado`), así que no se necesita HasColumnName.
 
             // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
             e.Ignore(x => x.correo);
@@ -170,9 +174,9 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("proveedores");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            // FIXME (script SQL): en script_base_de_datos.sql la columna se llama `tipo_prooverdor` (errata).
-            // Se mapea al nombre real de la columna para no romper la clase; quitar esta línea cuando se corrija el script.
-            e.Property(x => x.tipo_proveedor).HasColumnName("tipo_prooverdor");
+            // La columna se llama `tipo_proveedor` en sql/01_esquema.sql (sin las erratas `tipo_proveerdor` /
+            // `tipo_prooverdor` de scripts anteriores; para bases viejas ver sql/03_alinear_nombres_legado.sql).
+            e.Property(x => x.id_ubicacion).IsRequired(false);
         });
 
         modelBuilder.Entity<Servicios>(e =>
@@ -180,16 +184,25 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("servicios");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            e.Property(x => x.moneda).HasColumnName("Moneda");
-            e.Property(x => x.precio_base).HasPrecision(10, 2);
+            // precio_base usa la precisión global decimal(12,2), igual que la columna del esquema.
             e.Property(x => x.descripcion).IsRequired(false);
+        });
+
+        // Subtipos (regla R1): la llave es `id_servicio`, que es a la vez FK hacia servicios.id.
+        // NO es identity: primero se inserta el servicio y luego el subtipo con el MISMO id. Por eso
+        // ValueGeneratedNever (con ValueGeneratedOnAdd EF no enviaría el id y el INSERT fallaría).
+        modelBuilder.Entity<Vuelos>(e =>
+        {
+            e.ToTable("vuelos");
+            e.HasKey(x => x.id_servicio);
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<Hospedajes>(e =>
         {
             e.ToTable("hospedajes");
             e.HasKey(x => x.id_servicio);
-            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.categoria).IsRequired(false);
         });
 
@@ -197,25 +210,24 @@ public class FlyVibeMexDbContext : DbContext
         {
             e.ToTable("vehiculos");
             e.HasKey(x => x.id_servicio);
-            e.Property(x => x.id_servicio).ValueGeneratedOnAdd();
+            e.Property(x => x.id_servicio).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<Paquetes>(e =>
         {
-            // En el script actual la PK es compuesta (id, id_servicio) y `id` NO es identity.
             e.ToTable("paquete");
-            e.HasKey(x => new { x.id_servicio });
-            e.Property(x => x.id_servicio).ValueGeneratedNever();
+            e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.politica_cancelacion).IsRequired(false);
         });
 
         modelBuilder.Entity<PaqueteServicio>(e =>
         {
+            // id_servicio = el paquete (FK -> paquete.id_servicio); id_servicio_incluido = lo que trae el paquete.
             e.ToTable("paquete_servicio");
             e.HasKey(x => new { x.id_servicio, x.id_servicio_incluido });
             e.Property(x => x.id_servicio).ValueGeneratedNever();
-            e.Property(x => x.id_servicio).ValueGeneratedNever();
+            e.Property(x => x.id_servicio_incluido).ValueGeneratedNever();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
         });
 
@@ -224,6 +236,8 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("disponibilidad_servicio");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
+            // Regla R3: una sola fila por servicio y día.
+            e.HasIndex(x => new { x.id_servicio, x.fecha }).IsUnique();
         });
     }
 
@@ -263,6 +277,7 @@ public class FlyVibeMexDbContext : DbContext
 
         modelBuilder.Entity<Reservaciones>(e =>
         {
+            // Columna del titular: `id_usuarioglobal` (FK -> usuarios.id).
             e.ToTable("reservaciones");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
@@ -274,9 +289,15 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("detalle_reservacion");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
-            // FIXME (modelo): la propiedad tiene la errata `fehca_inicio`; la columna es `fecha_inicio`.
-            e.Property(x => x.fecha_inicio).HasColumnName("fecha_inicio");
             e.Property(x => x.cantidad).HasPrecision(8, 2);
+        });
+
+        modelBuilder.Entity<HistorialEstadoReservacion>(e =>
+        {
+            // Bitácora de la regla R6. id_usuario_cambio = NULL => cambio automático del sistema.
+            e.ToTable("historial_estado_reservacion");
+            e.HasKey(x => x.id);
+            e.Property(x => x.id).ValueGeneratedOnAdd();
         });
     }
 
@@ -307,6 +328,7 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<TarjetasUsuarios>(e =>
         {
             // Regla R5: solo token del gateway + últimos 4 dígitos. Jamás PAN completo ni CVV.
+            // Columna del titular: `id_usuariog` (así se llama la propiedad del modelo).
             e.ToTable("tarjetas_usuarios");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
@@ -362,16 +384,42 @@ public class FlyVibeMexDbContext : DbContext
     {
         modelBuilder.Entity<SolicitudesSoporte>(e =>
         {
+            // Tickets de la regla R9 (también los crea el bot, ver docs/06). Titular: `id_usuarioglobal`.
             e.ToTable("solicitudes_soporte");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
         });
     }
 
+    /// <summary>Nombres de las columnas de fecha que SQL Server llena con <c>CURRENT_TIMESTAMP</c> si no se asignan.</summary>
+    private static readonly string[] ColumnasFechaControl =
+    {
+        "creado_en", "creada_en", "actualizado_en", "actualizada_en", "fecha_cambio", "fecha_solicitud"
+    };
+
+    /// <summary>
+    /// Marca las fechas de control (<see cref="ColumnasFechaControl"/>) con <c>HasDefaultValueSql("CURRENT_TIMESTAMP")</c>.
+    /// Así un <c>Add(...)</c> que no asigna <c>creado_en</c> no intenta guardar <c>DateTime.MinValue</c> (0001-01-01), que la
+    /// columna <c>datetime</c> rechaza. Si el código SÍ asigna la fecha, se guarda la que se asignó.
+    /// </summary>
+    private static void AplicarFechasDeControlPorDefecto(ModelBuilder modelBuilder)
+    {
+        var fechas = modelBuilder.Model.GetEntityTypes()
+            .SelectMany(entidad => entidad.GetProperties()
+                .Where(p => p.ClrType == typeof(DateTime) && ColumnasFechaControl.Contains(p.Name))
+                .Select(p => (entidad.ClrType, p.Name)))
+            .ToList();
+
+        foreach (var (tipo, nombre) in fechas)
+        {
+            modelBuilder.Entity(tipo).Property(nombre).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        }
+    }
+
     /// <summary>
     /// Aplica <c>ulong? &lt;-&gt; long?</c> y <c>ushort? &lt;-&gt; short?</c> a las propiedades nullables que no
-    /// tengan ya un conversor. (Hoy ningún modelo las usa; queda preparado para cuando se corrija la nulabilidad
-    /// de las FK opcionales, p. ej. <c>pagos.id_tarjeta</c>.)
+    /// tengan ya un conversor (FK opcionales como <c>id_reservacion</c>, <c>id_agente_asignado</c>, <c>id_promocion</c>,
+    /// <c>id_usuario_cambio</c>, <c>orden</c>…).
     /// </summary>
     private static void AplicarConversoresSinSignoNullables(ModelBuilder modelBuilder)
     {
