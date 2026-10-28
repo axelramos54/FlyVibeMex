@@ -1,0 +1,226 @@
+@*
+ ============================================================================================
+ Vista: Views/Catalogo/Detalle.cshtml   —   GET /Catalogo/Detalle/{id} (CatalogoController.Detalle
+ Detalle de un servicio: datos propios del tipo, política de cancelación (visible ANTES de pagar),
+ promociones vigentes, disponibilidad de los próximos 30 días y cálculo del precio para las fechas elegidas.
+ El formulario de la derecha es GET al mismo detalle (cambia fechas / personas y recalcula en el servidor).
+ Botón "Reservar": en la fase B solo pide iniciar sesión; la reserva y el pago llegan en la fase C.
+ Usa solo clases de Bootstrap (no necesita hoja propia).
+ ============================================================================================
+*@
+@model DetalleServicioViewModel
+@{
+    ViewData["Title"] = Model.nombre;
+    var b = Model.Busqueda;
+    var cot = Model.Cotizacion;
+    var hoy = DateTime.Today.ToString("yyyy-MM-dd");
+    var esRango = TipoCatalogo.UsaRango(Model.tipo);
+    var esVuelo = Model.tipo == TipoCatalogo.Vuelo;
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var urlActual = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+@functions {
+    // Primer error de un campo (los errores los agrega CatalogoController con BusquedaCatalogoViewModel.Validar).
+    string? Error(string campo) => ViewData.ModelState[campo]?.Errors.FirstOrDefault()?.ErrorMessage;
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Inicio</a></li>
+            <li class="breadcrumb-item">
+                <a asp-controller="Home" asp-action="@TipoCatalogo.AccionSeccion(Model.tipo)" asp-all-route-data="b.ParametrosRuta()">@TipoCatalogo.NombreSeccion(Model.tipo)</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.nombre</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        @* ---------------- Columna izquierda: información del servicio ---------------- *@
+        <div class="col-12 col-lg-7">
+            <div class="ratio ratio-16x9 mb-3">
+                <img src="@Imagenes.UrlOGenerica(Model.imagen_ruta)" class="rounded object-fit-cover" alt="@Model.nombre">
+            </div>
+
+            <span class="badge text-bg-primary mb-2">@TipoCatalogo.NombreTipo(Model.tipo)</span>
+            <h1 class="h2">@Model.nombre</h1>
+            <p class="text-muted">@Model.ubicacion</p>
+            @if (!string.IsNullOrWhiteSpace(Model.descripcion))
+            {
+                <p>@Model.descripcion</p>
+            }
+
+            <dl class="row">
+                @foreach (var d in Model.Datos)
+                {
+                    <dt class="col-sm-4">@d.etiqueta</dt>
+                    <dd class="col-sm-8">@d.valor</dd>
+                }
+            </dl>
+
+            @if (Model.Incluidos.Count > 0)
+            {
+                <h2 class="h5 mt-4">Incluye</h2>
+                <ul class="list-group mb-3">
+                    @foreach (var i in Model.Incluidos)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @i.nombre
+                            <span class="badge text-bg-light">@TipoCatalogo.NombreTipo(i.tipo_servicio) × @i.cantidad.ToString("0.##")</span>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <div class="alert alert-info mt-3" role="note">
+                <strong>Política de cancelación:</strong> @Model.politica
+            </div>
+
+            @if (Model.Promociones.Count > 0)
+            {
+                <h2 class="h5 mt-4">Promociones vigentes</h2>
+                <ul class="list-unstyled">
+                    @foreach (var p in Model.Promociones)
+                    {
+                        <li class="mb-2">
+                            <span class="badge text-bg-warning">@p.codigo</span>
+                            <strong>@(p.nombre ?? p.codigo)</strong>
+                            — @(p.tipo_descuento == "PORCENTAJE" ? $"{p.valor:0.##} % de descuento" : $"${p.valor:N2} de descuento")
+                            @if (p.minimo_compra > 0)
+                            {
+                                <span class="text-muted">(en compras desde $@p.minimo_compra.ToString("N2"))</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(p.descripcion))
+                            {
+                                <div class="small text-muted">@p.descripcion</div>
+                            }
+                        </li>
+                    }
+                </ul>
+                <p class="small text-muted">El código se escribe en el resumen de tu reserva.</p>
+            }
+        </div>
+
+        @* ---------------- Columna derecha: fechas, precio y reservar ---------------- *@
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Tu reserva</h2>
+
+                    <form asp-controller="Catalogo" asp-action="Detalle" asp-route-id="@Model.id" method="get" novalidate class="mb-3">
+                        @if (!esVuelo)
+                        {
+                            <div class="mb-2">
+                                <label for="desde" class="form-label">@TipoCatalogo.EtiquetaDesde(Model.tipo)</label>
+                                <input type="date" id="desde" name="desde" class="form-control" min="@hoy" value="@(b.desde?.ToString("yyyy-MM-dd"))">
+                                <div class="text-danger small">@Error("desde")</div>
+                            </div>
+                        }
+                        @if (esRango)
+                        {
+                            <div class="mb-2">
+                                <label for="hasta" class="form-label">@TipoCatalogo.EtiquetaHasta(Model.tipo)</label>
+                                <input type="date" id="hasta" name="hasta" class="form-control" min="@hoy" value="@(b.hasta?.ToString("yyyy-MM-dd"))">
+                                <div class="text-danger small">@Error("hasta")</div>
+                            </div>
+                        }
+                        <div class="row g-2 mb-2">
+                            <div class="col">
+                                <label for="personas" class="form-label">@TipoCatalogo.EtiquetaPersonas(Model.tipo)</label>
+                                <input type="number" id="personas" name="personas" class="form-control" min="1" max="@BusquedaCatalogoViewModel.MaxPersonas" value="@b.personas">
+                                <div class="text-danger small">@Error("personas")</div>
+                            </div>
+                            @if (Model.tipo == TipoCatalogo.Hospedaje)
+                            {
+                                <div class="col">
+                                    <label for="habitaciones" class="form-label">Habitaciones</label>
+                                    <input type="number" id="habitaciones" name="habitaciones" class="form-control" min="1" max="@BusquedaCatalogoViewModel.MaxHabitaciones" value="@b.habitaciones">
+                                    <div class="text-danger small">@Error("habitaciones")</div>
+                                </div>
+                            }
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary w-100">Calcular precio</button>
+                    </form>
+
+                    @if (cot is null)
+                    {
+                        <p class="text-muted mb-0">Elige tus fechas para ver el precio total y si hay lugares.</p>
+                    }
+                    else if (!cot.Disponible)
+                    {
+                        <div class="alert alert-warning mb-0">@cot.motivo</div>
+                    }
+                    else
+                    {
+                        @* El <div> deja el contenido en modo HTML: así los @if / @{ } internos son válidos en Razor. *@
+                        <div id="cotizacion">
+                            @if (cot.dias.Count > 1)
+                            {
+                                <table class="table table-sm small mb-2">
+                                    <thead><tr><th>@(Model.tipo == TipoCatalogo.Hospedaje ? "Noche" : "Día")</th><th class="text-end">Precio</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var d in cot.dias)
+                                        {
+                                            <tr><td>@d.fecha.ToString("ddd dd/MM", es)</td><td class="text-end">$@d.precio.ToString("N2")</td></tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            <p class="mb-1">@cot.resumen</p>
+                            <p class="small text-muted mb-2">
+                                Del @cot.inicio.ToString("ddd dd/MM/yyyy HH:mm", es) al @cot.fin.ToString("ddd dd/MM/yyyy HH:mm", es)
+                            </p>
+                            <p class="fs-3 fw-bold mb-1">$@cot.subtotal.ToString("N2") <small class="fs-6 fw-normal">@cot.moneda</small></p>
+                            @{
+                                // Cómo se forma el total: precio de UNA unidad por todo el periodo × unidades.
+                                var unidadInventario = Model.tipo switch
+                                {
+                                    TipoCatalogo.Hospedaje => cot.cantidad == 1 ? "habitación" : "habitaciones",
+                                    TipoCatalogo.Vehiculo => "vehículo",
+                                    TipoCatalogo.Vuelo => cot.cantidad == 1 ? "pasajero" : "pasajeros",
+                                    _ => cot.cantidad == 1 ? "persona" : "personas"
+                                };
+                            }
+                            <p class="small text-muted">
+                                $@cot.precio_unitario.ToString("N2") × @cot.cantidad @unidadInventario · Precio antes de promociones.
+                            </p>
+
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                @* TODO (fase C): enviar a /Reservas/Resumen con id, fechas y personas (el servidor recalcula todo). *@
+                                <button type="button" class="btn btn-primary w-100" disabled>Reservar</button>
+                                <div class="form-text">La reserva y el pago se activan en la siguiente fase.</div>
+                            }
+                            else
+                            {
+                                <a asp-controller="Home" asp-action="IniciarSesion" asp-route-returnUrl="@urlActual" class="btn btn-primary w-100">
+                                    Inicia sesión para reservar
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.ProximasFechas.Count > 0)
+            {
+                <details class="mt-3">
+                    <summary class="small">Disponibilidad de los próximos 30 días</summary>
+                    <table class="table table-sm small mt-2">
+                        <thead><tr><th>Fecha</th><th class="text-end">Precio por @TipoCatalogo.Unidad(Model.tipo)</th><th class="text-end">Lugares</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in Model.ProximasFechas)
+                            {
+                                <tr class="@(d.alcanza ? "" : "text-muted")">
+                                    <td>@d.fecha.ToString("ddd dd/MM", es)</td>
+                                    <td class="text-end">$@d.precio.ToString("N2")</td>
+                                    <td class="text-end">@(d.disponible > 0 ? d.disponible.ToString() : "Agotado")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </details>
+            }
+        </div>
+    </div>
+</div>

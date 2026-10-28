@@ -25,6 +25,12 @@ namespace FlyVibeMex.Models
         // NOTA: opcional en el diseño.
         public ushort max_personas {get; set;}
 
+        /// <summary>
+        /// Destino del paquete (FK a ubicaciones). Obligatorio si sus servicios están en ciudades distintas; si es
+        /// <c>null</c>, el catálogo usa la ciudad de su hospedaje incluido o el destino de su vuelo.
+        /// </summary>
+        public ulong? id_ubicacion_destino {get; set;}
+
         // NOTA: la política de cancelación ya no está aquí; es común a todos los servicios
         //            (Servicios.permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion).
         

@@ -45,40 +45,36 @@ public class HomeController : Controller
 
     /// <summary>
     /// GET <c>/Home/Hoteles</c>. Devuelve la <b>página</b> <c>Hoteles.cshtml</c>
-    /// (módulo Explorar y reservar › Hospedaje). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
+    /// (módulo Explorar y reservar › Hospedaje). Buscador + tarjetas con datos de la BD.
     /// </summary>
-    public IActionResult Hoteles()
-    {
-        return View();
-    }
+    public Task<IActionResult> Hoteles(BusquedaCatalogoViewModel busqueda,
+        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
+        => SeccionCatalogoAsync(TipoCatalogo.Hospedaje, busqueda, catalogo, cancellationToken);
 
     /// <summary>
     /// GET <c>/Home/Paquetes</c>. Devuelve la <b>página</b> <c>Paquetes.cshtml</c>
-    /// (módulo Explorar y reservar › Paquetes). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
+    /// (módulo Explorar y reservar › Paquetes). Buscador + tarjetas con datos de la BD.
     /// </summary>
-    public IActionResult Paquetes()
-    {
-        return View();
-    }
+    public Task<IActionResult> Paquetes(BusquedaCatalogoViewModel busqueda,
+        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
+        => SeccionCatalogoAsync(TipoCatalogo.Paquete, busqueda, catalogo, cancellationToken);
 
     /// <summary>
     /// GET <c>/Home/Tours</c>. Devuelve la <b>página</b> <c>Tours.cshtml</c>.
-    /// Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
+    /// Buscador + tarjetas con datos de la BD.
     /// </summary>
 
-    public IActionResult Tours()
-    {
-        return View();
-    }
+    public Task<IActionResult> Tours(BusquedaCatalogoViewModel busqueda,
+        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
+        => SeccionCatalogoAsync(TipoCatalogo.Evento, busqueda, catalogo, cancellationToken);
 
     /// <summary>
     /// GET <c>/Home/Viajes</c>. Devuelve la <b>página</b> <c>Viajes.cshtml</c>
-    /// (módulo Explorar y reservar › Vuelos). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
+    /// (módulo Explorar y reservar › Vuelos). Buscador + tarjetas con datos de la BD.
     /// </summary>
-    public IActionResult Viajes()
-    {
-        return View();
-    }
+    public Task<IActionResult> Viajes(BusquedaCatalogoViewModel busqueda,
+        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
+        => SeccionCatalogoAsync(TipoCatalogo.Vuelo, busqueda, catalogo, cancellationToken);
 
     /// <summary>
     /// GET <c>/Home/sesion</c>. Ruta antigua del login (fragmento de la SPA casera): redirige a la página completa
@@ -192,9 +188,27 @@ public class HomeController : Controller
         return View();
     }
 
-    public IActionResult vehiculos()
+    public Task<IActionResult> vehiculos(BusquedaCatalogoViewModel busqueda,
+        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
+        => SeccionCatalogoAsync(TipoCatalogo.Vehiculo, busqueda, catalogo, cancellationToken);
+
+    /// <summary>
+    /// Lógica común de las 5 secciones del catálogo: valida la búsqueda según el tipo y llena destinos y tarjetas.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ICatalogoService"/> se pide con [FromServices] en cada acción (no en el constructor) para que Inicio,
+    /// el login y TestDb sigan abriendo aunque un integrante aún no tenga SQL Server configurado.
+    /// Si la búsqueda tiene errores, se muestran junto al campo y la sección lista lo disponible sin filtrar por fechas.
+    /// </remarks>
+    private async Task<IActionResult> SeccionCatalogoAsync(string tipo, BusquedaCatalogoViewModel busqueda,
+        ICatalogoService catalogo, CancellationToken cancellationToken)
     {
-        return View();
+        busqueda.tipo = tipo;
+        foreach (var (campo, mensaje) in busqueda.Validar(DateOnly.FromDateTime(DateTime.Today)))
+            ModelState.AddModelError(campo, mensaje);
+
+        await catalogo.LlenarSeccionAsync(busqueda, aplicarFechas: ModelState.IsValid, cancellationToken);
+        return View(busqueda);
     }
 
     /// <summary>

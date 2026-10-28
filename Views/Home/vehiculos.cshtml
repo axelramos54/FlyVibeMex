@@ -1,17 +1,17 @@
 @*
  ============================================================================================
- Vista: Views/Home/Tours.cshtml   —   GET /Home/Tours (HomeController.Tours())
- Pantalla del prototipo: ninguna: Tours no aparece en el mapa de sitio del PDF
- Página completa con Views/Shared/_Layout.cshtml (desde el 26-10-2026; antes era un fragmento de cargarPagina).
- Archivos asociados (convención de letras, T):
-   - CSS: wwwroot/assets/css/style_T.css
-   - JS : wwwroot/assets/js/script_T.js (actualmente vacío)
- Estado: maqueta estática. El buscador no envía datos y las tarjetas están escritas a mano.
- NOTA: el dominio solo contempla VUELO, HOSPEDAJE, VEHICULO y PAQUETE; falta decidir cómo se modela un tour.
+ Vista: Views/Home/vehiculos.cshtml   —   GET /Home/vehiculos (HomeController.vehiculos)
+ Sección del catálogo: buscador (izquierda) + tarjetas con datos reales de la BD (derecha, _ResultadosCatalogo).
+ El formulario es GET a la misma acción: la búsqueda queda en la URL (se puede recargar y compartir).
+ Vehículos: ciudad de retiro, fecha de retiro y de devolución (se cobra por día). Usa el CSS/JS de Tours (letra T).
+ Archivos asociados (letra T): wwwroot/assets/css/style_T.css y wwwroot/assets/js/script_T.js.
+ Validaciones: DataAnnotations + BusquedaCatalogoViewModel.Validar (fechas no pasadas, rango máximo de 30 días…).
  ============================================================================================
 *@
+@model BusquedaCatalogoViewModel
 @{
     ViewData["Title"] = "Vehículos";
+    var hoy = DateTime.Today.ToString("yyyy-MM-dd");
 }
 
 @section Styles {
@@ -20,127 +20,54 @@
 
 @* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
 <div class="container mt-4" id="mapas_preferidos">
-    <h1 class="page-title mb-4">Vehiculos</h1>
+    <h1 class="page-title mb-4">Vehículos</h1>
 
     <section class="row g-4" id="contenido">
-        
-        @* ---- Columna izquierda: formulario de búsqueda (nombre o destino, fecha inicial, fecha final y personas) ----
-             NOTA: Arreglar el <form>,  tiene action="#" y ningún <input> tiene atributo name, por lo que no se envía ningún dato.
-                    Al pulsar el botón, el navegador navega a la URL actual y recarga el shell (vuelve a Inicio).
-             NOTA : conectar a una acción GET de búsqueda (p. ej. con asp-action) y dar name a cada campo. *@
+
+        @* ---- Columna izquierda: buscador ---- *@
         <div class="col-12 col-lg-4 col-xl-3" id="buscador">
             <div class="search-card">
-                <h2>Buscar Vehiculos</h2>
-                <form action="#" method="get">
+                <h2>Buscar vehículo</h2>
+                <form asp-action="vehiculos" method="get" novalidate>
                     <div class="form-group mb-3">
-                        <label for="ubicacion">Nombre o destino</label>
-                        <input type="text" id="ubicacion" class="form-control" placeholder="Ej. Chichén Itzá, Tulum">
+                        <label asp-for="destino">Ciudad de retiro</label>
+                        <select asp-for="destino" asp-items="Model.Destinos" class="form-select">
+                            <option value="">Todas las ciudades</option>
+                        </select>
+                        <span asp-validation-for="destino" class="text-danger small"></span>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label for="fecha_inicio">Fecha inicial</label>
-                        <input type="date" id="fecha_inicio" class="form-control">
+                        <label asp-for="desde">@TipoCatalogo.EtiquetaDesde(TipoCatalogo.Vehiculo)</label>
+                        <input asp-for="desde" type="date" class="form-control" min="@hoy" />
+                        <span asp-validation-for="desde" class="text-danger small"></span>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label for="fecha_final">Fecha final</label>
-                        <input type="date" id="fecha_final" class="form-control">
+                        <label asp-for="hasta">@TipoCatalogo.EtiquetaHasta(TipoCatalogo.Vehiculo)</label>
+                        <input asp-for="hasta" type="date" class="form-control" min="@hoy" />
+                        <span asp-validation-for="hasta" class="text-danger small"></span>
                     </div>
-
+                    <div class="form-group mb-3">
+                        <label asp-for="personas">@TipoCatalogo.EtiquetaPersonas(TipoCatalogo.Vehiculo)</label>
+                        <input asp-for="personas" type="number" class="form-control" min="1" max="20" />
+                        <span asp-validation-for="personas" class="text-danger small"></span>
+                    </div>
                     <div class="form-group mb-4">
-                        <label for="num_viajeros">Personas</label>
-                        <input type="number" id="num_viajeros" class="form-control" placeholder="1" min="1" value="1">
+                        <label asp-for="orden">Ordenar por</label>
+                        <select asp-for="orden" asp-items="Html.GetEnumSelectList<OrdenCatalogo>()" class="form-select"></select>
                     </div>
-
-                    <button type="submit" class="btn btn-search-submit">Buscar experiencias</button>
+                    <button type="submit" class="btn btn-search-submit">Buscar vehículos</button>
+                    <a asp-action="vehiculos" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
                 </form>
             </div>
         </div>
 
-        @* ---- Columna derecha: resultados (#tarjetas) ----
-             Tarjetas de DEMOSTRACIÓN escritas a mano: 3 tours (Chichén Itzá, Tulum, Cañón del Sumidero).
-             NOTA: generar las tarjetas desde el servidor (bucle Razor sobre un ViewModel de resultados),
-                   usando card.cshtml como referencia de diseño. *@
+        @* ---- Columna derecha: resultados ---- *@
         <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
-            <div class="row g-4">
+            <partial name="_ResultadosCatalogo" model="Model" />
+        </div>
 
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=600&q=80"
-                                 class="card-img-top" alt="Chichén Itzá">
-                            <div class="route-badge">
-                                <span class="route-text">Yucatán • Tour de 1 día</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Chichén Itzá & Cenote</h5>
-                            <p class="card-text">Explora una de las 7 maravillas del mundo moderno con guía certificado,
-                                comida buffet y nado en cenote sagrado.</p>
-                                <div class="card-footer-box">
-                                    <div class="price-box">
-                                        <span class="price-label">Por persona</span>
-                                        <span class="price-value">$1,450 <small>MXN</small></span>
-                                    </div>
-                                    <a href="#" class="btn btn-card-action">Ver tour</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-xl-4">
-                        <div class="card h-100 mi-tarjeta">
-                            <div class="card-img-wrapper">
-                                <img src="https://lavidasondosviajes.com/wp-content/uploads/2022/06/ruinas-que-ver-en-tulum.jpg"
-                                     class="card-img-top" alt="Tulum y Arrecife">
-                                <div class="route-badge">
-                                    <span class="route-text">Tulum • Acuático</span>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <h5 class="card-title">Tulum & Snorkel Maya</h5>
-                                <p class="card-text">Recorre las míticas ruinas arqueológicas frente al mar y nada entre
-                                    tortugas marinas en el arrecife de Akumal.</p>
-                                    <div class="card-footer-box">
-                                        <div class="price-box">
-                                            <span class="price-label">Por persona</span>
-                                            <span class="price-value">$1,890 <small>MXN</small></span>
-                                        </div>
-                                        <a href="#" class="btn btn-card-action">Ver tour</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-6 col-xl-4">
-                            <div class="card h-100 mi-tarjeta">
-                                <div class="card-img-wrapper">
-                                    <img src="https://travelgrafia.co/wp-content/uploads/2025/04/Miradores-Canon-del-Sumidero-Mexico.webp"
-                                         class="card-img-top" alt="Cañón del Sumidero">
-                                    <div class="route-badge">
-                                        <span class="route-text">Chiapas • Naturaleza</span>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <h5 class="card-title">Cañón del Sumidero</h5>
-                                    <p class="card-text">Navega en lancha por las imponentes paredes del cañón y visita el
-                                        pintoresco Pueblo Mágico de Chiapa de Corzo.</p>
-                                        <div class="card-footer-box">
-                                            <div class="price-box">
-                                                <span class="price-label">Por persona</span>
-                                                <span class="price-value">$1,200 <small>MXN</small></span>
-                                            </div>
-                                            <a href="#" class="btn btn-card-action">Ver tour</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                </section>
-            </div>
+    </section>
+</div>
 
 @section Scripts {
     <script src="~/assets/js/script_T.js"></script>

@@ -1,0 +1,98 @@
+@*
+ ============================================================================================
+ Parcial: Views/Home/_ResultadosCatalogo.cshtml   —   Tarjetas de resultados de catálogo (HomeController).
+ Tarjetas de resultados de las 5 secciones (Vuelos, Hoteles, Vehículos, Tours y Paquetes).
+ Los datos los llena Services/CatalogoService.cs; el diseño es el de las tarjetas que ya tenía el equipo
+ (.mi-tarjeta, .route-badge, .price-box… de style_V / style_H / style_T / style_P).
+   - Sin búsqueda: servicios con cupo en los próximos 30 días, con precio "desde".
+   - Con búsqueda: total de las fechas elegidas; sin cupo → tarjeta en gris con "Agotado".
+ ============================================================================================
+*@
+@model BusquedaCatalogoViewModel
+@{
+    var ruta = Model.ParametrosRuta();
+    var disponibles = Model.Resultados.Count(r => !r.agotado);
+}
+
+@if (Model.BusquedaConFechas)
+{
+    <p class="text-muted mb-3">
+        @disponibles @(disponibles == 1 ? "opción disponible" : "opciones disponibles") para tu búsqueda.
+        @if (Model.tipo == TipoCatalogo.Vuelo)
+        {
+            <span>Se muestran vuelos de 3 días antes a 3 días después de la fecha elegida.</span>
+        }
+    </p>
+}
+else
+{
+    <p class="text-muted mb-3">
+        Servicios con disponibilidad en los próximos 30 días. Elige tus fechas en el buscador para ver el precio total.
+    </p>
+}
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">
+        No encontramos opciones con esos criterios. Prueba con otras fechas, otro destino o menos personas.
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var r in Model.Resultados)
+        {
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card h-100 mi-tarjeta @(r.agotado ? "opacity-50" : "")">
+                    <div class="card-img-wrapper">
+                        <img src="@Imagenes.UrlOGenerica(r.imagen_ruta)" class="card-img-top" alt="@r.nombre" loading="lazy">
+                        <div class="route-badge">
+                            <span class="route-text">@r.ubicacion</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (r.agotado)
+                        {
+                            <span class="badge text-bg-secondary mb-2">Agotado</span>
+                        }
+                        @if (r.fecha_texto is not null)
+                        {
+                            <p class="small text-muted mb-1">
+                                @r.fecha_texto
+                                @if (r.fecha_buscada)
+                                {
+                                    <span class="badge text-bg-success ms-1">Fecha buscada</span>
+                                }
+                            </p>
+                        }
+                        <h5 class="card-title">@r.nombre</h5>
+                        <p class="card-text">@r.descripcion</p>
+                        <div class="card-footer-box">
+                            <div class="price-box">
+                                @if (r.total is decimal total)
+                                {
+                                    <span class="price-label">@r.resumen_total</span>
+                                    <span class="price-value">$@total.ToString("N2") <small>@r.moneda</small></span>
+                                }
+                                else if (r.precio_unitario is decimal precio && !r.agotado)
+                                {
+                                    <span class="price-label">Desde (por @r.Unidad)</span>
+                                    <span class="price-value">$@precio.ToString("N2") <small>@r.moneda</small></span>
+                                }
+                                else
+                                {
+                                    <span class="price-label">@(Model.BusquedaConFechas ? "Sin cupo en esas fechas" : "Sin fechas disponibles")</span>
+                                }
+                            </div>
+                            @if (!r.agotado)
+                            {
+                                <a asp-controller="Catalogo" asp-action="Detalle" asp-route-id="@r.id" asp-all-route-data="ruta"
+                                   class="btn btn-card-action">Ver detalle</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

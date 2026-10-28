@@ -64,6 +64,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Imágenes subidas: se guardan en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
 builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 
+// Catálogo público: búsqueda por sección, detalle y cotización.
+builder.Services.AddScoped<ICatalogoService, CatalogoService>();
+
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
 // nunca la contraseña ni el hash.

@@ -1,16 +1,18 @@
 @*
  ============================================================================================
- Vista: Views/Home/Paquetes.cshtml   —   GET /Home/Paquetes (HomeController.Paquetes())
- Pantalla del prototipo: Explorar y reservar › Paquetes (+ Resultados)
- Página completa con Views/Shared/_Layout.cshtml (desde el 26-10-2026; antes era un fragmento de cargarPagina).
- Archivos asociados (convención de letras, P):
-   - CSS: wwwroot/assets/css/style_P.css
-   - JS : wwwroot/assets/js/script_P.js (actualmente vacío)
- Estado: maqueta estática. El buscador no envía datos y las tarjetas están escritas a mano.
+ Vista: Views/Home/Paquetes.cshtml   —   GET /Home/Paquetes (HomeController.Paquetes)
+ Sección del catálogo: buscador (izquierda) + tarjetas con datos reales de la BD (derecha, _ResultadosCatalogo).
+ El formulario es GET a la misma acción: la búsqueda queda en la URL (se puede recargar y compartir).
+ Paquetes: fecha de inicio y personas (entre el mínimo y el máximo del paquete). El destino es el que indicó el
+ gestor (paquete.id_ubicacion_destino) o, si no hay, la ciudad de su hospedaje / el destino de su vuelo.
+ Archivos asociados (letra P): wwwroot/assets/css/style_P.css y wwwroot/assets/js/script_P.js.
+ Validaciones: DataAnnotations + BusquedaCatalogoViewModel.Validar (fechas no pasadas, rango máximo de 30 días…).
  ============================================================================================
 *@
+@model BusquedaCatalogoViewModel
 @{
     ViewData["Title"] = "Paquetes";
+    var hoy = DateTime.Today.ToString("yyyy-MM-dd");
 }
 
 @section Styles {
@@ -23,121 +25,43 @@
 
     <section class="row g-4" id="contenido">
 
-        @* ---- Columna izquierda: formulario de búsqueda (nombre o destino, fecha inicial, fecha final y viajeros) ----
-             NOTA: el <form> tiene action="#" y ningún <input> tiene atributo name, por lo que no se envía ningún dato.
-                    Al pulsar el botón, el navegador navega a la URL actual y recarga el shell (vuelve a Inicio).
-             NOTA : conectar a una acción GET de búsqueda (p. ej. con asp-action) y dar name a cada campo. *@
+        @* ---- Columna izquierda: buscador ---- *@
         <div class="col-12 col-lg-4 col-xl-3" id="buscador">
             <div class="search-card">
-                <h2>Buscar Paquete</h2>
-                <form action="#" method="get">
+                <h2>Buscar paquete</h2>
+                <form asp-action="Paquetes" method="get" novalidate>
                     <div class="form-group mb-3">
-                        <label for="ubicacion">Nombre o Destino</label>
-                        <input type="text" id="ubicacion" class="form-control"
-                               placeholder="Ej. Cancún, Los Cabos, Orlando">
+                        <label asp-for="destino">Destino</label>
+                        <select asp-for="destino" asp-items="Model.Destinos" class="form-select">
+                            <option value="">Todos los destinos</option>
+                        </select>
+                        <span asp-validation-for="destino" class="text-danger small"></span>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label for="fecha_inicio">Fecha inicial</label>
-                        <input type="date" id="fecha_inicio" class="form-control">
+                        <label asp-for="desde">@TipoCatalogo.EtiquetaDesde(TipoCatalogo.Paquete)</label>
+                        <input asp-for="desde" type="date" class="form-control" min="@hoy" />
+                        <span asp-validation-for="desde" class="text-danger small"></span>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label for="fecha_final">Fecha final</label>
-                        <input type="date" id="fecha_final" class="form-control">
+                        <label asp-for="personas">@TipoCatalogo.EtiquetaPersonas(TipoCatalogo.Paquete)</label>
+                        <input asp-for="personas" type="number" class="form-control" min="1" max="20" />
+                        <span asp-validation-for="personas" class="text-danger small"></span>
                     </div>
-
                     <div class="form-group mb-4">
-                        <label for="num_viajeros">Viajeros</label>
-                        <input type="number" id="num_viajeros" class="form-control" placeholder="1" min="1" value="2">
+                        <label asp-for="orden">Ordenar por</label>
+                        <select asp-for="orden" asp-items="Html.GetEnumSelectList<OrdenCatalogo>()" class="form-select"></select>
                     </div>
-
                     <button type="submit" class="btn btn-search-submit">Buscar paquetes</button>
+                    <a asp-action="Paquetes" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
                 </form>
             </div>
         </div>
 
-        @* ---- Columna derecha: resultados (#tarjetas) ----
-             Tarjetas de DEMOSTRACIÓN escritas a mano: 3 paquetes (Cancún, Los Cabos, Oaxaca).
-             NOTA: generar las tarjetas desde el servidor (bucle Razor sobre un ViewModel de resultados),
-                   usando card.cshtml como referencia de diseño. *@
+        @* ---- Columna derecha: resultados ---- *@
         <div class="col-12 col-lg-8 col-xl-9" id="tarjetas">
-            <div class="row g-4">
-
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://www.barcelo.com/guia-turismo/wp-content/uploads/2024/09/ok-cancun.jpg"
-                            class="card-img-top" alt="Cancún All Inclusive">
-                                <div class="route-badge">
-                                    <span class="route-text">Vuelo + Hotel All Inclusive</span>
-                                </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Cancún Caribe Básico</h5>
-                            <p class="card-text">4 días / 3 noches con vuelo redondo, hospedaje en resort 5 estrellas
-                            frente a la playa y alimentos ilimitados.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-label">Desde</span>
-                                    <span class="price-value">$9,890 <small>MXN</small></span>
-                                </div>
-                                <a href="#" class="btn btn-card-action">Ver paquete</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://cdn.sanity.io/images/esqfj3od/production/fd61473baccd1bfee0280dfe4bceb225f52ff8a9-1080x720.png?w=828&q=65&fit=clip&auto=format"
-                            class="card-img-top" alt="Los Cabos Escape VIP">
-                            <div class="route-badge">
-                                <span class="route-text">Vuelo + Resort 5★ + Auto</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Los Cabos Escape VIP</h5>
-                            <p class="card-text">5 días / 4 noches en resort de lujo con vista al mar, avión incluido y
-                            renta de auto SUV durante tu estancia.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-label">Desde</span>
-                                    <span class="price-value">$14,250 <small>MXN</small></span>
-                                </div>
-                                <a href="#" class="btn btn-card-action">Ver paquete</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://larevistadelsureste.com/wp-content/uploads/2024/02/Monte-Alban.jpg"
-                            class="card-img-top" alt="Oaxaca Mágica">
-                            <div class="route-badge">
-                                <span class="route-text">Vuelo + Hotel + Tours</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Oaxaca Mágica & Sabores</h5>
-                            <p class="card-text">3 días / 2 noches con hospedaje en hotel céntrico, desayunos
-                            tradicionales y tour a Monte Albán y Hierve el Agua.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-label">Desde</span>
-                                    <span class="price-value">$6,450 <small>MXN</small></span>
-                                </div>
-                                <a href="#" class="btn btn-card-action">Ver paquete</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+            <partial name="_ResultadosCatalogo" model="Model" />
         </div>
+
     </section>
 </div>
 
