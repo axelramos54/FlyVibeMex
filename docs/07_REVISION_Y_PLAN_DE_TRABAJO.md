@@ -288,6 +288,12 @@ Cada tarea tiene un identificador (**T1.1**, **T2.3**…) que se repite en la ch
 
 ## Sección 2 · Base de datos y modelos
 
+### Decisiones del equipo sobre T2 (26/10/2026)
+- **Esquema:** se usan **scripts SQL** como fuente de verdad (sin `dotnet ef`). Los scripts nuevos se escriben solo para `FlyVibeMex_Test`.
+- **Relaciones:** solo FK en el `DbContext` (`HasOne<T>().WithMany()`), sin propiedades de navegación.
+- **Imágenes:** archivos en `wwwroot/uploads/<hospedajes|vehiculos|paquetes|usuarios>/`; en la BD solo `imagen_ruta NVARCHAR(260) NULL` (reemplaza a `imagen VARBINARY`). Esto **sustituye** el ejemplo de T2.5 de abajo (acción `Catalogo/Imagen` con bytes): en las vistas se usa `<img src="@Imagenes.UrlOGenerica(h.imagen_ruta)">`.
+- **Seed:** 30 días de disponibilidad a partir del día en que se ejecuta.
+
 ### T2.1 · Mantener scripts y modelos sincronizados (proceso)
 - **Qué / por qué:** el proyecto es *database-first*; si alguien cambia una columna solo en SQL o solo en C#, EF falla en tiempo de ejecución.
 - **Cómo (regla del equipo):**
@@ -379,6 +385,17 @@ A partir de ahí, cada cambio: modificar el modelo → `dotnet ef migrations add
 ## Sección 3 · Funcionalidades faltantes del sitio público
 
 > Orden sugerido: primero **un solo tipo de servicio (Hospedaje)** de punta a punta (T3.1 → T3.4), después replicar a vuelos, vehículos y paquetes.
+
+### Decisiones del equipo sobre T3 (26/10/2026)
+- **Navegación:** el catálogo, la reserva y el pago son **páginas MVC normales** (con URL propia); los buscadores de cada sección envían a `/Catalogo/Buscar`.
+- **Tipos reservables:** Hospedaje (por noche), Vehículos (por día), Vuelos (por asiento), Paquetes (por persona, duración fija) y **Tours = servicios `EVENTO`** (por persona, una fecha). La ciudad de un Tour es la **ubicación de su proveedor** (EVENTO no tiene tabla de subtipo).
+- **Un servicio por reservación** (sin carrito); para combinar se usan los Paquetes.
+- **La reservación se crea al pagar**, en una sola transacción (descuento de cupo + reservación + detalle + pago + historiales), para no apartar cupo sin pago.
+- **Pago simulado:** tarjeta guardada o nueva (Luhn; se guarda solo token falso + marca + últimos 4; el CVV nunca se guarda). Tarjetas que terminan en `0002` simulan un rechazo.
+- **Promociones:** código manual en el resumen.
+- **Política de cancelación por servicio, definida por el gestor** (`servicios.permite_cancelacion`, `horas_reembolso_total`, `porcentaje_reembolso_tardio`, `politica_cancelacion`) y **copiada a `detalle_reservacion` al comprar** (R4). Reembolso = 100 % si se cancela con al menos esas horas de anticipación; después, el % tardío; ya iniciado o sin permiso: no se cancela. Script `sql/05_politica_cancelacion.sql`; `paquete.politica_cancelacion` se eliminó.
+- **Reembolsos:** quedan `SOLICITADO` y los aprueba un agente (T4.8).
+- **Fases:** A (BD y modelos) ✅ · B (catálogo) · C (reserva y pago) · D (Mis viajes, tarjetas y soporte).
 
 ### T3.1 · Catálogo con datos reales (búsqueda y resultados)
 - **Qué / por qué:** los buscadores no envían nada (M8) y las tarjetas están escritas a mano.
@@ -901,21 +918,21 @@ Hasta que se respondan, el plan usa la opción marcada como **(propuesta)**:
 ## Checklist final
 
 ### 1. Correcciones críticas
-- [ ] T1.1 Commit y push de los 53 cambios y de los scripts `sql/01`, `02`, `03` (rama + PR)
+- [x] T1.1 Commit y push de los 53 cambios y de los scripts `sql/01`, `02`, `03` (rama + PR)
 - [ ] T1.2 `dotnet build` sin errores; anotar errores reales
 - [ ] T1.3 Elegir la BD de la entrega, configurar *user-secrets* y `/Home/TestDb` en verde
-- [ ] T1.4 Claim `ClaimTypes.Role` en el login + `Models/Auth/Roles.cs` + redirección por rol
-- [ ] T1.5 `[Authorize]` en Admin, Gestor, Soporte, SA, Miusuario y Solicitar; página "Acceso denegado"
-- [ ] T1.6 Validar dueño de la reservación en cancelar/reembolsar
-- [ ] T1.7 Corregir `tipo_habitacion`, campos `[Required]`, `EN_PROCESO`, nota `APROVADO`, `categoria` anulable
+- [x] T1.4 Claim `ClaimTypes.Role` en el login + `Models/Auth/Roles.cs` + redirección por rol
+- [x] T1.5 `[Authorize]` en Admin, Gestor, Soporte, SA, Miusuario y Solicitar; página "Acceso denegado"
+- [x] T1.6 Validar dueño de la reservación en cancelar/reembolsar (la cancelación real sigue en T3.5)
+- [x] T1.7 Corregir `tipo_habitacion`, campos `[Required]`, `EN_PROCESO`, nota `APROVADO`, `categoria` anulable
 
 ### 2. Base de datos y modelos
-- [ ] T2.1 Acordar el proceso script SQL + modelo + `/Home/TestDb`
-- [ ] T2.2 Configurar FKs en `FlyVibeMexDbContext`
-- [ ] T2.3 (Opcional) `HasMaxLength` en columnas de texto clave
-- [ ] T2.4 Seed con inventario en las fechas de la presentación
-- [ ] T2.5 Acción para mostrar imágenes de servicios
-- [ ] T2.6 (Opcional) Migración línea base con `dotnet ef`
+- [x] T2.1 Acordar el proceso script SQL + modelo + `/Home/TestDb` (README, sección "Base de datos")
+- [x] T2.2 Configurar FKs en `FlyVibeMexDbContext` (38 FK, sin navegación)
+- [x] T2.3 `HasMaxLength` en todas las columnas de texto
+- [x] T2.4 Seed con 30 días de inventario
+- [x] T2.5 Imágenes como archivo en `wwwroot/uploads` (`IAlmacenImagenes`, `sql/04`, `UseStaticFiles`)
+- [ ] ~~T2.6 Migración línea base con `dotnet ef`~~ (descartada: el equipo usa scripts SQL)
 
 ### 3. Sitio público
 - [ ] T3.1 Búsqueda y resultados con datos reales (empezar por Hospedaje)
@@ -940,7 +957,7 @@ Hasta que se respondan, el plan usa la opción marcada como **(propuesta)**:
 - [ ] T4.9 Panel SA (definir o quitar)
 
 ### 5. Autenticación y autorización
-- [ ] T5.2 Menú según sesión con "Cerrar sesión" (POST)
+- [x] T5.2 Menú según sesión con "Cerrar sesión" (POST) (`Views/Shared/_MenuUsuario.cshtml`)
 - [ ] T5.3 Perfil del usuario y cambio de contraseña
 - [ ] T5.4 (Opcional) Límite de intentos de login
 
@@ -950,8 +967,8 @@ Hasta que se respondan, el plan usa la opción marcada como **(propuesta)**:
 - [ ] T6.3 Manejo de `DbUpdateException` en los servicios nuevos
 
 ### 7. Interfaz y experiencia de usuario
-- [ ] T7.1 Un solo `_Layout.cshtml` para todo el sitio público
-- [ ] T7.2 Decidir y aplicar: SPA casera o páginas normales
+- [x] T7.1 Un solo `_Layout.cshtml` para todo el sitio público (las pantallas de acceso siguen independientes)
+- [x] T7.2 Decidir y aplicar: páginas normales (26/10/2026; `cargarPagina`/`script.js` obsoletos)
 - [ ] T7.3 Quitar "VER TARJETA test", corregir erratas, logo, footer, Privacy
 - [ ] T7.4 Revisión responsiva a 375 px
 - [ ] T7.5 Parcial `_Mensajes.cshtml` para TempData
