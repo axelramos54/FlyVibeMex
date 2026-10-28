@@ -67,6 +67,9 @@ builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 // Catálogo público: búsqueda por sección, detalle y cotización.
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 
+// Compra: resumen, pago simulado en una transacción y confirmación.
+builder.Services.AddScoped<IReservacionService, ReservacionService>();
+
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
 // nunca la contraseña ni el hash.

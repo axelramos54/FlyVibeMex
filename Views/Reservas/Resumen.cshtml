@@ -1,0 +1,277 @@
+@*
+ ============================================================================================
+ Vista: Views/Reservas/Resumen.cshtml   —   GET /Reservas/Resumen y POST /Reservas/Pagar (si hay errores)
+ Resumen + pago en una sola pantalla:
+   - Izquierda: servicio, fechas, desglose (recalculado en el servidor), política de cancelación y código de promoción.
+   - Derecha: método de pago y tarjeta (guardada o nueva). POST con token antiforgery.
+ El formulario de promoción es GET a esta misma página (?codigo=…) y no cobra nada.
+ El número de tarjeta y el CVV nunca se vuelven a escribir en la página (ni después de un error).
+ Usa solo clases de Bootstrap.
+ ============================================================================================
+*@
+@model ResumenReservaViewModel
+@{
+    ViewData["Title"] = "Resumen de tu reserva";
+    var s = Model.Solicitud;
+    var srv = Model.Servicio;
+    var cot = Model.Cotizacion;
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var anioActual = DateTime.Today.Year;
+    var hayTarjetas = Model.Tarjetas.Count > 0;
+    // Tarjeta elegida: la que mandó el formulario o, la primera vez, la más reciente; sin tarjetas = nueva.
+    var tarjetaElegida = s.id_tarjeta ?? (ViewContext.HttpContext.Request.Method == "GET" && hayTarjetas ? (ulong?)Model.Tarjetas[0].id : null);
+    var rutaServicio = new Dictionary<string, string?>
+    {
+        ["id"] = s.id.ToString(),
+        ["desde"] = s.desde?.ToString("yyyy-MM-dd"),
+        ["hasta"] = s.hasta?.ToString("yyyy-MM-dd"),
+        ["personas"] = s.personas.ToString(),
+        ["habitaciones"] = s.habitaciones.ToString()
+    };
+    var errorGeneral = ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage;
+    // Listas con la opción elegida marcada (asp-items + Selected; así no dependemos de selected="@bool" en <option>).
+    var metodos = Model.Metodos.Select(m => new SelectListItem(m.Text, m.Value, m.Value == s.id_metodo_pago?.ToString())).ToList();
+    var meses = Enumerable.Range(1, 12).Select(m => new SelectListItem(m.ToString("00"), m.ToString(), s.mes_expiracion == m)).ToList();
+    var anios = Enumerable.Range(anioActual, 16).Select(a => new SelectListItem(a.ToString(), a.ToString(), s.anio_expiracion == a)).ToList();
+}
+@functions {
+    string? Error(string campo) => ViewData.ModelState[campo]?.Errors.FirstOrDefault()?.ErrorMessage;
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Inicio</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="@TipoCatalogo.AccionSeccion(srv.tipo)">@TipoCatalogo.NombreSeccion(srv.tipo)</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Catalogo" asp-action="Detalle" asp-all-route-data="rutaServicio">@srv.nombre</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Resumen y pago</li>
+        </ol>
+    </nav>
+
+    <h1 class="h3 mb-4">Resumen de tu reserva</h1>
+
+    @if (errorGeneral is not null)
+    {
+        <div class="alert alert-warning" role="alert">@errorGeneral</div>
+    }
+
+    <div class="row g-4">
+        @* ======================= Izquierda: qué compras y cuánto cuesta ======================= *@
+        <div class="col-12 col-lg-7">
+            <div class="card shadow-sm mb-3">
+                <div class="row g-0">
+                    <div class="col-4">
+                        <img src="@Imagenes.UrlOGenerica(srv.imagen_ruta)" class="img-fluid rounded-start h-100 object-fit-cover" alt="@srv.nombre">
+                    </div>
+                    <div class="col-8">
+                        <div class="card-body">
+                            <span class="badge text-bg-primary mb-1">@TipoCatalogo.NombreTipo(srv.tipo)</span>
+                            <h2 class="h5 card-title mb-1">@srv.nombre</h2>
+                            <p class="small text-muted mb-1">@srv.ubicacion · @srv.proveedor</p>
+                            @if (cot is not null)
+                            {
+                                <p class="small mb-0">@cot.resumen</p>
+                                <p class="small mb-0">Del @cot.inicio.ToString("ddd dd/MM/yyyy HH:mm", es) al @cot.fin.ToString("ddd dd/MM/yyyy HH:mm", es)</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (cot is null || !cot.Disponible)
+            {
+                <div class="alert alert-warning">
+                    @(cot?.motivo ?? "Este servicio no está disponible para esas fechas.")
+                    <a asp-controller="Catalogo" asp-action="Detalle" asp-all-route-data="rutaServicio" class="alert-link">Elegir otras fechas</a>
+                </div>
+            }
+            else
+            {
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>
+                                Precio
+                                <div class="small text-muted">$@cot.precio_unitario.ToString("N2") × @cot.cantidad</div>
+                            </td>
+                            <td class="text-end">$@cot.subtotal.ToString("N2")</td>
+                        </tr>
+                        @if (Model.Promocion is not null)
+                        {
+                            <tr class="text-success">
+                                <td>Descuento <span class="badge text-bg-success">@Model.Promocion.codigo</span></td>
+                                <td class="text-end">−$@Model.Descuento.ToString("N2")</td>
+                            </tr>
+                        }
+                        <tr class="fw-bold fs-5">
+                            <td>Total</td>
+                            <td class="text-end">$@Model.Total.ToString("N2") <small class="fw-normal fs-6">@cot.moneda</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                @* ---- Código de promoción (GET: solo recalcula, no cobra) ---- *@
+                <form asp-action="Resumen" method="get" class="mb-3" novalidate>
+                    <input type="hidden" name="id" value="@s.id">
+                    <input type="hidden" name="desde" value="@(s.desde?.ToString("yyyy-MM-dd"))">
+                    <input type="hidden" name="hasta" value="@(s.hasta?.ToString("yyyy-MM-dd"))">
+                    <input type="hidden" name="personas" value="@s.personas">
+                    <input type="hidden" name="habitaciones" value="@s.habitaciones">
+                    <label for="codigo" class="form-label">Código de promoción</label>
+                    <div class="input-group">
+                        <input type="text" id="codigo" name="codigo" class="form-control text-uppercase" maxlength="30"
+                               value="@s.codigo" placeholder="Ej. BIENVENIDA10" autocomplete="off">
+                        <button type="submit" class="btn btn-outline-primary">Aplicar</button>
+                    </div>
+                    @if (Model.ErrorPromocion is not null)
+                    {
+                        <div class="text-danger small mt-1">@Model.ErrorPromocion</div>
+                    }
+                    else if (Model.Promocion is not null)
+                    {
+                        <div class="text-success small mt-1">
+                            Código aplicado: @(Model.Promocion.nombre ?? Model.Promocion.codigo).
+                            <a asp-action="Resumen" asp-all-route-data="rutaServicio">Quitar</a>
+                        </div>
+                    }
+                </form>
+            }
+
+            <div class="alert alert-info" role="note">
+                <strong>Política de cancelación:</strong> @srv.politica
+                <div class="small mt-1">Estas condiciones quedan guardadas en tu compra y no cambian después.</div>
+            </div>
+        </div>
+
+        @* ======================= Derecha: pago ======================= *@
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Pago</h2>
+
+                    @if (!Model.PuedePagar)
+                    {
+                        <p class="text-muted mb-0">
+                            @(Model.Metodos.Count == 0 ? "No hay métodos de pago activos en este momento." : "Elige fechas con disponibilidad para poder pagar.")
+                        </p>
+                    }
+                    else
+                    {
+                        <form asp-action="Pagar" method="post" id="form_pago" novalidate autocomplete="off">
+                            @* Qué se compra (el servidor vuelve a calcular el precio con estos datos). *@
+                            <input type="hidden" name="id" value="@s.id">
+                            <input type="hidden" name="desde" value="@(s.desde?.ToString("yyyy-MM-dd"))">
+                            <input type="hidden" name="hasta" value="@(s.hasta?.ToString("yyyy-MM-dd"))">
+                            <input type="hidden" name="personas" value="@s.personas">
+                            <input type="hidden" name="habitaciones" value="@s.habitaciones">
+                            <input type="hidden" name="codigo" value="@(Model.Promocion?.codigo)">
+                            <input type="hidden" name="total_confirmado" value="@s.total_confirmado">
+
+                            <div class="mb-3">
+                                <label for="id_metodo_pago" class="form-label">Método de pago</label>
+                                <select id="id_metodo_pago" name="id_metodo_pago" class="form-select" asp-items="metodos"></select>
+                                <div class="text-danger small">@Error("id_metodo_pago")</div>
+                            </div>
+
+                            <fieldset class="mb-3">
+                                <legend class="form-label fs-6">Tarjeta</legend>
+                                @foreach (var t in Model.Tarjetas)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="id_tarjeta" id="tarjeta_@t.id" value="@t.id"
+                                               checked="@(tarjetaElegida == t.id)">
+                                        <label class="form-check-label" for="tarjeta_@t.id">@t.Texto</label>
+                                    </div>
+                                }
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="id_tarjeta" id="tarjeta_nueva" value=""
+                                           checked="@(tarjetaElegida is null)">
+                                    <label class="form-check-label" for="tarjeta_nueva">Usar una tarjeta nueva</label>
+                                </div>
+                                <div class="text-danger small">@Error("id_tarjeta")</div>
+                            </fieldset>
+
+                            @* ---- Tarjeta nueva (solo se usa si se elige "Usar una tarjeta nueva") ---- *@
+                            <div id="datos_tarjeta_nueva" class="border rounded p-3 mb-3">
+                                <div class="mb-2">
+                                    <label for="numero_tarjeta" class="form-label">Número de tarjeta</label>
+                                    <input type="text" id="numero_tarjeta" name="numero_tarjeta" class="form-control"
+                                           inputmode="numeric" maxlength="23" autocomplete="cc-number" placeholder="4242 4242 4242 4242">
+                                    <div class="text-danger small">@Error("numero_tarjeta")</div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col">
+                                        <label for="mes_expiracion" class="form-label">Mes</label>
+                                        <select id="mes_expiracion" name="mes_expiracion" class="form-select" autocomplete="cc-exp-month" asp-items="meses">
+                                            <option value="">MM</option>
+                                        </select>
+                                        <div class="text-danger small">@Error("mes_expiracion")</div>
+                                    </div>
+                                    <div class="col">
+                                        <label for="anio_expiracion" class="form-label">Año</label>
+                                        <select id="anio_expiracion" name="anio_expiracion" class="form-select" autocomplete="cc-exp-year" asp-items="anios">
+                                            <option value="">AAAA</option>
+                                        </select>
+                                        <div class="text-danger small">@Error("anio_expiracion")</div>
+                                    </div>
+                                    <div class="col">
+                                        <label for="cvv" class="form-label">CVV</label>
+                                        <input type="password" id="cvv" name="cvv" class="form-control" inputmode="numeric" maxlength="4" autocomplete="cc-csc">
+                                        <div class="text-danger small">@Error("cvv")</div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="alias" class="form-label">Alias (opcional)</label>
+                                    <input type="text" id="alias" name="alias" class="form-control" maxlength="40" value="@s.alias" placeholder="Ej. Mi débito">
+                                    <div class="text-danger small">@Error("alias")</div>
+                                </div>
+                                <div class="form-check">
+                                    @* El hidden va DESPUÉS: si la casilla está marcada se envía "true,false" y gana el primero. *@
+                                    <input class="form-check-input" type="checkbox" id="guardar_tarjeta" name="guardar_tarjeta" value="true"
+                                           checked="@s.guardar_tarjeta">
+                                    <input type="hidden" name="guardar_tarjeta" value="false">
+                                    <label class="form-check-label" for="guardar_tarjeta">Guardar esta tarjeta en "Mis tarjetas"</label>
+                                </div>
+                                <div class="form-text">
+                                    Solo guardamos la marca, los últimos 4 dígitos y el vencimiento. El CVV nunca se guarda.
+                                </div>
+                            </div>
+
+                            <div class="alert alert-secondary small" role="note">
+                                <strong>Pago simulado.</strong> Tarjetas de prueba: 4242 4242 4242 4242 (aprobada) ·
+                                4000 0000 0000 0002 (rechazada). Usa cualquier fecha futura y un CVV de 3 dígitos.
+                            </div>
+
+                            <button type="submit" id="btn_pagar" class="btn btn-primary w-100 btn-lg">
+                                Pagar $@Model.Total.ToString("N2") @cot!.moneda
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Evita el doble cobro por doble clic: al enviar, el botón se deshabilita.
+        // (El servidor además redirige a la confirmación, así que recargar tampoco vuelve a cobrar.)
+        (function () {
+            const form = document.getElementById('form_pago');
+            if (!form) return;
+
+            const nueva = document.getElementById('tarjeta_nueva');
+            const datos = document.getElementById('datos_tarjeta_nueva');
+            const actualizar = () => { datos.classList.toggle('d-none', !nueva.checked); };
+            form.querySelectorAll('input[name="id_tarjeta"]').forEach(r => r.addEventListener('change', actualizar));
+            actualizar();
+
+            form.addEventListener('submit', () => {
+                const boton = document.getElementById('btn_pagar');
+                boton.disabled = true;
+                boton.textContent = 'Procesando pago…';
+            });
+        })();
+    </script>
+}

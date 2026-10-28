@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace FlyVibeMex.Models
@@ -135,13 +136,15 @@ namespace FlyVibeMex.Models
         // ---------------- Lo llena el servidor ----------------
 
         /// <summary>VUELO, HOSPEDAJE, VEHICULO, PAQUETE o EVENTO (lo asigna la acción, nunca el formulario).</summary>
-        [BindNever] public string tipo { get; set; } = string.Empty;
-        [BindNever] public List<SelectListItem> Destinos { get; set; } = new();
-        [BindNever] public List<SelectListItem> Origenes { get; set; } = new();
-        [BindNever] public List<TarjetaServicioViewModel> Resultados { get; set; } = new();
+        // [ValidateNever]: MVC trata los string no anulables como [Required] aunque tengan [BindNever]; sin esto,
+        // "tipo" (vacío al enlazar el formulario) haría que ModelState.IsValid fuera siempre false.
+        [BindNever, ValidateNever] public string tipo { get; set; } = string.Empty;
+        [BindNever, ValidateNever] public List<SelectListItem> Destinos { get; set; } = new();
+        [BindNever, ValidateNever] public List<SelectListItem> Origenes { get; set; } = new();
+        [BindNever, ValidateNever] public List<TarjetaServicioViewModel> Resultados { get; set; } = new();
 
         /// <summary><c>true</c> si se buscó con fechas válidas (lo asigna CatalogoService).</summary>
-        [BindNever] public bool BusquedaConFechas { get; set; }
+        [BindNever, ValidateNever] public bool BusquedaConFechas { get; set; }
 
         /// <summary>
         /// Reglas que dependen del tipo (las DataAnnotations no lo conocen). La acción agrega cada error a ModelState.

@@ -24,7 +24,10 @@
    números de tarjeta ni CVV (regla R5).
 
    Convención de importes en detalle_reservacion:
+       cantidad        = unidades que se apartan POR DÍA (habitaciones, autos, asientos o personas).
+       precio_unitario = precio de UNA unidad por todo el periodo (suma de precio_fecha de cada noche / día).
        subtotal = cantidad * precio_unitario (ANTES de descuento); descuento_aplicado aparte.
+       Ej.: 1 habitación 3 noches a 2,450 -> cantidad 1, precio_unitario 7,350. (Así cancelar devuelve 1 por noche.)
        reservaciones.subtotal = suma de subtotales; total = subtotal - descuento_total.
    ===================================================================================== */
 
@@ -192,10 +195,12 @@ VALUES
     (@sSuvTgz,  @lTgz, N'SUV',      N'Kia',       N'Sorento', 7);
 
 -- La política de cancelación ya no está en paquete: es común a todos los servicios (columnas de servicios, T3).
-INSERT INTO dbo.paquete (id_servicio, duracion_dias, min_personas, max_personas)
+-- id_ubicacion_destino: Cancún se deduce de su hotel; Chiapas mezcla San Cristóbal, Tuxtla y un vuelo a CDMX,
+-- así que su destino se indica explícitamente (T3).
+INSERT INTO dbo.paquete (id_servicio, duracion_dias, min_personas, max_personas, id_ubicacion_destino)
 VALUES
-    (@sPaqCun,  4, 2, 4),
-    (@sPaqChis, 3, 1, 6);
+    (@sPaqCun,  4, 2, 4, NULL),
+    (@sPaqChis, 3, 1, 6, @lScl);
 
 INSERT INTO dbo.paquete_servicio (id_servicio, id_servicio_incluido, cantidad, orden)
 VALUES
@@ -385,8 +390,8 @@ INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_r
 VALUES (@uAna, @erConfirmada, N'FV-260901', 9330.00, 933.00, 8397.00, @creada1);
 SET @r1 = SCOPE_IDENTITY();
 INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin, precio_unitario, descuento_aplicado, subtotal, descripcion_snapshot)
-VALUES (@r1, @sHotelCun, @prBienvenida, 3, '2026-12-12T15:00:00', '2026-12-15T12:00:00', 2450.00, 735.00, 7350.00, N'Hotel Playa Azul, Hab. doble — 3 noches'),
-       (@r1, @sAutoCun,  @prBienvenida, 3, '2026-12-12T10:00:00', '2026-12-15T10:00:00',  660.00, 198.00, 1980.00, N'Renta Aveo automático — 3 días');
+VALUES (@r1, @sHotelCun, @prBienvenida, 1, '2026-12-12T15:00:00', '2026-12-15T12:00:00', 7350.00, 735.00, 7350.00, N'Hotel Playa Azul, Hab. doble — 3 noches'),
+       (@r1, @sAutoCun,  @prBienvenida, 1, '2026-12-12T10:00:00', '2026-12-15T10:00:00', 1980.00, 198.00, 1980.00, N'Renta Aveo automático — 3 días');
 
 -- FV-260902 · Cliente Prueba · CONFIRMADA · viaje en 2 días (sirve para probar la etiqueta URGENTE del bot).
 INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en)
@@ -402,9 +407,9 @@ INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_r
 VALUES (@uAna, @erCancelada, N'FV-260903', 2400.00, 0, 2400.00, @creada3);
 SET @r3 = SCOPE_IDENTITY();
 INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin, precio_unitario, descuento_aplicado, subtotal, descripcion_snapshot)
-VALUES (@r3, @sHotelScl, NULL, 2,
+VALUES (@r3, @sHotelScl, NULL, 1,
         DATEADD(HOUR, 14, CAST(DATEADD(DAY, 20, @hoy) AS DATETIME)), DATEADD(HOUR, 11, CAST(DATEADD(DAY, 22, @hoy) AS DATETIME)),
-        1200.00, 0, 2400.00, N'Hotel Colonial Jovel, Hab. sencilla — 2 noches');
+        2400.00, 0, 2400.00, N'Hotel Colonial Jovel, Hab. sencilla — 2 noches');
 
 -- Snapshot de la política de cancelación (R4): se copia del servicio, como haría la app al comprar.
 UPDATE d

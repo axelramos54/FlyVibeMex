@@ -190,6 +190,9 @@ CREATE TABLE dbo.paquete(
     min_personas         SMALLINT      NOT NULL CONSTRAINT df_paquete_min DEFAULT(1)
                          CONSTRAINT ck_paquete_min CHECK (min_personas > 0),
     max_personas         SMALLINT      NOT NULL,
+    -- Destino del paquete. Obligatorio cuando sus servicios están en ciudades distintas; si es NULL,
+    -- el destino es la ciudad de su hospedaje incluido o, si no tiene, el destino de su vuelo.
+    id_ubicacion_destino BIGINT        NULL     CONSTRAINT fk_paquete_destino REFERENCES dbo.ubicaciones(id),
     imagen_ruta          NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
     CONSTRAINT ck_paquete_personas CHECK (max_personas >= min_personas)
 );

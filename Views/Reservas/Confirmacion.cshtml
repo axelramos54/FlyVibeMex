@@ -1,0 +1,100 @@
+@*
+ ============================================================================================
+ Vista: Views/Reservas/Confirmacion.cshtml   —   GET /Reservas/Confirmacion/{codigo}
+ Confirmación de la compra y comprobante para imprimir. Solo la ve el dueño de la reservación
+ (ReservacionService.ConfirmacionAsync filtra por el usuario de la cookie).
+ Los importes y la política salen del SNAPSHOT guardado en la compra, no del catálogo actual.
+ ============================================================================================
+*@
+@model ConfirmacionReservaViewModel
+@{
+    ViewData["Title"] = $"Reserva {Model.codigo_reserva}";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+}
+
+@section Styles {
+    <style>
+        /* Al imprimir solo sale el comprobante (sin barra de navegación, pie ni botones). */
+        @@media print {
+            header, footer, .d-print-none { display: none !important; }
+            #contenido_main { margin-top: 0 !important; }
+        }
+    </style>
+}
+
+<div class="container mt-4" style="max-width: 820px">
+    <div class="alert alert-success d-print-none" role="status">
+        <h1 class="h4 mb-1">¡Tu reserva está confirmada!</h1>
+        <p class="mb-0">Guarda tu código de reserva: lo necesitarás para cualquier aclaración o cancelación.</p>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <div class="text-muted small">FlyVibeMex · Comprobante de reserva</div>
+                    <div class="fs-3 fw-bold">@Model.codigo_reserva</div>
+                </div>
+                <span class="badge text-bg-success fs-6">@Model.estado</span>
+            </div>
+
+            <dl class="row mb-3">
+                <dt class="col-sm-4">Servicio</dt>
+                <dd class="col-sm-8">@Model.servicio <span class="text-muted">(@TipoCatalogo.NombreTipo(Model.tipo))</span></dd>
+
+                <dt class="col-sm-4">Detalle</dt>
+                <dd class="col-sm-8">@Model.descripcion</dd>
+
+                <dt class="col-sm-4">Fechas</dt>
+                <dd class="col-sm-8">
+                    Del @Model.inicio.ToString("dddd dd/MM/yyyy HH:mm", es) al @Model.fin.ToString("dddd dd/MM/yyyy HH:mm", es)
+                </dd>
+
+                <dt class="col-sm-4">Fecha de compra</dt>
+                <dd class="col-sm-8">@Model.creada_en.ToString("dd/MM/yyyy HH:mm", es)</dd>
+            </dl>
+
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Precio <span class="small text-muted">($@Model.precio_unitario.ToString("N2") × @Model.cantidad.ToString("0.##"))</span></td>
+                        <td class="text-end">$@Model.subtotal.ToString("N2")</td>
+                    </tr>
+                    @if (Model.descuento > 0)
+                    {
+                        <tr class="text-success">
+                            <td>Descuento @if (Model.codigo_promocion is not null) { <span class="badge text-bg-success">@Model.codigo_promocion</span> }</td>
+                            <td class="text-end">−$@Model.descuento.ToString("N2")</td>
+                        </tr>
+                    }
+                    <tr class="fw-bold fs-5">
+                        <td>Total pagado</td>
+                        <td class="text-end">$@Model.total.ToString("N2") <small class="fw-normal fs-6">@Model.moneda</small></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            @if (Model.metodo_pago is not null)
+            {
+                <p class="small mb-1"><strong>Pago:</strong> @Model.metodo_pago · @Model.tarjeta</p>
+                <p class="small text-muted">
+                    Referencia: @Model.referencia_pago
+                    @if (Model.fecha_pago is DateTime fechaPago)
+                    {
+                        <span>· @fechaPago.ToString("dd/MM/yyyy HH:mm", es)</span>
+                    }
+                </p>
+            }
+
+            <div class="alert alert-info small mb-0" role="note">
+                <strong>Política de cancelación de esta compra:</strong> @Model.politica
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3 d-print-none">
+        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir comprobante</button>
+        <a asp-controller="Miusuario" asp-action="Misreservaciones" class="btn btn-outline-primary">Ir a Mis reservaciones</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Seguir explorando</a>
+    </div>
+</div>
