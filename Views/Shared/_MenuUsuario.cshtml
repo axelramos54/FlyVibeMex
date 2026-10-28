@@ -1,0 +1,39 @@
+@*
+ Views/Shared/_MenuUsuario.cshtml — bloque de sesión de la barra de navegación (lo incluye _Layout.cshtml).
+ Sin sesión: botón "Iniciar sesión". Con sesión: menú con el nombre del usuario, sus secciones, el panel
+ (solo AGENTE / SOPORTE / ADMINISTRADOR) y "Cerrar sesión", que es un POST con token (no un enlace).
+*@
+@if (User.Identity?.IsAuthenticated == true)
+{
+    var esInterno = User.IsInRole(Roles.Agente) || User.IsInRole(Roles.Soporte) || User.IsInRole(Roles.Administrador);
+    <div class="dropdown m-1" id="secion">
+        <button type="button" class="btn dropdown-toggle menu-usuario" data-bs-toggle="dropdown" aria-expanded="false">
+            <img class="img-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="" id="foto">
+            <span>@User.Identity.Name</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" asp-controller="Miusuario" asp-action="Index">Mi perfil</a></li>
+            <li><a class="dropdown-item" asp-controller="Miusuario" asp-action="Misreservaciones">Mis reservaciones</a></li>
+            <li><a class="dropdown-item" asp-controller="Miusuario" asp-action="Miscompras">Mis compras</a></li>
+            <li><a class="dropdown-item" asp-controller="Miusuario" asp-action="Mistarjetas">Mis tarjetas</a></li>
+            <li><a class="dropdown-item" asp-controller="Solicitar" asp-action="Index">Soporte</a></li>
+            @if (esInterno)
+            {
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Panel de administración</a></li>
+            }
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form asp-controller="Home" asp-action="CerrarSesion" method="post" class="m-0">
+                    <button type="submit" class="dropdown-item">Cerrar sesión</button>
+                </form>
+            </li>
+        </ul>
+    </div>
+}
+else
+{
+    <div class="m-1" id="secion">
+        <a class="btn-sesion" asp-controller="Home" asp-action="IniciarSesion">Iniciar sesión</a>
+    </div>
+}

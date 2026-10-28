@@ -1,14 +1,10 @@
 @*
  ============================================================================================
- Vista parcial: Views/Home/card.cshtml   —   GET /Home/card (HomeController.card())
+ Vista: Views/Home/card.cshtml   —   GET /Home/card (HomeController.card())
  MAQUETA DE PRUEBA de tarjetas de resultados (enlace "VER TARJETA test" del menú).
  Según el equipo, es el modelo de tarjeta que el backend usará para llenar la columna derecha
  de los buscadores (Viajes, Hoteles, Tours, Paquetes).
  Archivos asociados: enlaza style_V.css y script_H.js (no sigue la convención de letras de las demás vistas).
-   ⚠ Esta vista se inyecta con innerHTML desde wwwroot/assets/js/script.js (función cargarPagina):
-     - el <link> de CSS sí se aplica mientras la sección está visible y se elimina junto con el HTML al cargar otra
-       (no se acumula, pero se vuelve a pedir en cada visita y sus reglas globales como * o body afectan a todo el shell);
-     - la etiqueta <script> del final NO se ejecuta en el navegador (limitación de innerHTML).
  Contiene 4 bloques de 3 tarjetas fijas: hoteles, paquetes, tours y vuelos.
  NOTA: id="tarjetas" se repite 4 veces (un id debe ser único en el documento).
  NOTA: los bloques están anidados de forma irregular (cierres de <div> desalineados); revisar la estructura
@@ -16,10 +12,11 @@
  ============================================================================================
 *@
 @{
-    ViewData["Title"] = "card";
-    Layout = null;
+    ViewData["Title"] = "Tarjetas de prueba";
 }
-<link rel="stylesheet" href="~/assets/css/style_V.css">
+@section Styles {
+    <link rel="stylesheet" href="~/assets/css/style_V.css">
+}
 
 <div class="container mt-4" id="card-container">
     <section class="row g-4" id="contenido">
@@ -344,5 +341,6 @@
                                 </section>
                             </div>
 
-@* NOTA: este <script> no se ejecuta al inyectarse con innerHTML (y script_H.js está vacío). *@
-<script src="~/assets/js/script_H.js"></script>
+@section Scripts {
+    <script src="~/assets/js/script_H.js"></script>
+}

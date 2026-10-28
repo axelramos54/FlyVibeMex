@@ -12,12 +12,10 @@ using Microsoft.EntityFrameworkCore;
 namespace FlyVibeMex.Controllers;
 
 /// <summary>
-/// Controlador principal de FlyVibe Mex.
-/// Cumple dos funciones:
-/// 1) Sirve el <b>shell</b> de la aplicación (<c>Index</c>):  el documento HTML completo con la barra de
-///    navegación y el contenedor <c>main#contenido_main</c>.
-/// 2) Sirve las <b>vistas parciales</b> (todas las vistas con <c>Layout = null</c>) que <c>wwwroot/assets/js/script.js</c>
-///    solicita con <c>fetch</c> e inyecta con <c>innerHTML</c> dentro del shell (navegación tipo SPA casera).
+/// Controlador principal de FlyVibe Mex: Inicio, secciones públicas (Vuelos, Hoteles, Vehículos, Tours, Paquetes),
+/// inicio / cierre de sesión y diagnóstico de la BD.
+/// Desde el 26-10-2026 cada sección es una <b>página completa</b> con <c>Views/Shared/_Layout.cshtml</c> (antes era una
+/// "SPA casera" con <c>cargarPagina()</c>, sin URL propia ni botón Atrás).
 /// </summary>
 /// <remarks>
 /// Ruta base: <c>/Home</c> (ruta por defecto <c>{controller=Home}/{action=Index}/{id?}</c> en Program.cs).
@@ -25,7 +23,7 @@ namespace FlyVibeMex.Controllers;
 public class HomeController : Controller
 {
     /// <summary>
-    /// GET <c>/Home/Index</c>. Devuelve la <b>vista completa</b> <c>Index.cshtml</c> (shell de la aplicación).
+    /// GET <c>/</c> y <c>/Home/Index</c>. Página de Inicio (<c>Views/Home/Index.cshtml</c>).
     /// </summary>
     public IActionResult Index()
     {
@@ -33,11 +31,11 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/Default</c>. Devuelve la <b>vista completa</b> <c>Default.cshtml</c> (pantalla de Inicio).
+    /// GET <c>/Home/Default</c>. Ruta antigua de Inicio: redirige a <c>/</c> (por si quedó algún enlace viejo).
     /// </summary>
     public IActionResult Default()
     {
-        return View();
+        return RedirectToAction(nameof(Index));
     }
 
     public IActionResult AccesoDenegado()
@@ -46,7 +44,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/Hoteles</c>. Devuelve la <b>vista parcial</b> <c>Hoteles.cshtml</c>
+    /// GET <c>/Home/Hoteles</c>. Devuelve la <b>página</b> <c>Hoteles.cshtml</c>
     /// (módulo Explorar y reservar › Hospedaje). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
     /// </summary>
     public IActionResult Hoteles()
@@ -55,7 +53,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/Paquetes</c>. Devuelve la <b>vista parcial</b> <c>Paquetes.cshtml</c>
+    /// GET <c>/Home/Paquetes</c>. Devuelve la <b>página</b> <c>Paquetes.cshtml</c>
     /// (módulo Explorar y reservar › Paquetes). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
     /// </summary>
     public IActionResult Paquetes()
@@ -64,7 +62,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/Tours</c>. Devuelve la <b>vista parcial</b> <c>Tours.cshtml</c>.
+    /// GET <c>/Home/Tours</c>. Devuelve la <b>página</b> <c>Tours.cshtml</c>.
     /// Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
     /// </summary>
 
@@ -74,7 +72,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/Viajes</c>. Devuelve la <b>vista parcial</b> <c>Viajes.cshtml</c>
+    /// GET <c>/Home/Viajes</c>. Devuelve la <b>página</b> <c>Viajes.cshtml</c>
     /// (módulo Explorar y reservar › Vuelos). Estado: buscador sin funcionalidad y 3 tarjetas estáticas.
     /// </summary>
     public IActionResult Viajes()
@@ -83,13 +81,12 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/sesion</c>. Devuelve la <b>vista parcial</b> <c>sesion.cshtml</c> (módulo Cuenta › Iniciar sesión).
-    /// El formulario se envía por POST a <c>IniciarSesion</c>; "Crear nueva cuenta" lleva a <c>/Crearusuario</c>.
+    /// GET <c>/Home/sesion</c>. Ruta antigua del login (fragmento de la SPA casera): redirige a la página completa
+    /// <c>/Home/IniciarSesion</c>. La vista <c>sesion.cshtml</c> ya no se usa.
     /// </summary>
-
     public IActionResult sesion()
     {
-        return View(new LoginViewModel());
+        return RedirectToAction(nameof(IniciarSesion));
     }
 
     // ============================== INICIAR / CERRAR SESIÓN ==============================
@@ -186,10 +183,10 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/card</c>. Devuelve la <b>vista parcial</b> <c>card.cshtml</c>: maqueta de prueba con 12 tarjetas
+    /// GET <c>/Home/card</c>. Devuelve la <b>página</b> <c>card.cshtml</c>: maqueta de prueba con 12 tarjetas
     /// (hoteles, paquetes, tours y vuelos) que sirve de modelo para los resultados de búsqueda.
     /// </summary>
-    // NOTA: quitar el enlace "VER TARJETA test" del menú de Index.cshtml antes de la entrega.
+    // NOTA: ya no está en el menú (26-10-2026); solo se abre escribiendo /Home/card. Borrar antes de la entrega.
     public IActionResult card()
     {
         return View();

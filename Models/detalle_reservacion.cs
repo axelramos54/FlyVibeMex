@@ -44,5 +44,20 @@ namespace FlyVibeMex.Models
 
         /// <summary>Descripción del concepto reservado.</summary>
         public string descripcion_snapshot {get; set;} = string.Empty;
+
+        // ---------- Snapshot de la política de cancelación del servicio al momento de comprar ----------
+        // Se copian de Servicios al crear la reservación y NUNCA se actualizan: el reembolso se calcula con estos valores.
+
+        /// <summary><c>false</c> = el servicio no admite cancelación (tarifa no reembolsable).</summary>
+        public bool permite_cancelacion {get; set;} = true;
+
+        /// <summary>Horas de anticipación al inicio para obtener el 100 % de reembolso (0 = hasta el inicio).</summary>
+        public int horas_reembolso_total {get; set;} = 48;
+
+        /// <summary>Porcentaje (0-100) que se reembolsa si se cancela después de ese plazo y antes del inicio.</summary>
+        public decimal porcentaje_reembolso_tardio {get; set;} = 50;
+
+        /// <summary>Texto de la política que ve el cliente antes de pagar (opcional).</summary>
+        public string? politica_cancelacion {get; set;}
     }
 }

@@ -1,3 +1,8 @@
+/*
+ * OBSOLETO (26-10-2026): ninguna página carga este archivo. El sitio ya no es una "SPA casera":
+ * cada sección es una página normal con Views/Shared/_Layout.cshtml (URL propia, botón Atrás).
+ * Se conserva solo como referencia; se puede borrar.
+ */
 /**
  * ============================================================================================
  * script.js — Lógica GLOBAL del shell de FlyVibe Mex (cargado desde Views/Home/Index.cshtml).

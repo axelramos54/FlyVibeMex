@@ -1,24 +1,21 @@
 @*
  ============================================================================================
- Vista parcial: Views/Home/Hoteles.cshtml   —   GET /Home/Hoteles (HomeController.Hoteles())
+ Vista: Views/Home/Hoteles.cshtml   —   GET /Home/Hoteles (HomeController.Hoteles())
  Pantalla del prototipo: Explorar y reservar › Hospedaje (+ Resultados)
- Layout = null → devuelve solo un fragmento HTML que se inserta en <main id="contenido_main"> de Index.cshtml.
+ Página completa con Views/Shared/_Layout.cshtml (desde el 26-10-2026; antes era un fragmento de cargarPagina).
  Archivos asociados (convención de letras, H):
    - CSS: wwwroot/assets/css/style_H.css
    - JS : wwwroot/assets/js/script_H.js (actualmente vacío)
-   ⚠ Esta vista se inyecta con innerHTML desde wwwroot/assets/js/script.js (función cargarPagina):
-     - el <link> de CSS sí se aplica mientras la sección está visible y se elimina junto con el HTML al cargar otra
-       (no se acumula, pero se vuelve a pedir en cada visita y sus reglas globales como * o body afectan a todo el shell);
-     - la etiqueta <script> del final NO se ejecuta en el navegador (limitación de innerHTML).
  Estado: maqueta estática. El buscador no envía datos y las tarjetas están escritas a mano.
  ============================================================================================
 *@
 @{
     ViewData["Title"] = "Hoteles";
-    Layout = null;
 }
 
-<link rel="stylesheet" href="~/assets/css/style_H.css">
+@section Styles {
+    <link rel="stylesheet" href="~/assets/css/style_H.css">
+}
 
 @* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
 <div class="container mt-4" id="mapas_preferidos">
@@ -149,5 +146,6 @@
         </section>
     </div>
 
-@* NOTA: este <script> no se ejecuta al inyectarse con innerHTML. Si script_H.js llega a tener código, debe cargarse desde Index.cshtml o desde cargarPagina(). *@
-<script src="~/assets/js/script_H.js"></script>
+@section Scripts {
+    <script src="~/assets/js/script_H.js"></script>
+}

@@ -2,8 +2,9 @@
  ============================================================================================
  Parcial: Views/Miusuario/_ModalesCancelacion.cshtml
  Modales de "Cancelar" y "Cancelar y reembolsar". Lo usan Misreservaciones/index.cshtml y Miscompras/index.cshtml.
- Cómo se usa (al final del <body> de la página):
+ Cómo se usa (al final del contenido de la página):
      <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
+     @section Scripts { <script src="~/assets/js/script_R.js"></script> }
  y los botones de cada tarjeta llevan data-accion, data-id (id de la reservación) y data-nombre:
      <button type="button" class="btn btn-card-action" data-accion="cancelar"   data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
      <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
@@ -126,8 +127,5 @@
     </div>
 </div>
 
-@* Los modales necesitan el JS de Bootstrap. Si la página ya lo carga, quita esta línea para no cargarlo dos veces. *@
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-        crossorigin="anonymous"></script>
-<script src="~/assets/js/script_R.js"></script>
+@* JS: Bootstrap lo carga _Layout.cshtml y script_R.js lo agrega cada página en su @section Scripts
+   (un parcial no puede declarar secciones). Así Bootstrap no se carga dos veces. *@

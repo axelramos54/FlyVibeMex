@@ -118,7 +118,7 @@ namespace FlyVibeMex.Models
     }
 
     /// <summary>Campos comunes de la tabla servicios (todo lo que se asocia a un proveedor es un servicio).</summary>
-    public abstract class ServicioFormBase
+    public abstract class ServicioFormBase : IPoliticaCancelacionForm
     {
         // Lo pone el controlador a partir de la URL. [BindNever] = nunca se toma del formulario.
         [BindNever]
@@ -141,6 +141,23 @@ namespace FlyVibeMex.Models
         [Required(ErrorMessage = "Selecciona la moneda.")]
         [RegularExpression("^(MXN|USD|EUR)$", ErrorMessage = "Moneda no válida.")]
         public string moneda { get; set; } = "MXN";
+
+        // ---------- Política de cancelación ----------
+
+        [Display(Name = "Permite cancelación")]
+        public bool permite_cancelacion { get; set; } = true;
+
+        [Display(Name = "Horas antes del inicio para reembolso del 100 %")]
+        [Range(0, PoliticaCancelacion.HorasMaximas, ErrorMessage = "Debe estar entre 0 y 8760 horas (1 año).")]
+        public int horas_reembolso_total { get; set; } = 48;
+
+        [Display(Name = "% de reembolso después de ese plazo")]
+        [Range(typeof(decimal), "0", "100", ErrorMessage = "Debe estar entre 0 y 100.")]
+        public decimal porcentaje_reembolso_tardio { get; set; } = 50;
+
+        [Display(Name = "Texto de la política para el cliente")]
+        [StringLength(500, ErrorMessage = "Máximo 500 caracteres.")]
+        public string? politica_cancelacion { get; set; }
 
         public static List<SelectListItem> OpcionesMoneda() => new()
         {

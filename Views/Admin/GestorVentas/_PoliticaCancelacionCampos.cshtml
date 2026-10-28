@@ -1,0 +1,42 @@
+@* Campos de la política de cancelación del servicio. Los usan:
+   _ServicioFormCampos.cshtml (alta / actualizar servicio) y _ServicioCampos.cshtml (asociar hospedaje / vehículo / evento).
+   Al comprar, estos valores se COPIAN a la reservación: cambiarlos después no afecta compras pasadas. *@
+@model IPoliticaCancelacionForm
+
+<h3 class="h6 mt-4">Política de cancelación</h3>
+<div class="row g-3">
+    <div class="col-12">
+        <div class="form-check form-switch">
+            <input asp-for="permite_cancelacion" class="form-check-input" role="switch" />
+            <label asp-for="permite_cancelacion" class="form-check-label"></label>
+        </div>
+        <div class="form-text">Desactívalo para tarifas no reembolsables.</div>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="horas_reembolso_total" class="form-label"></label>
+        <div class="input-group">
+            <input asp-for="horas_reembolso_total" type="number" min="0" max="8760" step="1" class="form-control" />
+            <span class="input-group-text">horas</span>
+        </div>
+        <div class="form-text">Ej.: 48 = reembolso total cancelando 2 días antes. 0 = hasta el inicio.</div>
+        <span asp-validation-for="horas_reembolso_total" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="porcentaje_reembolso_tardio" class="form-label"></label>
+        <div class="input-group">
+            <input asp-for="porcentaje_reembolso_tardio" type="number" min="0" max="100" step="0.01" class="form-control" />
+            <span class="input-group-text">%</span>
+        </div>
+        <div class="form-text">0 = sin reembolso después del plazo.</div>
+        <span asp-validation-for="porcentaje_reembolso_tardio" class="text-danger small"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="politica_cancelacion" class="form-label"></label>
+        <textarea asp-for="politica_cancelacion" class="form-control" rows="2" maxlength="500"
+                  placeholder="Si lo dejas vacío se mostrará un texto automático con las condiciones."></textarea>
+        <span asp-validation-for="politica_cancelacion" class="text-danger small"></span>
+    </div>
+</div>

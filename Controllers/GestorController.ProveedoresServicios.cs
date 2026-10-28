@@ -83,7 +83,7 @@ public partial class GestorController
     // POST /Admin/GestorVentas/Servicios/Alta
     [HttpPost("Servicios/Alta")]
     public IActionResult AltaServicio(
-        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda")] ServicioFormViewModel datos)
+        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda,permite_cancelacion,horas_reembolso_total,porcentaje_reembolso_tardio,politica_cancelacion")] ServicioFormViewModel datos)
     {
         ValidarProveedorDelServicio(datos.id_proveedor, nameof(datos.id_proveedor));
 
@@ -93,7 +93,9 @@ public partial class GestorController
             return Vista("AltaServicio", datos);
         }
 
-        // TODO BD: INSERT INTO servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base, Moneda,
+        // TODO BD: PoliticaCancelacion.Normalizar(datos); 
+        //          INSERT INTO servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base, Moneda,
+        //                                 permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion,
         //                                 activo, creado_en, actualizado_en)
         //   _db.Servicios.Add(new Servicios {
         //       id_proveedor = datos.id_proveedor!.Value, tipo_servicio = datos.tipo_servicio, nombre = datos.nombre.Trim(),
@@ -120,7 +122,7 @@ public partial class GestorController
     // POST /Admin/GestorVentas/Servicios/5/Actualizar
     [HttpPost("Servicios/{id}/Actualizar")]
     public IActionResult ActualizarServicio(ulong id,
-        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda,activo")] ServicioFormViewModel datos)
+        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda,activo,permite_cancelacion,horas_reembolso_total,porcentaje_reembolso_tardio,politica_cancelacion")] ServicioFormViewModel datos)
     {
         var servicio = ObtenerServicioOPrueba(id);
         if (servicio is null) return NotFound();
@@ -145,7 +147,10 @@ public partial class GestorController
             return Vista("ActualizarServicio", datos);
         }
 
-        // TODO BD: UPDATE servicios SET id_proveedor, nombre, descripcion, precio_base, Moneda, activo,
+        // TODO BD: PoliticaCancelacion.Normalizar(datos);
+        //          UPDATE servicios SET id_proveedor, nombre, descripcion, precio_base, Moneda, activo,
+        //          permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion,
+        //          (la política nueva solo aplica a compras FUTURAS: las pasadas conservan su snapshot, R4)
         //          actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
         //   (precio_base es solo de referencia: NO cambia compras pasadas, regla R4)
         TempData["Exito"] = $"Los cambios de \"{datos.nombre}\" son válidos. Se guardarán cuando se conecte la base de datos.";

@@ -23,6 +23,9 @@
         <dd class="col-sm-9">@s.descripcion</dd>
     }
 
+    <dt class="col-sm-3">Cancelación</dt>
+    <dd class="col-sm-9">@(s.politica_cancelacion ?? PoliticaCancelacion.Describir(s.permite_cancelacion, s.horas_reembolso_total, s.porcentaje_reembolso_tardio))</dd>
+
     <dt class="col-sm-3">Estado</dt>
     <dd class="col-sm-9">
         @if (s.activo)

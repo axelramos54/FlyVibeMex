@@ -1,52 +1,5 @@
-    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
-    <link rel="stylesheet" href="~/assets/css/style.css">
+@{
+    ViewData["Title"] = "Soporte";
+}
 
-<body>
-    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ----
-         Cada enlace usa onclick="cargarPagina('/Home/<Accion>'); return false;" — el return false evita que el
-         href="#" agregue '#' a la URL. *@
-    <header>
-        <section class="navbar" id="navbar">
-            <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
-                
-                @* Marca (logo + nombre).
-                     NOTA: <img src=""> sin imagen de logo.
-                     NOTA: el nombre visible dice "FlyVideMex" (con d); el proyecto es FlyVibe Mex. *@
-                <div class="navbar-brand d-flex" id="navbar_left">
-                    <img class="m-1" src="" alt="imagen">
-                    <a class="m-1" asp-controller="Home" asp-action="Index"><p class="m-1">FlyVideMex</p></a>
-                </div>
-
-                @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
-                     NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
-                <div class="navbar-item ms-auto d-flex" id="navbar_right">
-                    <a class="m-1" asp-controller="Home" asp-action="Index">Home</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Index">Mi perfil</a>
-                    <div class="m-1" id="secion">
-                        <a class="m-1" asp-controller="Miusuario" asp-action="Index"><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-    </header>
-
-
-    @* Contenedor donde cargarPagina() inyecta (innerHTML) la vista parcial de cada sección. Inicia vacío. *@
-    <main id="contenido_main">
-       <h2>Soporte</h2> 
-    </main>
-
-
-    @* NOTA: pie de página vacío (contacto, aviso de privacidad, redes). *@
-    <footer>
-
-    </footer>
-    
-
-
-
-</body>
+   <h2>Soporte</h2>

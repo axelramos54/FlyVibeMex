@@ -1,94 +1,38 @@
 @{
     ViewData["Title"] = "Mis tarjetas";
-    Layout = null;
 }
-    <title>Mis tarjetas</title>
-    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
-    <link rel="stylesheet" href="~/assets/css/style.css">
 
-<body>
-    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ----
-         Cada enlace usa onclick="cargarPagina('/Home/<Accion>'); return false;" — el return false evita que el
-         href="#" agregue '#' a la URL. *@
-    <header>
-        <section class="navbar" id="navbar">
-            <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
-                
-                @* Marca (logo + nombre).
-                     NOTA: <img src=""> sin imagen de logo.
-                     NOTA: el nombre visible dice "FlyVideMex" (con d); el proyecto es FlyVibe Mex. *@
-                <div class="navbar-brand d-flex" id="navbar_left">
-                    <img class="m-1" src="" alt="imagen">
-                    <a class="m-1" asp-controller="Home" asp-action="Index"><p class="m-1">FlyVideMex</p></a>
-                </div>
-
-                @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
-                     NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
-                <div class="navbar-item ms-auto d-flex" id="navbar_right">
-                    <a class="m-1" asp-controller="Home" asp-action="Index">Home</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Miscompras">Mis compras</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Misreservaciones">Reservaciones</a>
-                    <a class="m-1" asp-controller="Miusuario" asp-action="Mistarjetas">Tarjetas</a>
-                    <a class="m-1" asp-controller="Solicitar" asp-action="Index">Soporte</a>           
-                    <div class="m-1" id="secion">
-                        <a class="m-1" asp-controller="" asp-action=""><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a> <!-- Aqui poner el panel de configuracion-->
-                    </div>
-                </div>
-
-            </div>
-        </section>
-    </header>
+    <!--maqueta toda rancia-->
+   <h2>Mis tarjetas</h2>
 
 
-    @* Contenedor donde cargarPagina() inyecta (innerHTML) la vista parcial de cada sección. Inicia vacío. *@
-    <main id="contenido_main">
-
-        <!--maqueta toda rancia-->
-       <h2>Mis tarjetas</h2>
-
-
-       <div>
-                        <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 mi-tarjeta">
-                        <div class="card-img-wrapper">
-                            <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                                 class="card-img-top" alt="Grand Oasis Cancún">
-                            <div class="route-badge">
-                                <span class="route-text">Cancún • 5★ All Inclusive</span>
-                            </div>
+   <div>
+                    <div class="col-12 col-md-6 col-xl-4">
+                <div class="card h-100 mi-tarjeta">
+                    <div class="card-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                             class="card-img-top" alt="Grand Oasis Cancún">
+                        <div class="route-badge">
+                            <span class="route-text">Cancún • 5★ All Inclusive</span>
                         </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Grand Oasis Cancún</h5>
-                            <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                                especialidades y vista panorámica al mar Caribe.</p>
-                                <div class="card-footer-box">
-                                    <div class="price-box">
-                                        <span class="price-value">$3,250 <small>MXN</small></span>
-                                    </div>
-                                    <a href="#" class="btn btn-card-action">Info</a>
-                                    <a href="#" class="btn btn-card-action">Actualizar</a>
-                                    <a href="#" class="btn btn-card-action">Eliminar</a>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Grand Oasis Cancún</h5>
+                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
+                            especialidades y vista panorámica al mar Caribe.</p>
+                            <div class="card-footer-box">
+                                <div class="price-box">
+                                    <span class="price-value">$3,250 <small>MXN</small></span>
                                 </div>
+                                <a href="#" class="btn btn-card-action">Info</a>
+                                <a href="#" class="btn btn-card-action">Actualizar</a>
+                                <a href="#" class="btn btn-card-action">Eliminar</a>
                             </div>
                         </div>
                     </div>
-       </div>
+                </div>
+   </div>
 
-      
-       </div>
-       </div>
-    </main>
-
-
-    @* NOTA: pie de página vacío (contacto, aviso de privacidad, redes). *@
-    <footer>
-
-    </footer>
-    
-
-
-
-</body>
+  
+   </div>
+   </div>

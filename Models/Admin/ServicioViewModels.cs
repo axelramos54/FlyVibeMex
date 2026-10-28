@@ -32,7 +32,7 @@ namespace FlyVibeMex.Models
     /// Solo maneja los datos comunes del supertipo; los datos propios de hospedaje o vehículo
     /// se capturan en la pantalla "Asociar" del proveedor.
     /// </summary>
-    public class ServicioFormViewModel
+    public class ServicioFormViewModel : IPoliticaCancelacionForm
     {
         // En "actualizar" el id se toma de la URL, no del formulario.
         public ulong id { get; set; }
@@ -68,7 +68,24 @@ namespace FlyVibeMex.Models
         [Display(Name = "Servicio activo")]
         public bool activo { get; set; } = true;
 
-        /// <summary>Tipos de servicio (discriminador del supertipo, regla R1 + EVENTO que ya usa "Asociar").</summary>
+        /// <summary>Tipos de servicio.</summary>
+        // ---------- Política de cancelación  ----------
+
+        [Display(Name = "Permite cancelación")]
+        public bool permite_cancelacion { get; set; } = true;
+
+        [Display(Name = "Horas antes del inicio para reembolso del 100 %")]
+        [Range(0, PoliticaCancelacion.HorasMaximas, ErrorMessage = "Debe estar entre 0 y 8760 horas (1 año).")]
+        public int horas_reembolso_total { get; set; } = 48;
+
+        [Display(Name = "% de reembolso después de ese plazo")]
+        [Range(typeof(decimal), "0", "100", ErrorMessage = "Debe estar entre 0 y 100.")]
+        public decimal porcentaje_reembolso_tardio { get; set; } = 50;
+
+        [Display(Name = "Texto de la política para el cliente")]
+        [StringLength(500, ErrorMessage = "Máximo 500 caracteres.")]
+        public string? politica_cancelacion { get; set; }
+
         public static List<SelectListItem> OpcionesTipo() => new()
         {
             new("Vuelo", "VUELO"),
@@ -104,7 +121,11 @@ namespace FlyVibeMex.Models
             descripcion = s.descripcion,
             precio_base = s.precio_base,
             moneda = string.IsNullOrWhiteSpace(s.moneda) ? "MXN" : s.moneda,
-            activo = s.activo
+            activo = s.activo,
+            permite_cancelacion = s.permite_cancelacion,
+            horas_reembolso_total = s.horas_reembolso_total,
+            porcentaje_reembolso_tardio = s.porcentaje_reembolso_tardio,
+            politica_cancelacion = s.politica_cancelacion
         };
     }
 

@@ -1,7 +1,8 @@
 ﻿@*
  _ViewStart.cshtml: asigna "_Layout" como plantilla por defecto.
- NOTA: todas las vistas de Views/Home/ (excepto exIndex.cshtml) lo anulan con Layout = null, por lo que
-       hoy solo lo usan Views/Shared/Error.cshtml y Views/Home/exIndex.cshtml.
+ Desde el 26-10-2026 lo usan todas las páginas públicas (Home, Miusuario, Solicitar, Otros, Error…).
+ Solo lo anulan con Layout = null las pantallas de acceso: IniciarSesion, AccesoDenegado y Crearusuario.
+ El panel interno tiene su propio _ViewStart (Views/Admin/) con _AdminLayout.cshtml.
 *@
 @{
     Layout = "_Layout";

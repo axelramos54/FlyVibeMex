@@ -123,6 +123,15 @@ CREATE TABLE dbo.servicios(
     precio_base    DECIMAL(12,2)  NOT NULL CONSTRAINT ck_servicios_precio CHECK (precio_base >= 0),
     moneda         NVARCHAR(3)    NOT NULL CONSTRAINT df_servicios_moneda DEFAULT(N'MXN')
                    CONSTRAINT ck_servicios_moneda CHECK (moneda IN (N'MXN', N'USD', N'EUR')),
+    -- Política de cancelación que define el gestor. Al comprar se COPIA a detalle_reservacion.
+    -- Reembolso: 100 % si se cancela con al menos horas_reembolso_total de anticipación al inicio;
+    -- después, porcentaje_reembolso_tardio. Ya iniciado el servicio, o si permite_cancelacion = 0, no se cancela.
+    permite_cancelacion         BIT           NOT NULL CONSTRAINT df_servicios_permite_cancelacion DEFAULT(1),
+    horas_reembolso_total       INT           NOT NULL CONSTRAINT df_servicios_horas_reembolso DEFAULT(48)
+                                CONSTRAINT ck_servicios_horas_reembolso CHECK (horas_reembolso_total BETWEEN 0 AND 8760),
+    porcentaje_reembolso_tardio DECIMAL(5,2)  NOT NULL CONSTRAINT df_servicios_pct_tardio DEFAULT(50)
+                                CONSTRAINT ck_servicios_pct_tardio CHECK (porcentaje_reembolso_tardio BETWEEN 0 AND 100),
+    politica_cancelacion        NVARCHAR(500) NULL,   -- texto que ve el cliente antes de pagar
     activo         BIT            NOT NULL CONSTRAINT df_servicios_activo DEFAULT(1),
     creado_en      DATETIME       NOT NULL CONSTRAINT df_servicios_creado_en DEFAULT(CURRENT_TIMESTAMP),
     actualizado_en DATETIME       NOT NULL CONSTRAINT df_servicios_actualizado_en DEFAULT(CURRENT_TIMESTAMP)
@@ -181,7 +190,6 @@ CREATE TABLE dbo.paquete(
     min_personas         SMALLINT      NOT NULL CONSTRAINT df_paquete_min DEFAULT(1)
                          CONSTRAINT ck_paquete_min CHECK (min_personas > 0),
     max_personas         SMALLINT      NOT NULL,
-    politica_cancelacion NVARCHAR(MAX) NULL,
     imagen_ruta          NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
     CONSTRAINT ck_paquete_personas CHECK (max_personas >= min_personas)
 );
@@ -282,6 +290,13 @@ CREATE TABLE dbo.detalle_reservacion(
                          CONSTRAINT ck_detalle_descuento CHECK (descuento_aplicado >= 0),
     subtotal             DECIMAL(12,2) NOT NULL CONSTRAINT ck_detalle_subtotal CHECK (subtotal >= 0),
     descripcion_snapshot NVARCHAR(250) NOT NULL,
+    -- Snapshot de la política de cancelación del servicio al momento de comprar.
+    permite_cancelacion         BIT           NOT NULL CONSTRAINT df_detalle_permite_cancelacion DEFAULT(1),
+    horas_reembolso_total       INT           NOT NULL CONSTRAINT df_detalle_horas_reembolso DEFAULT(48)
+                                CONSTRAINT ck_detalle_horas_reembolso CHECK (horas_reembolso_total BETWEEN 0 AND 8760),
+    porcentaje_reembolso_tardio DECIMAL(5,2)  NOT NULL CONSTRAINT df_detalle_pct_tardio DEFAULT(50)
+                                CONSTRAINT ck_detalle_pct_tardio CHECK (porcentaje_reembolso_tardio BETWEEN 0 AND 100),
+    politica_cancelacion        NVARCHAR(500) NULL,
     CONSTRAINT ck_detalle_fechas CHECK (fecha_fin >= fecha_inicio)
 );
 GO

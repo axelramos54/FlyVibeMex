@@ -1,65 +1,68 @@
-﻿@*
+@*
  ============================================================================================
- Views/Shared/_Layout.cshtml — plantilla maestra de la PLANTILLA original de ASP.NET Core MVC.
- NO la usan las vistas de Home (todas declaran Layout = null; el shell real es Views/Home/Index.cshtml).
- Hoy solo la usan Views/Shared/Error.cshtml y Views/Home/exIndex.cshtml (a través de _ViewStart.cshtml).
- NOTAS: sus rutas a recursos están rotas (ver comentarios abajo), así que cualquier vista que la use
-        se mostrará sin estilos ni scripts.
+ Views/Shared/_Layout.cshtml — plantilla COMÚN del sitio público.
+ La usan todas las vistas que no declaran Layout (ver Views/_ViewStart.cshtml): Home, Miusuario, Solicitar, Otros
+ y las páginas nuevas del catálogo. Las pantallas de acceso (IniciarSesion, Crearusuario, AccesoDenegado) siguen
+ siendo páginas independientes (Layout = null) y el panel interno usa Views/Admin/_AdminLayout.cshtml.
+
+ Cada vista puede agregar:
+   @section Styles  { <link rel="stylesheet" href="~/assets/css/style_X.css"> }   → dentro de <head>
+   @section Scripts { <script src="~/assets/js/script_X.js"></script> }          → al final del <body>, DESPUÉS de Bootstrap
+
+ Antes de esta fecha el sitio era una "SPA casera" (Home/Index.cshtml + cargarPagina() de script.js): la URL no cambiaba,
+ no servía el botón Atrás y los <script> de cada sección no se ejecutaban. Ahora cada sección es una página con su URL.
  ============================================================================================
 *@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - FlyVibeMex</title>
-    <script type="importmap"></script>
-    @* NOTA: ~/lib/bootstrap/dist/... no existe: wwwroot/lib/bootstrap solo contiene LICENSE. *@
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    @* NOTA: ~/css/site.css no existe; el archivo está en ~/assets/css/site.css. *@
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    @* CSS aislado generado al compilar a partir de _Layout.cshtml.css. *@
-    <link rel="stylesheet" href="~/FlyVibeMex.styles.css" asp-append-version="true" />
+    <title>@(ViewData["Title"] is string titulo ? $"{titulo} - FlyVibeMex" : "FlyVibeMex")</title>
+    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
+    <link rel="stylesheet" href="~/assets/css/style.css">
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
+    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ---- *@
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">FlyVibeMex</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            @* NOTA: enlace a /Home/Privacy, que responde 404 (no existe la acción). *@
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+        <section class="navbar" id="navbar">
+            <div class="navbar-collapse d-flex">
+                @* Marca: regresa al inicio desde cualquier página. TODO: agregar el logo (wwwroot/assets/img/). *@
+                <div class="navbar-brand d-flex" id="navbar_left">
+                    <a asp-controller="Home" asp-action="Index" class="text-decoration-none"><p class="m-1">FlyVibeMex</p></a>
                 </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - FlyVibeMex - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
+                <nav class="navbar-item ms-auto d-flex flex-wrap" id="navbar_right" aria-label="Secciones del sitio">
+                    <a class="m-1" asp-controller="Home" asp-action="Index">Inicio</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Viajes">Vuelos</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Hoteles">Hoteles</a>
+                    <a class="m-1" asp-controller="Home" asp-action="vehiculos">Vehículos</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Tours">Tours</a>
+                    <a class="m-1" asp-controller="Home" asp-action="Paquetes">Paquetes</a>
+                    @* Sesión: "Iniciar sesión" o el menú del usuario (Views/Shared/_MenuUsuario.cshtml). *@
+                    <partial name="_MenuUsuario" />
+                </nav>
+            </div>
+        </section>
+    </header>
+
+    <main id="contenido_main">
+        @RenderBody()
+    </main>
+
+    <footer>
+        <p class="mb-1">&copy; @DateTime.Now.Year FlyVibeMex · Proyecto integrador</p>
+        <a asp-controller="Otros" asp-action="Politicas" class="text-reset">Políticas</a>
     </footer>
-    @* NOTA: ~/lib/jquery/dist y ~/lib/bootstrap/dist no existen (solo hay archivos LICENSE en wwwroot/lib). *@
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @* NOTA: ~/js/site.js no existe; el archivo está en ~/assets/js/site.js. *@
-    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @* JS de Bootstrap (dropdowns, modales…). Los scripts de cada vista van DESPUÉS, en la sección Scripts. *@
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+            crossorigin="anonymous"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

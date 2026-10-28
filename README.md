@@ -103,6 +103,7 @@ El proyecto **no usa migraciones de EF Core**: el esquema vive en `sql/` y los m
 | `sql/02_seed_demo.sql` | Datos de demostración: 4 usuarios, catálogo, 30 días de disponibilidad, reservaciones, pagos y tickets |
 | `sql/03_alinear_nombres_legado.sql` | Solo para bases creadas con el script viejo del equipo |
 | `sql/04_imagenes_como_archivo.sql` | Solo para una `FlyVibeMex_Test` creada antes del 26-10-2026: cambia `imagen` (bytes) por `imagen_ruta` |
+| `sql/05_politica_cancelacion.sql` | Solo para una `FlyVibeMex_Test` creada antes del 26-10-2026 (tarde): política de cancelación por servicio y su copia en cada compra. |
 
 > Las fechas del seed son relativas al día en que se ejecuta. **Vuelvan a ejecutar `00 → 01 → 02` el día anterior a la presentación.**
 

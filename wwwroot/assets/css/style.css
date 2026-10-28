@@ -152,3 +152,42 @@ footer {
         margin-top: 130px;
     }
 }
+
+/* ---- Bloque de sesión del _Layout (Views/Shared/_MenuUsuario.cshtml, 26-10-2026) ---- */
+#navbar_left a { text-decoration: none; }
+
+.btn-sesion {
+    background-color: #e62b4a;
+    color: #ffffff !important;
+    padding: 8px 18px !important;
+    border-radius: 20px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    box-shadow: 0 3px 10px rgba(230, 43, 74, 0.3);
+}
+
+.btn-sesion:hover { background-color: #d0203d !important; }
+
+.menu-usuario {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+}
+
+.menu-usuario:hover, .menu-usuario:focus, .menu-usuario.show { color: #ffffff; background-color: rgba(255, 255, 255, 0.18); }
+
+/* Los enlaces del menú desplegable no deben heredar el color blanco de #navbar_right a */
+#navbar_right .dropdown-menu a,
+#navbar_right .dropdown-menu button {
+    color: #1a1d20;
+    font-weight: 500;
+    border-radius: 0;
+    padding: 0.4rem 1rem;
+}
+
+#navbar_right .dropdown-menu a:hover,
+#navbar_right .dropdown-menu button:hover { background-color: #f1f3f5; color: #1a1d20; }

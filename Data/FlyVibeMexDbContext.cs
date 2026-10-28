@@ -201,6 +201,9 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.descripcion).HasMaxLength(2000).IsRequired(false);
             e.Property(x => x.moneda).HasMaxLength(3);
             // precio_base usa la precisión global decimal(12,2), igual que la columna del esquema.
+            // Política de cancelación. El porcentaje es DECIMAL(5,2), no el (12,2) global.
+            e.Property(x => x.porcentaje_reembolso_tardio).HasPrecision(5, 2);
+            e.Property(x => x.politica_cancelacion).HasMaxLength(500);
 
             // servicios.id_proveedor -> proveedores.id
             e.HasOne<Proveedores>().WithMany().HasForeignKey(x => x.id_proveedor).OnDelete(DeleteBehavior.Restrict);
@@ -254,7 +257,6 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("paquete");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
-            e.Property(x => x.politica_cancelacion).IsRequired(false);   // NVARCHAR(MAX)
             e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
 
             e.HasOne<Servicios>().WithOne().HasForeignKey<Paquetes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
@@ -348,6 +350,9 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.id).ValueGeneratedOnAdd();
             e.Property(x => x.cantidad).HasPrecision(8, 2);
             e.Property(x => x.descripcion_snapshot).HasMaxLength(250);
+            // Snapshot de la política de cancelación.
+            e.Property(x => x.porcentaje_reembolso_tardio).HasPrecision(5, 2);
+            e.Property(x => x.politica_cancelacion).HasMaxLength(500);
 
             e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Servicios>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);

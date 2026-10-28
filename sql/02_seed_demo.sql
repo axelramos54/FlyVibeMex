@@ -4,6 +4,8 @@
    Datos de DEMOSTRACIÓN coherentes para probar la web, el panel y el bot de Telegram:
        proveedor -> servicio -> subtipo -> disponibilidad -> promoción -> reservación
        -> detalle (snapshot) -> pago -> reembolso -> bitácoras -> tickets de soporte.
+   Incluye 3 Tours (servicios EVENTO): su ciudad es la ubicación de su proveedor, porque EVENTO no tiene
+   tabla de subtipo. Cada servicio trae su política de cancelación.
 
    Requisitos: haber ejecutado sql/00_db_prueba_conexion.sql y sql/01_esquema.sql.
    Se puede ejecutar varias veces: VACÍA las 24 tablas de 01_esquema.sql y las vuelve a llenar.
@@ -189,10 +191,11 @@ VALUES
     (@sAutoCun, @lCun, N'Compacto', N'Chevrolet', N'Aveo',    5),
     (@sSuvTgz,  @lTgz, N'SUV',      N'Kia',       N'Sorento', 7);
 
-INSERT INTO dbo.paquete (id_servicio, duracion_dias, min_personas, max_personas, politica_cancelacion)
+-- La política de cancelación ya no está en paquete: es común a todos los servicios (columnas de servicios, T3).
+INSERT INTO dbo.paquete (id_servicio, duracion_dias, min_personas, max_personas)
 VALUES
-    (@sPaqCun,  4, 2, 4, N'Cancelación sin costo hasta 7 días antes de la salida. De 7 días a 48 horas antes se cobra el 30 % del total. A menos de 48 horas no hay reembolso.'),
-    (@sPaqChis, 3, 1, 6, N'Cancelación sin costo hasta 72 horas antes del inicio. Después se cobra la primera noche de hotel.');
+    (@sPaqCun,  4, 2, 4),
+    (@sPaqChis, 3, 1, 6);
 
 INSERT INTO dbo.paquete_servicio (id_servicio, id_servicio_incluido, cantidad, orden)
 VALUES
@@ -204,14 +207,76 @@ VALUES
     (@sPaqChis, @sVueloTgz, 1, 3);
 
 /* =====================================================================================
-   Disponibilidad (R3): hoy .. +29 días (30 días: cubre la entrega aunque el seed se ejecute
+   Tours (servicios EVENTO). La ciudad del tour = ubicación de su proveedor.
+   ===================================================================================== */
+DECLARE @pToursTgz BIGINT, @pToursCun BIGINT, @pToursScl BIGINT;
+DECLARE @sTourSumidero BIGINT, @sTourSnorkel BIGINT, @sTourNocturno BIGINT;
+
+INSERT INTO dbo.proveedores (id_ubicacion, tipo_proveedor, nombre, telefono, correo)
+VALUES (@lTgz, N'OTRO', N'Tours Sumidero (demo)', N'9610000011', N'tours@sumidero-demo.test');
+SET @pToursTgz = SCOPE_IDENTITY();
+INSERT INTO dbo.proveedores (id_ubicacion, tipo_proveedor, nombre, telefono, correo)
+VALUES (@lCun, N'OTRO', N'Aventuras Caribe (demo)', N'9980000011', N'hola@aventurascaribe-demo.test');
+SET @pToursCun = SCOPE_IDENTITY();
+INSERT INTO dbo.proveedores (id_ubicacion, tipo_proveedor, nombre, telefono, correo)
+VALUES (@lScl, N'OTRO', N'Recorridos Jovel (demo)', N'9670000011', N'recorridos@jovel-demo.test');
+SET @pToursScl = SCOPE_IDENTITY();
+
+INSERT INTO dbo.servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base)
+VALUES (@pToursTgz, N'EVENTO', N'Cañón del Sumidero en lancha', N'Recorrido de 2 horas por el cañón con guía, chaleco salvavidas incluido. Precio por persona.', 650.00);
+SET @sTourSumidero = SCOPE_IDENTITY();
+INSERT INTO dbo.servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base)
+VALUES (@pToursCun, N'EVENTO', N'Snorkel en Isla Mujeres', N'Ferry, equipo de snorkel y comida en la playa. Precio por persona.', 1200.00);
+SET @sTourSnorkel = SCOPE_IDENTITY();
+INSERT INTO dbo.servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base)
+VALUES (@pToursScl, N'EVENTO', N'Recorrido nocturno por San Cristóbal', N'Leyendas y arquitectura del centro histórico, 90 minutos. Precio por persona.', 350.00);
+SET @sTourNocturno = SCOPE_IDENTITY();
+
+/* =====================================================================================
+   Políticas de cancelación: cada servicio con condiciones distintas para probar el cálculo.
+   100 % si se cancela con al menos horas_reembolso_total de anticipación; después, porcentaje_reembolso_tardio.
+   ===================================================================================== */
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 24,  porcentaje_reembolso_tardio = 0,
+       politica_cancelacion = N'Reembolso total hasta 24 horas antes de la salida. Después no hay reembolso.'
+WHERE id = @sVueloCun;
+UPDATE dbo.servicios SET permite_cancelacion = 0, horas_reembolso_total = 0,   porcentaje_reembolso_tardio = 0,
+       politica_cancelacion = N'Tarifa básica no reembolsable: no admite cancelación.'
+WHERE id = @sVueloTgz;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 48,  porcentaje_reembolso_tardio = 50,
+       politica_cancelacion = N'Reembolso total hasta 48 horas antes de la llegada. Después se reembolsa el 50 %.'
+WHERE id IN (@sHotelCun, @sHostalOax);
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 24,  porcentaje_reembolso_tardio = 0,
+       politica_cancelacion = N'Reembolso total hasta 24 horas antes de la llegada. Después no hay reembolso.'
+WHERE id = @sHotelScl;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 0,   porcentaje_reembolso_tardio = 100,
+       politica_cancelacion = N'Cancelación gratuita en cualquier momento antes de recoger el auto.'
+WHERE id = @sAutoCun;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 72,  porcentaje_reembolso_tardio = 50,
+       politica_cancelacion = N'Reembolso total hasta 72 horas antes del retiro. Después se reembolsa el 50 %.'
+WHERE id = @sSuvTgz;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 168, porcentaje_reembolso_tardio = 70,
+       politica_cancelacion = N'Reembolso total hasta 7 días antes de la salida. Después se reembolsa el 70 %.'
+WHERE id = @sPaqCun;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 72,  porcentaje_reembolso_tardio = 50,
+       politica_cancelacion = N'Reembolso total hasta 72 horas antes del inicio. Después se reembolsa el 50 %.'
+WHERE id = @sPaqChis;
+UPDATE dbo.servicios SET permite_cancelacion = 1, horas_reembolso_total = 24,  porcentaje_reembolso_tardio = 0,
+       politica_cancelacion = N'Reembolso total hasta 24 horas antes del tour. Después no hay reembolso.'
+WHERE id IN (@sTourSumidero, @sTourSnorkel);
+UPDATE dbo.servicios SET permite_cancelacion = 0, horas_reembolso_total = 0,   porcentaje_reembolso_tardio = 0,
+       politica_cancelacion = N'Boletos no reembolsables.'
+WHERE id = @sTourNocturno;
+
+/* =====================================================================================
+   Disponibilidad: hoy .. +29 días (30 días: cubre la entrega aunque el seed se ejecute
    unas semanas antes). Fin de semana +15 %. Un día agotado para probar.
    1900-01-01 fue lunes: (días desde esa fecha) % 7 = 5 sábado, 6 domingo.
    ===================================================================================== */
 DECLARE @inventario TABLE (id_servicio BIGINT, total INT, precio DECIMAL(12,2));
 INSERT INTO @inventario VALUES
     (@sHotelCun, 8, 2450.00), (@sHotelScl, 6, 1200.00), (@sAutoCun, 5, 660.00),
-    (@sSuvTgz, 3, 1150.00), (@sPaqCun, 10, 9800.00), (@sPaqChis, 10, 6500.00);
+    (@sSuvTgz, 3, 1150.00), (@sPaqCun, 10, 9800.00), (@sPaqChis, 10, 6500.00),
+    (@sTourSumidero, 20, 650.00), (@sTourSnorkel, 15, 1200.00), (@sTourNocturno, 25, 350.00);
 
 DECLARE @dias TABLE (d INT);
 INSERT INTO @dias VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),
@@ -340,6 +405,15 @@ INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, 
 VALUES (@r3, @sHotelScl, NULL, 2,
         DATEADD(HOUR, 14, CAST(DATEADD(DAY, 20, @hoy) AS DATETIME)), DATEADD(HOUR, 11, CAST(DATEADD(DAY, 22, @hoy) AS DATETIME)),
         1200.00, 0, 2400.00, N'Hotel Colonial Jovel, Hab. sencilla — 2 noches');
+
+-- Snapshot de la política de cancelación (R4): se copia del servicio, como haría la app al comprar.
+UPDATE d
+SET d.permite_cancelacion = s.permite_cancelacion,
+    d.horas_reembolso_total = s.horas_reembolso_total,
+    d.porcentaje_reembolso_tardio = s.porcentaje_reembolso_tardio,
+    d.politica_cancelacion = s.politica_cancelacion
+FROM dbo.detalle_reservacion AS d
+JOIN dbo.servicios AS s ON s.id = d.id_servicio;
 
 -- Bitácora de estados (R6). id_usuario_cambio NULL = automático (p. ej. al confirmarse el pago).
 INSERT INTO dbo.historial_estado_reservacion (id_reservacion, id_estado_reservacion, id_usuario_cambio, fecha_cambio, motivo)

@@ -69,6 +69,10 @@
         <span asp-validation-for="moneda" class="text-danger small"></span>
     </div>
 
+    <div class="col-12">
+        <partial name="~/Views/Admin/GestorVentas/_PoliticaCancelacionCampos.cshtml" model="Model" />
+    </div>
+
     @if (esActualizar)
     {
         <div class="col-12">

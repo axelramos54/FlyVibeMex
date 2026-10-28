@@ -1,99 +1,120 @@
 @*
  ============================================================================================
- Views/Home/Index.cshtml   —   GET / , /Home , /Home/Index   (HomeController.Index())
- SHELL DE LA SPA CASERA DE FLYVIBE MEX.
- - Layout = null: es un documento HTML completo e independiente (no usa Views/Shared/_Layout.cshtml).
- - Se carga una sola vez. La barra de navegación llama a cargarPagina('/Home/<Accion>') y la vista parcial
-   recibida se inserta en <main id="contenido_main"> sin recargar la página.
- - Al terminar de cargar el DOM, script.js pide automáticamente '/Home/Default' (pantalla de Inicio).
- - Estilos globales: Bootstrap 5.3.8 (CDN jsDelivr con SRI) + wwwroot/assets/css/style.css.
- - Lógica global: wwwroot/assets/js/script.js.
- NOTA: al no usar history.pushState, el botón Atrás del navegador y los enlaces directos a una sección
-       no funcionan; la URL siempre es la del shell.
+ Vista: Views/Home/Index.cshtml   —   GET / y /Home/Index (HomeController.Index())
+ Pantalla del prototipo: Home / Explorar (pantalla de Inicio que se muestra al abrir el sitio).
+ Página completa con Views/Shared/_Layout.cshtml (desde el 26-10-2026; antes era un fragmento de cargarPagina).
+ Archivos asociados (letra D): style_D.css y script_D.js (vacío).
+ Estado: contenido estático.
  ============================================================================================
 *@
 @{
-    ViewData["Title"] = "Home Page";
-    Layout = null;
+    ViewData["Title"] = "Inicio";
 }
 
-<!DOCTYPE html>
-<html lang="es">
+@section Styles {
+    <link rel="stylesheet" href="~/assets/css/style_D.css">
+}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proyecto final</title>
-    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
-    <link rel="stylesheet" href="~/assets/css/style.css">
-</head>
+<div class="container mt-4" id="mapas_preferidos">
 
-<body>
-    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ----
-         Cada enlace usa onclick="cargarPagina('/Home/<Accion>'); return false;" — el return false evita que el
-         href="#" agregue '#' a la URL. *@
-    <header>
-        <section class="navbar" id="navbar">
-            <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
-                
-                @* Marca (logo + nombre).
-                     NOTA: <img src=""> sin imagen de logo.
-                     NOTA: el nombre visible dice "FlyVideMex" (con d); el proyecto es FlyVibe Mex. *@
-                <div class="navbar-brand d-flex" id="navbar_left">
-                    <img class="m-1" src="" alt="imagen">
-                    <p class="m-1">FlyVideMex</p>
+    @* ---- Bienvenida ---- *@
+    <section id="seccion_bienvenida">
+        <div class="d-flex flex-column flex-md-row gap-3 mb-3 align-items-center">
+            <div class="w-100 bg-infor">
+                <h2>Organiza tu viaje</h2>
+            </div>
+
+            <div class="w-100 bg-alert">
+                <p>Menú de bienvenida</p>
+                <p>Empieza a disfrutar con FlyVibe Mex el viaje de tus sueños.</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            @* NOTA: ambos botones tienen href="#" sin acción.
+                NOTA : "Explorar opciones" → módulo Explorar y reservar; "Mis Viajes" → módulo Mis viajes (aún no existe). *@
+            <a asp-controller="Home" asp-action="Paquetes" class="btn btn-hero-primary">Explorar opciones</a>
+            <a asp-controller="Miusuario" asp-action="Misreservaciones" class="btn btn-hero-outline">Mis Viajes</a>
+        </div>
+    </section>
+
+    @* ---- Tarjetas de categorías: Vuelos (Viajes), Paquetes, Hospedaje (Hoteles) y Tours ----
+         Cada botón es un enlace normal a la sección (asp-action).
+         
+         NOTA: falta la tarjeta de Vehículos (está en el mapa de sitio); Tours no está en el mapa de sitio.
+         NOTA: las imágenes son URL externas de Unsplash. *@
+    <section id="seccion_general" class="mt-4">
+        <div class="row g-4">
+            
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card h-100 mi-tarjeta" id="Viajes_card">
+                    <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80"
+                         class="card-img-top" alt="Vuelos nacionales e internacionales">
+                    <div class="card-body">
+                        <h5 class="card-title">Conoce nuestros vuelos</h5>
+                        <p class="card-text">Vuela a los mejores destinos de México y el mundo con tarifas exclusivas.
+                        </p>
+                        <a asp-controller="Home" asp-action="Viajes" class="btn btn-card-action">Ver viajes</a>
+                    </div>
                 </div>
+            </div>
 
-                @* Menú de secciones. Mapeo: Home→Default, Viajes→Viajes (vuelos), Hoteles→Hoteles, Tours→Tours, Paquetes→Paquetes.
-                     NOTA: faltan entradas del mapa de sitio: Vehículos, Promociones, Mis viajes, Soporte y Panel interno. *@
-                <div class="navbar-item ms-auto d-flex" id="navbar_right">
-                    <a class="m-1" onclick="cargarPagina('/Home/Default'); return false;" href="#">Home</a>
-                    <a class="m-1" onclick="cargarPagina('/Home/Viajes'); return false;" href="#">Viajes</a>
-                    <a class="m-1" onclick="cargarPagina('/Home/Hoteles'); return false;" href="#">Hoteles</a>
-                    <a class="m-1" onclick="cargarPagina('/Home/Tours'); return false;" href="#">Tours</a>
-                    <a class="m-1" onclick="cargarPagina('/Home/Paquetes'); return false;" href="#">Paquetes</a>
-                    @* TODO: enlace de prueba hacia card.cshtml; quitar antes de la entrega. *@
-                    <a class="m-1" onclick="cargarPagina('/Home/card'); return false;" href="#">VER TARJETA test</a>
-                    <a class="m-1" onclick="cargarPagina('/Home/vehiculos'); return false;" href="#">Vehiculos</a>
-                    @* Bloque de sesión: enlace a /Home/sesion + foto de perfil de prueba (assets/img/imagen-prueba.jpg).
-                         NOTA: id="secion" está repetido (en este <div> y en el <a> interior): los id deben ser únicos.
-                         NOTA: errata visible "Iniciar secion" → "Iniciar sesión"; y class "imf-fluid" → "img-fluid" (Bootstrap).
-                         NOTA : al iniciar sesión, cambiar el texto a "Mi perfil" y mostrar la foto del usuario. *@
-                    <div class="m-1" id="secion">
-                        <a class="m-1" onclick="cargarPagina('/Home/sesion'); return false;" href="#"
-                           id="secion">Iniciar secion</a>
-                        <!-- Cuando inicia secion modificar el logo y de "iniciar secion" -> "mi perfil" -->
-                        <a class="m-1" asp-controller="Miusuario" asp-action="Index"><img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto"></a>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card h-100 mi-tarjeta" id="Paquete_card">
+                    <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"
+                         class="card-img-top" alt="Paquetes de viaje">
+                    <div class="card-body">
+                        <h5 class="card-title">Paquetes para ti</h5>
+                        <p class="card-text">Ahorra combinando Vuelo + Hotel con todo incluido para tus vacaciones.</p>
+                        <a asp-controller="Home" asp-action="Paquetes" class="btn btn-card-action">Ver
+                            paquetes</a>
+                        </div>
                     </div>
                 </div>
 
-            </div>
-        </section>
-    </header>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="card h-100 mi-tarjeta" id="Hospedaje_card">
+                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                             class="card-img-top" alt="Hoteles y hospedaje">
+                        <div class="card-body">
+                            <h5 class="card-title">Duerme con comodidad</h5>
+                            <p class="card-text">Encuentra desde hoteles boutique hasta resorts de lujo frente al mar.</p>
+                            <a asp-controller="Home" asp-action="Hoteles" class="btn btn-card-action">Ver hoteles</a>
+                        </div>
+                    </div>
+                </div>
 
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="card h-100 mi-tarjeta" id="Tour_card">
+                        <img src="https://images.unsplash.com/photo-1512813195386-6cf811ad3542?auto=format&fit=crop&w=600&q=80"
+                             class="card-img-top" alt="Tours y experiencias">
+                        <div class="card-body">
+                            <h5 class="card-title">Tours y Experiencias</h5>
+                            <p class="card-text">Excursiones guiadas, actividades de aventura y visitas culturales
+                                inolvidables.</p>
+                                <a asp-controller="Home" asp-action="Tours" class="btn btn-card-action">Ver tours</a>
+                            </div>
+                        </div>
+                    </div>
 
-    @* Contenedor donde cargarPagina() inyecta (innerHTML) la vista parcial de cada sección. Inicia vacío. *@
-    <main id="contenido_main">
-        
-    </main>
+                </div>
+            </section>
 
+            @* ---- Banner de promociones (texto fijo). NOTA: alimentar desde las promociones vigentes y enlazar a la pantalla Promociones. *@
+            <section id="seccion_promociones" class="mt-4">
+                <div class="promo-content">
+                    <h2>La mejor promoción es la que no dejas pasar</h2>
+                    <p>Aprovecha hasta 12 meses sin intereses en paquetes seleccionados por temporada.</p>
+                </div>
+            </section>
 
-    @* NOTA: pie de página vacío (contacto, aviso de privacidad, redes). *@
-    <footer>
+            @* ---- Bloque de contacto (texto fijo). NOTA: enlazar al módulo Soporte › Contactar a un asesor. *@
+            <section id="seccion_contactanos" class="mt-4">
+                <h2>¿Tienes alguna duda sobre tu viaje?</h2>
+                <p>Contáctanos directamente o genera una solicitud de asistencia y nuestro equipo te atenderá de inmediato.</p>
+            </section>
 
-    </footer>
-    
+        </div>
 
-
-    @* JS de Bootstrap (CDN) necesario para componentes interactivos. *@
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-            crossorigin="anonymous"></script>
-    @* script.js: define cargarPagina(url) y carga /Home/Default al iniciar. *@
-    <script src="/assets/js/script.js"></script>
-</body>
-
-</html>
+@section Scripts {
+    <script src="~/assets/js/script_D.js"></script>
+}
