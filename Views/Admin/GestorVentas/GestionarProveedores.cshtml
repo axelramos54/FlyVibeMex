@@ -1,12 +1,6 @@
 @model GestionarProveedoresViewModel
 @{
     ViewData["Title"] = "Gestionar proveedores";
-
-    // Si la búsqueda no encuentra nada, igual se muestra un bloque con los botones
-    // (proveedor de prueba con id 0) para poder probar las pantallas mientras no hay BD.
-    var bloques = Model.Resultados.Count > 0
-        ? Model.Resultados
-        : new List<Proveedores> { new Proveedores { id = 0 } };
 }
 
 <h1 class="h3 mb-1">Gestionar proveedores</h1>
@@ -36,25 +30,26 @@
         </div>
     }
 
-    foreach (var p in bloques)
+    foreach (var p in Model.Resultados)
     {
         <div class="card mb-3" style="max-width: 760px">
             <div class="card-body">
-                @if (Model.Resultados.Count > 0)
-                {
-                    <partial name="~/Views/Admin/GestorVentas/_ProveedorResumen.cshtml" model="p" />
-                }
-                else
-                {
-                    <p class="text-muted small mb-0">
-                        Sin conexión a la base de datos: los botones abren las pantallas con un proveedor de prueba.
-                    </p>
-                }
+                <partial name="~/Views/Admin/GestorVentas/_ProveedorResumen.cshtml" model="p" />
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <a class="btn btn-outline-primary" asp-action="Actualizar" asp-route-id="@p.id">Actualizar</a>
-                    <a class="btn btn-outline-danger" asp-action="DarDeBaja" asp-route-id="@p.id">Dar de baja</a>
-                    <a class="btn btn-outline-secondary" asp-action="Asociar" asp-route-id="@p.id">Asociar</a>
+                    <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@p.id" asp-route-incluirInactivos="true">Servicios</a>
+                    @if (p.activo)
+                    {
+                        <a class="btn btn-outline-secondary" asp-action="Asociar" asp-route-id="@p.id">Agregar servicio</a>
+                        <a class="btn btn-outline-danger" asp-action="DarDeBaja" asp-route-id="@p.id">Dar de baja</a>
+                    }
+                    else
+                    {
+                        <form asp-action="ReactivarProveedor" asp-route-id="@p.id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-success">Reactivar</button>
+                        </form>
+                    }
                 </div>
             </div>
         </div>

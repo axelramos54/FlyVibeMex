@@ -6,14 +6,15 @@ namespace FlyVibeMex.Controllers;
 
 /// <summary>
 /// Segunda parte de <see cref="GestorController"/> (<c>/Admin/GestorVentas</c>):
-/// listado general de proveedores y alta / baja / actualización de servicios.
+/// listado de proveedores, alta / actualización / baja de servicios y su disponibilidad por fecha.
 /// </summary>
 /// <remarks>
-/// Hereda de la otra parte de la clase el atributo [Route("Admin/GestorVentas")],
-/// [AutoValidateAntiforgeryToken], <c>ModoSinBD</c> y los ayudantes <c>Vista</c>, <c>ObtenerProveedorOPrueba</c>…
-/// Mismas reglas: los GET solo consultan, todo lo que modifica datos es POST, y el id siempre sale de la URL.
-/// Las vistas están en Views/Admin/GestorVentas/ (Proveedores, Servicios, AltaServicio, ActualizarServicio,
-/// DarDeBajaServicio y los parciales _ServicioFormCampos / _ServicioResumen).
+/// Hereda de la otra parte de la clase el atributo [Route("Admin/GestorVentas")], [AutoValidateAntiforgeryToken],
+/// [Authorize] y los ayudantes <c>Vista</c>, <c>IdUsuario</c>, <c>AgregarErrores</c> y <c>CargarUbicacionesAsync</c>.
+/// Un servicio se da de alta con UN formulario por tipo (vuelo, hospedaje, vehículo, evento) que guarda el servicio,
+/// su subtipo y su disponibilidad inicial juntos. El paquete tiene su propia pantalla.
+/// Vistas: Proveedores, Servicios, AltaServicio, ActualizarServicio, Disponibilidad, DarDeBajaServicio y los parciales
+/// _FormServicio, _ServicioCampos, _FormVuelo, _FormHospedaje, _FormVehiculo, _InventarioInicialCampos.
 /// </remarks>
 public partial class GestorController
 {
@@ -21,7 +22,8 @@ public partial class GestorController
 
     // GET /Admin/GestorVentas/Proveedores/Lista?nombre=&tipo=&incluirInactivos=true
     [HttpGet("Proveedores/Lista")]
-    public IActionResult ListaProveedores(string? nombre, string? tipo, bool incluirInactivos = false)
+    public async Task<IActionResult> ListaProveedores(string? nombre, string? tipo, bool incluirInactivos = false,
+        CancellationToken cancellationToken = default)
     {
         var vm = new ListaProveedoresViewModel
         {
@@ -30,21 +32,16 @@ public partial class GestorController
             IncluirInactivos = incluirInactivos
         };
 
-        vm.Resultados = ObtenerProveedores(vm.Nombre, vm.Tipo, vm.IncluirInactivos);
+        vm.Resultados = await _gestor.ProveedoresAsync(vm.Nombre, vm.Tipo, vm.IncluirInactivos, cancellationToken: cancellationToken);
         return Vista("Proveedores", vm);
     }
 
     // POST /Admin/GestorVentas/Proveedores/5/Reactivar   → deshace una baja lógica
     [HttpPost("Proveedores/{id}/Reactivar")]
-    public IActionResult ReactivarProveedor(ulong id)
+    public async Task<IActionResult> ReactivarProveedor(ulong id, CancellationToken cancellationToken)
     {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
-        // TODO BD: UPDATE proveedores SET activo = 1, actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        //   _db.Proveedores.Where(p => p.id == id).ExecuteUpdate(s => s
-        //        .SetProperty(p => p.activo, true).SetProperty(p => p.actualizado_en, DateTime.Now));
-        TempData["Exito"] = $"\"{proveedor.nombre}\" se reactivará cuando se conecte la base de datos.";
+        var resultado = await _gestor.CambiarEstadoProveedorAsync(id, true, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
         return RedirectToAction(nameof(ListaProveedores), new { incluirInactivos = true });
     }
 
@@ -52,109 +49,115 @@ public partial class GestorController
 
     // GET /Admin/GestorVentas/Servicios?nombre=&tipo=&idProveedor=&incluirInactivos=true
     [HttpGet("Servicios")]
-    public IActionResult ListaServicios(string? nombre, string? tipo, ulong? idProveedor, bool incluirInactivos = false)
+    public async Task<IActionResult> ListaServicios(string? nombre, string? tipo, ulong? idProveedor, bool incluirInactivos = false,
+        CancellationToken cancellationToken = default)
     {
-        var vm = new ListaServiciosViewModel
-        {
-            Nombre = Recortar(nombre, 150),
-            Tipo = ServicioFormViewModel.NormalizarTipo(tipo),
-            IdProveedor = idProveedor is > 0 ? idProveedor : null,
-            IncluirInactivos = incluirInactivos
-        };
+        var filtroNombre = Recortar(nombre, 150);
+        var filtroTipo = ServicioFormViewModel.NormalizarTipo(tipo);
+        var filtroProveedor = idProveedor is > 0 ? idProveedor : null;
 
-        vm.Resultados = ObtenerServicios(vm.Nombre, vm.Tipo, vm.IdProveedor, vm.IncluirInactivos);
-        vm.NombresProveedor = ObtenerProveedores(null, null, incluirInactivos: true)
-            .ToDictionary(p => p.id, p => p.nombre);
+        var vm = await _gestor.ListaServiciosAsync(filtroNombre, filtroTipo, filtroProveedor, incluirInactivos, cancellationToken);
+        vm.Nombre = filtroNombre;
+        vm.Tipo = filtroTipo;
+        vm.IdProveedor = filtroProveedor;
+        vm.IncluirInactivos = incluirInactivos;
 
-        CargarProveedores(soloActivos: false);
+        await CargarProveedoresAsync(soloActivos: false, cancellationToken);
         return Vista("Servicios", vm);
     }
 
     // ============================== ALTA DE SERVICIO ==============================
 
-    // GET /Admin/GestorVentas/Servicios/Alta?idProveedor=5   (idProveedor es opcional: preselecciona el proveedor)
+    // GET /Admin/GestorVentas/Servicios/Alta                          → elegir el tipo
+    // GET /Admin/GestorVentas/Servicios/Alta?tipo=vuelo&idProveedor=5 → formulario de ese tipo (proveedor preseleccionado)
     [HttpGet("Servicios/Alta")]
-    public IActionResult AltaServicio(ulong? idProveedor)
+    public async Task<IActionResult> AltaServicio(string? tipo, ulong? idProveedor, CancellationToken cancellationToken)
     {
-        CargarProveedores(soloActivos: true);
-        return Vista("AltaServicio", new ServicioFormViewModel { id_proveedor = idProveedor is > 0 ? idProveedor : null });
-    }
-
-    // POST /Admin/GestorVentas/Servicios/Alta
-    [HttpPost("Servicios/Alta")]
-    public IActionResult AltaServicio(
-        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda,permite_cancelacion,horas_reembolso_total,porcentaje_reembolso_tardio,politica_cancelacion")] ServicioFormViewModel datos)
-    {
-        ValidarProveedorDelServicio(datos.id_proveedor, nameof(datos.id_proveedor));
-
-        if (!ModelState.IsValid)
+        var formulario = TiposGestor.NuevoFormulario(tipo);
+        if (formulario is null)
         {
-            CargarProveedores(soloActivos: true);
-            return Vista("AltaServicio", datos);
+            var proveedor = idProveedor is ulong id ? await _gestor.ProveedorAsync(id, cancellationToken) : null;
+            return Vista("AltaServicio", new FormServicioViewModel { IdProveedor = proveedor?.id, NombreProveedor = proveedor?.nombre });
         }
 
-        // TODO BD: PoliticaCancelacion.Normalizar(datos); 
-        //          INSERT INTO servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base, Moneda,
-        //                                 permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion,
-        //                                 activo, creado_en, actualizado_en)
-        //   _db.Servicios.Add(new Servicios {
-        //       id_proveedor = datos.id_proveedor!.Value, tipo_servicio = datos.tipo_servicio, nombre = datos.nombre.Trim(),
-        //       descripcion = datos.descripcion, precio_base = datos.precio_base, moneda = datos.moneda,
-        //       activo = true, creado_en = DateTime.Now, actualizado_en = DateTime.Now });   // fechas explícitas: la
-        //   _db.SaveChanges();                                                               // columna es datetime
-        TempData["Exito"] = $"Los datos del servicio \"{datos.nombre}\" son válidos. El guardado se activará al conectar la base de datos.";
-        return RedirectToAction(nameof(ListaServicios), new { nombre = datos.nombre });
+        formulario.id_proveedor = idProveedor is > 0 ? idProveedor : null;
+
+        // Valores iniciales que ahorran captura.
+        switch (formulario)
+        {
+            case VueloFormViewModel v:
+                v.fecha_salida = DateTime.Today.AddDays(1).AddHours(8);
+                v.fecha_llegada = v.fecha_salida.Value.AddHours(2);
+                break;
+            case ServicioConInventarioFormBase inv:
+                inv.inventario_desde = DateTime.Today;
+                inv.inventario_hasta = DateTime.Today.AddDays(89);
+                break;
+        }
+
+        return await VistaFormularioAsync(formulario, cancellationToken);
+    }
+
+    // POST /Admin/GestorVentas/Servicios/Alta/hospedaje
+    // El tipo de la URL decide qué ViewModel se llena (vuelo, hospedaje, vehiculo o evento).
+    [HttpPost("Servicios/Alta/{tipo}")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<IActionResult> GuardarAlta(string tipo, CancellationToken cancellationToken)
+    {
+        var datos = TiposGestor.NuevoFormulario(tipo);
+        if (datos is null) return NotFound();
+
+        // Llena y VALIDA el ViewModel concreto con lo que envió el formulario ([BindNever] protege el id).
+        if (await TryUpdateModelAsync(datos, datos.GetType(), string.Empty))
+        {
+            var resultado = await _gestor.CrearServicioAsync(datos, IdUsuario(), cancellationToken);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(ListaServicios), new { idProveedor = datos.id_proveedor, tipo = datos.TipoServicio });
+            }
+            AgregarErrores(resultado);
+        }
+
+        return await VistaFormularioAsync(datos, cancellationToken);
     }
 
     // ============================== ACTUALIZAR SERVICIO ==============================
 
     // GET /Admin/GestorVentas/Servicios/5/Actualizar
     [HttpGet("Servicios/{id}/Actualizar")]
-    public IActionResult ActualizarServicio(ulong id)
+    public async Task<IActionResult> ActualizarServicio(ulong id, CancellationToken cancellationToken)
     {
-        var servicio = ObtenerServicioOPrueba(id);
-        if (servicio is null) return NotFound();
-
-        CargarProveedores(soloActivos: false);
-        return Vista("ActualizarServicio", ServicioFormViewModel.Desde(servicio));
+        var formulario = await _gestor.FormularioAsync(id, cancellationToken);
+        if (formulario is null) return await SinFormularioAsync(id, cancellationToken);
+        return await VistaFormularioAsync(formulario, cancellationToken);
     }
 
     // POST /Admin/GestorVentas/Servicios/5/Actualizar
     [HttpPost("Servicios/{id}/Actualizar")]
-    public IActionResult ActualizarServicio(ulong id,
-        [Bind("id_proveedor,tipo_servicio,nombre,descripcion,precio_base,moneda,activo,permite_cancelacion,horas_reembolso_total,porcentaje_reembolso_tardio,politica_cancelacion")] ServicioFormViewModel datos)
+    [RequestSizeLimit(5_000_000)]
+    public async Task<IActionResult> GuardarActualizacion(ulong id, CancellationToken cancellationToken)
     {
-        var servicio = ObtenerServicioOPrueba(id);
-        if (servicio is null) return NotFound();
+        // El tipo sale de la BD (regla R1: no se cambia), nunca del formulario.
+        var actual = await _gestor.FormularioAsync(id, cancellationToken);
+        if (actual is null) return await SinFormularioAsync(id, cancellationToken);
 
-        datos.id = id; // el id sale de la URL, no del formulario
+        var datos = TiposGestor.NuevoFormulario(actual.Slug)!;
+        datos.id = id;   // el id sale de la URL
+        CopiarImagenActual(actual, datos);
 
-        // Regla R1: el subtipo (hospedajes, vehiculos, paquete…) cuelga de este servicio,
-        // así que no se permite cambiar el tipo de un servicio que ya existe.
-        if (!string.IsNullOrEmpty(servicio.tipo_servicio) && datos.tipo_servicio != servicio.tipo_servicio)
+        if (await TryUpdateModelAsync(datos, datos.GetType(), string.Empty))
         {
-            ModelState.AddModelError(nameof(datos.tipo_servicio),
-                "No se puede cambiar el tipo de un servicio existente. Da de baja este y crea uno nuevo.");
+            var resultado = await _gestor.ActualizarServicioAsync(id, datos, IdUsuario(), cancellationToken);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(ListaServicios), new { nombre = datos.nombre.Trim(), incluirInactivos = !datos.activo });
+            }
+            AgregarErrores(resultado);
         }
 
-        // Solo se valida que el proveedor esté activo si se cambió (un servicio viejo puede tener un proveedor dado de baja).
-        if (datos.id_proveedor != servicio.id_proveedor)
-            ValidarProveedorDelServicio(datos.id_proveedor, nameof(datos.id_proveedor));
-
-        if (!ModelState.IsValid)
-        {
-            CargarProveedores(soloActivos: false);
-            return Vista("ActualizarServicio", datos);
-        }
-
-        // TODO BD: PoliticaCancelacion.Normalizar(datos);
-        //          UPDATE servicios SET id_proveedor, nombre, descripcion, precio_base, Moneda, activo,
-        //          permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion,
-        //          (la política nueva solo aplica a compras FUTURAS: las pasadas conservan su snapshot, R4)
-        //          actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        //   (precio_base es solo de referencia: NO cambia compras pasadas, regla R4)
-        TempData["Exito"] = $"Los cambios de \"{datos.nombre}\" son válidos. Se guardarán cuando se conecte la base de datos.";
-        return RedirectToAction(nameof(ListaServicios), new { nombre = datos.nombre, incluirInactivos = !datos.activo });
+        return await VistaFormularioAsync(datos, cancellationToken);
     }
 
     // ============================== DAR DE BAJA SERVICIO (doble confirmación) ==============================
@@ -162,47 +165,76 @@ public partial class GestorController
     // GET /Admin/GestorVentas/Servicios/5/Baja          → confirmación 1
     // GET /Admin/GestorVentas/Servicios/5/Baja?paso=2   → confirmación 2 (formulario POST)
     [HttpGet("Servicios/{id}/Baja")]
-    public IActionResult DarDeBajaServicio(ulong id, int paso = 1)
+    public async Task<IActionResult> DarDeBajaServicio(ulong id, int paso = 1, CancellationToken cancellationToken = default)
     {
-        var servicio = ObtenerServicioOPrueba(id);
-        if (servicio is null) return NotFound();
+        var detalle = await DetalleServicioAsync(id, cancellationToken);
+        if (detalle is null) return NotFound();
 
         ViewData["Paso"] = paso == 2 ? 2 : 1;
-        return Vista("DarDeBajaServicio", DetalleServicio(servicio));
+        return Vista("DarDeBajaServicio", detalle);
     }
 
     // POST /Admin/GestorVentas/Servicios/5/Baja   → ejecuta la baja
     [HttpPost("Servicios/{id}/Baja")]
-    public IActionResult ConfirmarBajaServicio(ulong id, bool confirmo)
+    public async Task<IActionResult> ConfirmarBajaServicio(ulong id, bool confirmo, CancellationToken cancellationToken)
     {
-        var servicio = ObtenerServicioOPrueba(id);
-        if (servicio is null) return NotFound();
+        var detalle = await DetalleServicioAsync(id, cancellationToken);
+        if (detalle is null) return NotFound();
 
-        // La segunda confirmación se valida en el servidor (no basta con el "required" del navegador).
         if (!confirmo)
         {
             ModelState.AddModelError("confirmo", "Marca la casilla para confirmar la baja.");
             ViewData["Paso"] = 2;
-            return Vista("DarDeBajaServicio", DetalleServicio(servicio));
+            return Vista("DarDeBajaServicio", detalle);
         }
 
-        // TODO BD: baja LÓGICA, nunca DELETE (detalle_reservacion, paquete_servicio, promocion_servicio y
-        //          disponibilidad_servicio hacen referencia al servicio):
-        //          UPDATE servicios SET activo = 0, actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        TempData["Exito"] = $"La baja de \"{servicio.nombre}\" fue confirmada. Se aplicará cuando se conecte la base de datos.";
+        // Baja LÓGICA, nunca DELETE (detalle_reservacion, paquete_servicio, promocion_servicio y
+        // disponibilidad_servicio hacen referencia al servicio).
+        var resultado = await _gestor.CambiarEstadoServicioAsync(id, false, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
         return RedirectToAction(nameof(ListaServicios), new { incluirInactivos = true });
     }
 
     // POST /Admin/GestorVentas/Servicios/5/Reactivar
     [HttpPost("Servicios/{id}/Reactivar")]
-    public IActionResult ReactivarServicio(ulong id)
+    public async Task<IActionResult> ReactivarServicio(ulong id, CancellationToken cancellationToken)
     {
-        var servicio = ObtenerServicioOPrueba(id);
-        if (servicio is null) return NotFound();
-
-        // TODO BD: UPDATE servicios SET activo = 1, actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        TempData["Exito"] = $"\"{servicio.nombre}\" se reactivará cuando se conecte la base de datos.";
+        var resultado = await _gestor.CambiarEstadoServicioAsync(id, true, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
         return RedirectToAction(nameof(ListaServicios), new { incluirInactivos = true });
+    }
+
+    // ============================== DISPONIBILIDAD ==============================
+
+    // GET /Admin/GestorVentas/Servicios/5/Disponibilidad?desde=2026-11-01
+    [HttpGet("Servicios/{id}/Disponibilidad")]
+    public async Task<IActionResult> Disponibilidad(ulong id, DateTime? desde, CancellationToken cancellationToken)
+    {
+        var vm = await _gestor.DisponibilidadAsync(id, desde is DateTime d ? DateOnly.FromDateTime(d) : null, cancellationToken);
+        if (vm is null) return NotFound();
+        return Vista("Disponibilidad", vm);
+    }
+
+    // POST /Admin/GestorVentas/Servicios/5/Disponibilidad
+    [HttpPost("Servicios/{id}/Disponibilidad")]
+    public async Task<IActionResult> GuardarDisponibilidad(ulong id,
+        [Bind(Prefix = "Formulario")] DisponibilidadFormViewModel datos, CancellationToken cancellationToken)
+    {
+        if (ModelState.IsValid)
+        {
+            var resultado = await _gestor.GuardarDisponibilidadAsync(id, datos, IdUsuario(), cancellationToken);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(Disponibilidad), new { id, desde = datos.desde?.ToString("yyyy-MM-dd") });
+            }
+            AgregarErrores(resultado, "Formulario");
+        }
+
+        var vm = await _gestor.DisponibilidadAsync(id, datos.desde is DateTime d ? DateOnly.FromDateTime(d) : null, cancellationToken);
+        if (vm is null) return NotFound();
+        vm.Formulario = datos;
+        return Vista("Disponibilidad", vm);
     }
 
     // ============================== AYUDANTES ==============================
@@ -214,120 +246,55 @@ public partial class GestorController
         return t.Length > maximo ? t[..maximo] : t;
     }
 
-    private ServicioDetalleViewModel DetalleServicio(Servicios servicio) => new()
+    /// <summary>Pantalla del formulario (alta o actualización) con sus listas.</summary>
+    private async Task<IActionResult> VistaFormularioAsync(ServicioFormBase datos, CancellationToken cancellationToken)
     {
-        Servicio = servicio,
-        NombreProveedor = ObtenerProveedor(servicio.id_proveedor)?.nombre
-                          ?? (ModoSinBD ? "Proveedor de prueba" : $"Proveedor #{servicio.id_proveedor}")
-    };
+        await CargarUbicacionesAsync(cancellationToken);
+        // En el alta solo se ofrecen proveedores activos; al actualizar también aparece el actual aunque esté inactivo.
+        await CargarProveedoresAsync(soloActivos: datos.EsAlta, cancellationToken);
 
-    /// <summary>El proveedor elegido debe existir y estar activo (no se asocian servicios a proveedores dados de baja).</summary>
-    private void ValidarProveedorDelServicio(ulong? idProveedor, string campo)
-    {
-        if (idProveedor is null or 0) return; // ya lo marca [Required]
-
-        var proveedor = ObtenerProveedor(idProveedor.Value);
-        if (proveedor is null)
+        var vm = new FormServicioViewModel { Formulario = datos, IdProveedor = datos.id_proveedor };
+        if (datos.EsAlta && datos.id_proveedor is ulong idProveedor)
         {
-            if (!ModoSinBD) ModelState.AddModelError(campo, "El proveedor seleccionado no existe.");
-            return;
+            vm.NombreProveedor = (await _gestor.ProveedorAsync(idProveedor, cancellationToken))?.nombre;
+            vm.ServiciosDelProveedor = await _gestor.ServiciosDeProveedorAsync(idProveedor, datos.TipoServicio, cancellationToken);
         }
-        if (!proveedor.activo)
-            ModelState.AddModelError(campo, "El proveedor está dado de baja. Reactívalo antes de asociarle servicios.");
+        return Vista(datos.EsAlta ? "AltaServicio" : "ActualizarServicio", vm);
+    }
+
+    /// <summary>Respuesta cuando un servicio no tiene formulario: no existe (404) o es un paquete (otra pantalla).</summary>
+    private async Task<IActionResult> SinFormularioAsync(ulong id, CancellationToken cancellationToken)
+    {
+        var servicio = await _gestor.ServicioAsync(id, cancellationToken);
+        if (servicio is null) return NotFound();
+
+        TempData["Aviso"] = $"\"{servicio.nombre}\" es un paquete: se edita en Gestionar paquetes.";
+        return RedirectToAction(nameof(ListaServicios), new { tipo = servicio.tipo_servicio });
+    }
+
+    private static void CopiarImagenActual(ServicioFormBase origen, ServicioFormBase destino)
+    {
+        if (origen is HospedajeFormViewModel h && destino is HospedajeFormViewModel h2) h2.imagen_actual = h.imagen_actual;
+        if (origen is VehiculoFormViewModel v && destino is VehiculoFormViewModel v2) v2.imagen_actual = v.imagen_actual;
+    }
+
+    private async Task<ServicioDetalleViewModel?> DetalleServicioAsync(ulong id, CancellationToken cancellationToken)
+    {
+        var servicio = await _gestor.ServicioAsync(id, cancellationToken);
+        if (servicio is null) return null;
+        return new ServicioDetalleViewModel
+        {
+            Servicio = servicio,
+            NombreProveedor = (await _gestor.ProveedorAsync(servicio.id_proveedor, cancellationToken))?.nombre
+                              ?? $"Proveedor #{servicio.id_proveedor}"
+        };
     }
 
     /// <summary>Lista de proveedores para el &lt;select&gt; del formulario y del filtro.</summary>
-    private void CargarProveedores(bool soloActivos)
+    private async Task CargarProveedoresAsync(bool soloActivos, CancellationToken cancellationToken)
     {
-        ViewData["Proveedores"] = ObtenerProveedores(null, null, incluirInactivos: !soloActivos)
+        ViewData["Proveedores"] = (await _gestor.ProveedoresAsync(null, null, incluirInactivos: !soloActivos, cancellationToken: cancellationToken))
             .Select(p => new SelectListItem(p.activo ? p.nombre : $"{p.nombre} (inactivo)", p.id.ToString()))
             .ToList();
     }
-
-    private Servicios? ObtenerServicioOPrueba(ulong id)
-    {
-        var servicio = ObtenerServicio(id);
-        if (servicio is null && ModoSinBD)
-        {
-            ViewData["SinBD"] = true;
-            servicio = ServiciosDePrueba().FirstOrDefault(s => s.id == id) ?? new Servicios
-            {
-                id = id,
-                id_proveedor = 1,
-                tipo_servicio = "HOSPEDAJE",
-                nombre = "Servicio de prueba",
-                descripcion = "Servicio ficticio para probar las pantallas sin base de datos.",
-                precio_base = 1500m,
-                moneda = "MXN",
-                activo = true
-            };
-        }
-        return servicio;
-    }
-
-    // ===================== Acceso a datos (pendiente de conectar a la BD) =====================
-    // Mientras ModoSinBD = true devuelven datos de PRUEBA (el layout muestra el aviso "Modo prueba").
-    // Cuando conectes la BD solo cambias estos métodos; usa LINQ (consultas parametrizadas), nunca SQL concatenado.
-
-    private List<Proveedores> ObtenerProveedores(string? nombre, string? tipo, bool incluirInactivos)
-    {
-        // TODO BD:
-        //   var q = _db.Proveedores.AsNoTracking().AsQueryable();
-        //   if (!incluirInactivos) q = q.Where(p => p.activo);
-        //   if (tipo is not null)  q = q.Where(p => p.tipo_proveedor == tipo);
-        //   if (nombre is not null) q = q.Where(p => p.nombre.Contains(nombre));
-        //   return q.OrderBy(p => p.nombre).Take(200).ToList();
-        if (!ModoSinBD) return new List<Proveedores>();
-
-        ViewData["SinBD"] = true;
-        IEnumerable<Proveedores> q = ProveedoresDePrueba();
-        if (!incluirInactivos) q = q.Where(p => p.activo);
-        if (tipo is not null) q = q.Where(p => p.tipo_proveedor == tipo);
-        if (nombre is not null) q = q.Where(p => p.nombre.Contains(nombre, StringComparison.OrdinalIgnoreCase));
-        return q.OrderBy(p => p.nombre).ToList();
-    }
-
-    private Servicios? ObtenerServicio(ulong id)
-    {
-        // TODO BD: return _db.Servicios.AsNoTracking().FirstOrDefault(s => s.id == id);
-        if (!ModoSinBD) return null;
-        ViewData["SinBD"] = true;
-        return ServiciosDePrueba().FirstOrDefault(s => s.id == id);
-    }
-
-    private List<Servicios> ObtenerServicios(string? nombre, string? tipo, ulong? idProveedor, bool incluirInactivos)
-    {
-        // TODO BD:
-        //   var q = _db.Servicios.AsNoTracking().AsQueryable();
-        //   if (!incluirInactivos)      q = q.Where(s => s.activo);
-        //   if (tipo is not null)       q = q.Where(s => s.tipo_servicio == tipo);
-        //   if (idProveedor is not null) q = q.Where(s => s.id_proveedor == idProveedor.Value);
-        //   if (nombre is not null)     q = q.Where(s => s.nombre.Contains(nombre));
-        //   return q.OrderBy(s => s.nombre).Take(200).ToList();
-        if (!ModoSinBD) return new List<Servicios>();
-
-        ViewData["SinBD"] = true;
-        IEnumerable<Servicios> q = ServiciosDePrueba();
-        if (!incluirInactivos) q = q.Where(s => s.activo);
-        if (tipo is not null) q = q.Where(s => s.tipo_servicio == tipo);
-        if (idProveedor is not null) q = q.Where(s => s.id_proveedor == idProveedor.Value);
-        if (nombre is not null) q = q.Where(s => s.nombre.Contains(nombre, StringComparison.OrdinalIgnoreCase));
-        return q.OrderBy(s => s.nombre).ToList();
-    }
-
-    // ----- Datos de prueba (solo se usan con ModoSinBD = true; bórralos al conectar la BD) -----
-
-    private static List<Proveedores> ProveedoresDePrueba() => new()
-    {
-        new() { id = 1, nombre = "Hotel Selva Maya (prueba)", tipo_proveedor = "HOTEL", telefono = "9161234567", correo = "contacto@selvamaya.test", activo = true, creado_en = new DateTime(2026, 9, 1) },
-        new() { id = 2, nombre = "Aerolínea Sureste (prueba)", tipo_proveedor = "AEROLINEA", telefono = "9617654321", correo = "ventas@aerosureste.test", activo = true, creado_en = new DateTime(2026, 9, 3) },
-        new() { id = 3, nombre = "Rentadora Chiapas (prueba)", tipo_proveedor = "RENTADORA", telefono = "9615550101", correo = "renta@chiapas.test", activo = false, creado_en = new DateTime(2026, 9, 10) }
-    };
-
-    private static List<Servicios> ServiciosDePrueba() => new()
-    {
-        new() { id = 1, id_proveedor = 1, tipo_servicio = "HOSPEDAJE", nombre = "Cabaña en Palenque (prueba)", descripcion = "Cabaña rústica para 2 personas.", precio_base = 1850m, moneda = "MXN", activo = true },
-        new() { id = 2, id_proveedor = 2, tipo_servicio = "VUELO", nombre = "Vuelo TGZ - CUN (prueba)", descripcion = "Vuelo sencillo Tuxtla Gutiérrez → Cancún.", precio_base = 2390m, moneda = "MXN", activo = true },
-        new() { id = 3, id_proveedor = 3, tipo_servicio = "VEHICULO", nombre = "Sedán compacto (prueba)", descripcion = "Renta por día.", precio_base = 650m, moneda = "MXN", activo = false }
-    };
 }

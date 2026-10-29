@@ -1,0 +1,106 @@
+@* Datos del vuelo (tabla vuelos). En la BD cada vuelo es UNA salida; en el alta, "Repetir" crea una salida por fecha
+   (diario o ciertos días de la semana) con la misma hora y duración, cada una con sus asientos en disponibilidad_servicio.
+   Al actualizar se edita solo ESTA salida; los asientos se ajustan en Disponibilidad. *@
+@model VueloFormViewModel
+@{
+    var ubicaciones = ViewData["Ubicaciones"] as List<SelectListItem> ?? new List<SelectListItem>();
+}
+
+<h3 class="h6">Datos del vuelo</h3>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="id_origen" class="form-label"></label>
+        <select asp-for="id_origen" asp-items="ubicaciones" class="form-select" required>
+            <option value="">— Selecciona —</option>
+        </select>
+        <span asp-validation-for="id_origen" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="id_destino" class="form-label"></label>
+        <select asp-for="id_destino" asp-items="ubicaciones" class="form-select" required>
+            <option value="">— Selecciona —</option>
+        </select>
+        <span asp-validation-for="id_destino" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="codigo_vuelo" class="form-label"></label>
+        <input asp-for="codigo_vuelo" class="form-control text-uppercase" maxlength="10" placeholder="QZ123" required />
+        <span asp-validation-for="codigo_vuelo" class="text-danger small"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="fecha_salida" class="form-label">@(Model.EsAlta ? "Primera salida" : "Salida")</label>
+        <input asp-for="fecha_salida" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+        <span asp-validation-for="fecha_salida" class="text-danger small"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="fecha_llegada" class="form-label"></label>
+        <input asp-for="fecha_llegada" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+        <span asp-validation-for="fecha_llegada" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="clase" class="form-label"></label>
+        <select asp-for="clase" asp-items="VueloFormViewModel.OpcionesClase()" class="form-select"></select>
+        <span asp-validation-for="clase" class="text-danger small"></span>
+    </div>
+
+    @if (Model.EsAlta)
+    {
+        <div class="col-md-4">
+            <label asp-for="asientos" class="form-label"></label>
+            <input asp-for="asientos" type="number" min="1" max="1000" class="form-control" required />
+            <span asp-validation-for="asientos" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="precio_asiento" class="form-label"></label>
+            <input asp-for="precio_asiento" type="number" step="0.01" min="0" class="form-control" />
+            <div class="form-text">Vacío = precio base.</div>
+            <span asp-validation-for="precio_asiento" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="repetir" class="form-label"></label>
+            <select asp-for="repetir" asp-items="VueloFormViewModel.OpcionesRepetir()" class="form-select" id="vuelo_repetir"></select>
+            <span asp-validation-for="repetir" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4" data-repetir="DIARIO SEMANAL">
+            <label asp-for="repetir_hasta" class="form-label"></label>
+            <input asp-for="repetir_hasta" class="form-control" />
+            <span asp-validation-for="repetir_hasta" class="text-danger small"></span>
+        </div>
+        <div class="col-12" data-repetir="SEMANAL">
+            <span class="form-label d-block">Días de la semana</span>
+            <div class="d-flex flex-wrap gap-3">
+                @foreach (var (valor, nombre) in VueloFormViewModel.DiasSemana)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="@valor" id="@($"dia_{valor}")"
+                               checked="@Model.dias_semana.Contains(valor)" />
+                        <label class="form-check-label" for="@($"dia_{valor}")">@nombre</label>
+                    </div>
+                }
+            </div>
+            <span asp-validation-for="dias_semana" class="text-danger small"></span>
+        </div>
+        <div class="col-12">
+            <div class="form-text">
+                Cada salida queda como un servicio propio (mismo código, hora y duración) con sus asientos.
+                Máximo @VueloFormViewModel.MaximoSalidas salidas por alta.
+            </div>
+        </div>
+
+        @* Muestra solo los campos de la opción de "Repetir" elegida. Sin JavaScript se ven todos y el servidor valida igual. *@
+        <script>
+            (function () {
+                const select = document.getElementById('vuelo_repetir');
+                if (!select) return;
+                const actualizar = () => document.querySelectorAll('[data-repetir]').forEach(el => {
+                    el.classList.toggle('d-none', !el.dataset.repetir.split(' ').includes(select.value));
+                });
+                select.addEventListener('change', actualizar);
+                actualizar();
+            })();
+        </script>
+    }
+</div>

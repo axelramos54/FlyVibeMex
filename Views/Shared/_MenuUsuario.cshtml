@@ -1,11 +1,11 @@
 @*
  Views/Shared/_MenuUsuario.cshtml — bloque de sesión de la barra de navegación (lo incluye _Layout.cshtml).
  Sin sesión: botón "Iniciar sesión". Con sesión: menú con el nombre del usuario, sus secciones, el panel
- (solo AGENTE / SOPORTE / ADMINISTRADOR) y "Cerrar sesión", que es un POST con token (no un enlace).
+ (solo personal: SOPORTE / AGENTE / ADMINISTRADOR / SA) y "Cerrar sesión", que es un POST con token (no un enlace).
 *@
 @if (User.Identity?.IsAuthenticated == true)
 {
-    var esInterno = User.IsInRole(Roles.Agente) || User.IsInRole(Roles.Soporte) || User.IsInRole(Roles.Administrador);
+    var esInterno = Roles.EsInterno(User);
     <div class="dropdown m-1" id="secion">
         <button type="button" class="btn dropdown-toggle menu-usuario" data-bs-toggle="dropdown" aria-expanded="false">
             <img class="img-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="" id="foto">

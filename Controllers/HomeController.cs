@@ -158,7 +158,7 @@ public class HomeController : Controller
         {
             return LocalRedirect(datos.returnUrl);
         }
-        if (usuario.rol is Roles.Agente or Roles.Soporte or Roles.Administrador)
+        if (Roles.EsInterno(usuario.rol))
         {
             return RedirectToAction("Index", "Admin");
         }
@@ -360,6 +360,7 @@ public class HomeController : Controller
             ("reembolsos", Probar(db.Reembolsos)),
             ("historial_estado_reembolso", Probar(db.HistorialEstadosReembolso)),
             ("solicitudes_soporte", Probar(db.SolicitudesSoporte)),
+            ("bitacora", Probar(db.Bitacora)),
         };
 
         var resultado = new List<VerificacionTabla>(pruebas.Length);

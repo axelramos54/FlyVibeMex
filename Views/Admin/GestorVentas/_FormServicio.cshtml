@@ -1,0 +1,56 @@
+@*
+ Parcial: formulario COMPLETO de un servicio (alta o actualización). Lo usan AltaServicio.cshtml y ActualizarServicio.cshtml.
+ - Alta:        POST /Admin/GestorVentas/Servicios/Alta/{tipo}   (GestorController.GuardarAlta)
+ - Actualizar:  POST /Admin/GestorVentas/Servicios/{id}/Actualizar (GestorController.GuardarActualizacion)
+ Contenido: datos generales y política (_ServicioCampos) + datos del subtipo (_FormVuelo / _FormHospedaje / _FormVehiculo)
+ + disponibilidad inicial (_InventarioInicialCampos, solo en el alta de hospedaje, vehículo y evento).
+ El tipo NO viaja en el formulario: en el alta va en la URL y al actualizar se toma de la BD.
+*@
+@model ServicioFormBase
+@{
+    var nombreTipo = TiposGestor.Nombre(Model.Slug).ToLower();
+}
+
+<form asp-action="@(Model.EsAlta ? "GuardarAlta" : "GuardarActualizacion")"
+      asp-route-tipo="@(Model.EsAlta ? Model.Slug : null)"
+      asp-route-id="@(Model.EsAlta ? null : Model.id.ToString())"
+      method="post" enctype="multipart/form-data" class="card card-body" style="max-width: 860px" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <partial name="~/Views/Admin/GestorVentas/_ServicioCampos.cshtml" model="Model" />
+
+    <hr class="my-4" />
+    @switch (Model)
+    {
+        case VueloFormViewModel vuelo:
+            <partial name="~/Views/Admin/GestorVentas/_FormVuelo.cshtml" model="vuelo" />
+            break;
+        case HospedajeFormViewModel hospedaje:
+            <partial name="~/Views/Admin/GestorVentas/_FormHospedaje.cshtml" model="hospedaje" />
+            break;
+        case VehiculoFormViewModel vehiculo:
+            <partial name="~/Views/Admin/GestorVentas/_FormVehiculo.cshtml" model="vehiculo" />
+            break;
+        case EventoFormViewModel:
+            <h3 class="h6">Datos del tour / evento</h3>
+            <p class="small text-muted mb-0">
+                Se ofrece en la ciudad de su proveedor. Las fechas y los lugares de cada fecha se manejan en la disponibilidad.
+            </p>
+            break;
+    }
+
+    @if (Model.EsAlta && Model is ServicioConInventarioFormBase inventario)
+    {
+        <hr class="my-4" />
+        <partial name="~/Views/Admin/GestorVentas/_InventarioInicialCampos.cshtml" model="inventario" />
+    }
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">@(Model.EsAlta ? $"Dar de alta {nombreTipo}" : "Guardar cambios")</button>
+        @if (!Model.EsAlta)
+        {
+            <a class="btn btn-outline-primary" asp-action="Disponibilidad" asp-route-id="@Model.id">Disponibilidad</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@Model.id_proveedor">Cancelar</a>
+    </div>
+</form>

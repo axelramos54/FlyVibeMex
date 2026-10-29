@@ -73,56 +73,73 @@ namespace FlyVibeMex.Models
         public List<Proveedores> Resultados { get; set; } = new();
     }
 
-    // ========================== ASOCIAR ==========================
+    // ========================== TIPOS DE SERVICIO DEL GESTOR ==========================
 
-    /// <summary>Pantalla "Asociar": proveedor + tipo elegido + formulario de ese tipo.</summary>
-    public class AsociarViewModel
+    /// <summary>
+    /// Tipos que se dan de alta con el formulario de servicio (el paquete tiene su propia pantalla).
+    /// En la URL van en minúsculas: <c>/Admin/GestorVentas/Servicios/Alta?tipo=hospedaje</c>.
+    /// </summary>
+    public static class TiposGestor
     {
-        public Proveedores Proveedor { get; set; } = new();
-        public string? Tipo { get; set; }                       // hospedaje | vehiculo | evento
-        public ServicioFormBase? Formulario { get; set; }
-        public List<Servicios> ServiciosAsociados { get; set; } = new();
-
-        public static readonly string[] TiposValidos = { "hospedaje", "vehiculo", "evento" };
+        public static readonly string[] Slugs = { "vuelo", "hospedaje", "vehiculo", "evento" };
 
         /// <summary>Devuelve el tipo solo si está en la lista permitida; si no, null.</summary>
         public static string? Normalizar(string? tipo)
         {
             var t = tipo?.Trim().ToLowerInvariant();
-            return t is not null && TiposValidos.Contains(t) ? t : null;
+            return t is not null && Slugs.Contains(t) ? t : null;
         }
 
-        public static string Nombre(string tipo) => tipo switch
+        /// <summary>slug → valor de servicios.tipo_servicio (VUELO, HOSPEDAJE, VEHICULO, EVENTO).</summary>
+        public static string TipoServicio(string slug) => slug.ToUpperInvariant();
+
+        /// <summary>servicios.tipo_servicio → slug (null si es PAQUETE u otro).</summary>
+        public static string? Slug(string? tipoServicio) => Normalizar(tipoServicio);
+
+        public static string Nombre(string slug) => slug switch
         {
-            "hospedaje" => "Hospedajes",
-            "vehiculo" => "Vehículos",
-            "evento" => "Eventos",
-            _ => tipo
+            "vuelo" => "Vuelo",
+            "hospedaje" => "Hospedaje",
+            "vehiculo" => "Vehículo",
+            "evento" => "Tour / evento",
+            _ => slug
         };
 
-        /// <summary>Valor que se guardará en servicios.tipo_servicio.</summary>
-        public static string TipoServicio(string tipo) => tipo switch
+        public static string Descripcion(string slug) => slug switch
         {
-            "hospedaje" => "HOSPEDAJE",
-            "vehiculo" => "VEHICULO",
-            "evento" => "EVENTO",
-            _ => "OTRO"
+            "vuelo" => "Una salida o varias (diario o ciertos días) con origen, destino, horario, clase y asientos.",
+            "hospedaje" => "Habitación o alojamiento con ubicación, horarios, capacidad e imagen; el cupo es por noche.",
+            "vehiculo" => "Auto en renta con punto de retiro, marca, modelo, capacidad e imagen; el cupo es por día.",
+            "evento" => "Tour o actividad en la ciudad del proveedor; el cupo es de lugares por fecha.",
+            _ => string.Empty
         };
 
-        public static List<SelectListItem> OpcionesTipo() => new()
+        /// <summary>Formulario vacío del tipo indicado (null si el tipo no es válido).</summary>
+        public static ServicioFormBase? NuevoFormulario(string? slug) => Normalizar(slug) switch
         {
-            new("Hospedajes", "hospedaje"),
-            new("Vehículos", "vehiculo"),
-            new("Eventos", "evento")
+            "vuelo" => new VueloFormViewModel(),
+            "hospedaje" => new HospedajeFormViewModel(),
+            "vehiculo" => new VehiculoFormViewModel(),
+            "evento" => new EventoFormViewModel(),
+            _ => null
         };
     }
 
-    /// <summary>Campos comunes de la tabla servicios (todo lo que se asocia a un proveedor es un servicio).</summary>
+    // ========================== FORMULARIOS DE SERVICIO ==========================
+
+    /// <summary>
+    /// Campos comunes de la tabla servicios. Cada tipo agrega los de su subtipo (vuelos, hospedajes, vehiculos)
+    /// y se guardan juntos en UNA transacción (regla R1: no hay servicio sin su subtipo).
+    /// </summary>
     public abstract class ServicioFormBase : IPoliticaCancelacionForm
     {
-        // Lo pone el controlador a partir de la URL. [BindNever] = nunca se toma del formulario.
+        /// <summary>0 = alta. En "actualizar" lo pone el controlador a partir de la URL (nunca del formulario).</summary>
         [BindNever]
-        public ulong id_proveedor { get; set; }
+        public ulong id { get; set; }
+
+        [Display(Name = "Proveedor")]
+        [Required(ErrorMessage = "Selecciona el proveedor.")]
+        public ulong? id_proveedor { get; set; }
 
         [Display(Name = "Nombre del servicio")]
         [Required(ErrorMessage = "El nombre es obligatorio.")]
@@ -142,6 +159,10 @@ namespace FlyVibeMex.Models
         [RegularExpression("^(MXN|USD|EUR)$", ErrorMessage = "Moneda no válida.")]
         public string moneda { get; set; } = "MXN";
 
+        /// <summary>Solo se muestra al actualizar (un alta siempre queda activa).</summary>
+        [Display(Name = "Servicio activo")]
+        public bool activo { get; set; } = true;
+
         // ---------- Política de cancelación ----------
 
         [Display(Name = "Permite cancelación")]
@@ -159,6 +180,14 @@ namespace FlyVibeMex.Models
         [StringLength(500, ErrorMessage = "Máximo 500 caracteres.")]
         public string? politica_cancelacion { get; set; }
 
+        /// <summary>Valor de servicios.tipo_servicio de este formulario.</summary>
+        public abstract string TipoServicio { get; }
+
+        /// <summary>Tipo en minúsculas para la URL (vuelo, hospedaje, vehiculo, evento).</summary>
+        public string Slug => TipoServicio.ToLowerInvariant();
+
+        public bool EsAlta => id == 0;
+
         public static List<SelectListItem> OpcionesMoneda() => new()
         {
             new("MXN - Peso mexicano", "MXN"),
@@ -167,15 +196,40 @@ namespace FlyVibeMex.Models
         };
     }
 
-    /// <summary>servicios + hospedajes</summary>
-    public class HospedajeFormViewModel : ServicioFormBase
+    /// <summary>
+    /// Tipos cuyo cupo es por día (hospedaje: noches; vehículo: días de renta; evento: lugares por fecha).
+    /// Al dar de alta se captura un rango inicial; después se ajusta en Servicios › Disponibilidad.
+    /// </summary>
+    public abstract class ServicioConInventarioFormBase : ServicioFormBase
     {
+        [Display(Name = "Disponible desde")]
+        [DataType(DataType.Date)]
+        public DateTime? inventario_desde { get; set; }
+
+        [Display(Name = "Hasta (incluido)")]
+        [DataType(DataType.Date)]
+        public DateTime? inventario_hasta { get; set; }
+
+        [Display(Name = "Cupo por día")]
+        [Range(1, 100000, ErrorMessage = "El cupo debe estar entre 1 y 100,000.")]
+        public int? inventario_cupo { get; set; }
+
+        [Display(Name = "Precio por día")]
+        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        public decimal? inventario_precio { get; set; }
+    }
+
+    /// <summary>servicios + hospedajes (+ disponibilidad inicial)</summary>
+    public class HospedajeFormViewModel : ServicioConInventarioFormBase
+    {
+        public override string TipoServicio => "HOSPEDAJE";
+
         [Display(Name = "Ubicación")]
         [Required(ErrorMessage = "Selecciona la ubicación.")]
         public ulong? id_ubicacion { get; set; }
 
         [Display(Name = "Tipo de habitación")]
-        [Required(ErrorMessage = "Indica el tipo (hotel, cabaña, departamento...).")]
+        [Required(ErrorMessage = "Indica el tipo (sencilla, doble, suite, cabaña...).")]
         [StringLength(60, ErrorMessage = "Máximo 60 caracteres.")]
         public string tipo_habitacion { get; set; } = string.Empty;
 
@@ -197,11 +251,20 @@ namespace FlyVibeMex.Models
 
         [Display(Name = "Imagen")]
         public IFormFile? imagen { get; set; }
+
+        [Display(Name = "Quitar la imagen actual")]
+        public bool quitar_imagen { get; set; }
+
+        /// <summary>Ruta guardada (solo para mostrarla al actualizar).</summary>
+        [BindNever]
+        public string? imagen_actual { get; set; }
     }
 
-    /// <summary>servicios + vehiculos</summary>
-    public class VehiculoFormViewModel : ServicioFormBase
+    /// <summary>servicios + vehiculos (+ disponibilidad inicial)</summary>
+    public class VehiculoFormViewModel : ServicioConInventarioFormBase
     {
+        public override string TipoServicio => "VEHICULO";
+
         [Display(Name = "Ubicación de retiro")]
         [Required(ErrorMessage = "Selecciona la ubicación de retiro.")]
         public ulong? id_ubicacion_retiro { get; set; }
@@ -227,26 +290,164 @@ namespace FlyVibeMex.Models
 
         [Display(Name = "Imagen")]
         public IFormFile? imagen { get; set; }
+
+        [Display(Name = "Quitar la imagen actual")]
+        public bool quitar_imagen { get; set; }
+
+        [BindNever]
+        public string? imagen_actual { get; set; }
     }
 
     /// <summary>
-    /// servicios + disponibilidad_servicio.
-    /// No existe una tabla "eventos": por ahora un evento se guarda como servicio (tipo_servicio = 'EVENTO')
-    /// con su fecha y cupo en disponibilidad_servicio.
+    /// servicios (tipo EVENTO) + disponibilidad_servicio. No existe tabla "eventos": la ciudad del tour es la
+    /// ubicación de su proveedor y las fechas / lugares están en disponibilidad_servicio.
     /// </summary>
-    public class EventoFormViewModel : ServicioFormBase
+    public class EventoFormViewModel : ServicioConInventarioFormBase
     {
-        [Display(Name = "Fecha del evento")]
-        [Required(ErrorMessage = "La fecha es obligatoria.")]
+        public override string TipoServicio => "EVENTO";
+    }
+
+    /// <summary>
+    /// servicios + vuelos + disponibilidad_servicio. En la BD cada vuelo es UNA salida (vuelos.fecha_salida);
+    /// con "repetir" se crea una salida por fecha, cada una con sus asientos.
+    /// </summary>
+    public class VueloFormViewModel : ServicioFormBase
+    {
+        public override string TipoServicio => "VUELO";
+
+        /// <summary>Máximo de salidas que se crean de una vez.</summary>
+        public const int MaximoSalidas = 120;
+
+        [Display(Name = "Origen")]
+        [Required(ErrorMessage = "Selecciona el origen.")]
+        public ulong? id_origen { get; set; }
+
+        [Display(Name = "Destino")]
+        [Required(ErrorMessage = "Selecciona el destino.")]
+        public ulong? id_destino { get; set; }
+
+        [Display(Name = "Código de vuelo")]
+        [Required(ErrorMessage = "El código es obligatorio.")]
+        [RegularExpression("^[A-Za-z0-9]{2,10}$", ErrorMessage = "De 2 a 10 letras o números, sin espacios (p. ej. QZ123).")]
+        public string codigo_vuelo { get; set; } = string.Empty;
+
+        [Display(Name = "Salida")]
+        [Required(ErrorMessage = "Indica la fecha y hora de salida.")]
+        public DateTime? fecha_salida { get; set; }
+
+        [Display(Name = "Llegada")]
+        [Required(ErrorMessage = "Indica la fecha y hora de llegada.")]
+        public DateTime? fecha_llegada { get; set; }
+
+        [Display(Name = "Clase")]
+        [Required(ErrorMessage = "Selecciona la clase.")]
+        [RegularExpression("^(TURISTA|PREMIUM|PRIMERA)$", ErrorMessage = "Clase no válida.")]
+        public string clase { get; set; } = "TURISTA";
+
+        // ---------- Solo en el alta ----------
+
+        [Display(Name = "Asientos")]
+        [Range(1, 1000, ErrorMessage = "Debe ser entre 1 y 1000.")]
+        public int asientos { get; set; } = 150;
+
+        [Display(Name = "Precio por asiento")]
+        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        public decimal? precio_asiento { get; set; }
+
+        [Display(Name = "Repetir")]
+        [RegularExpression("^(NO|DIARIO|SEMANAL)$", ErrorMessage = "Opción no válida.")]
+        public string repetir { get; set; } = "NO";
+
+        [Display(Name = "Repetir hasta (incluido)")]
         [DataType(DataType.Date)]
-        public DateTime? fecha { get; set; }
+        public DateTime? repetir_hasta { get; set; }
 
-        [Display(Name = "Cupo total")]
-        [Range(1, 1000000, ErrorMessage = "El cupo debe ser mayor a 0.")]
-        public int cantidad_total { get; set; } = 1;
+        /// <summary>Días de la semana para "SEMANAL" (0 = domingo … 6 = sábado, como DayOfWeek).</summary>
+        [Display(Name = "Días de la semana")]
+        public List<int> dias_semana { get; set; } = new();
 
-        [Display(Name = "Precio para esa fecha")]
-        [Range(typeof(decimal), "0", "9999999999.99", ErrorMessage = "Precio no válido.")]
-        public decimal? precio_fecha { get; set; }
+        public static List<SelectListItem> OpcionesClase() => new()
+        {
+            new("Turista", "TURISTA"),
+            new("Premium", "PREMIUM"),
+            new("Primera", "PRIMERA")
+        };
+
+        public static List<SelectListItem> OpcionesRepetir() => new()
+        {
+            new("Solo esta salida", "NO"),
+            new("Todos los días", "DIARIO"),
+            new("Ciertos días de la semana", "SEMANAL")
+        };
+
+        /// <summary>Lunes primero (como en México), con el valor de DayOfWeek.</summary>
+        public static readonly (int valor, string nombre)[] DiasSemana =
+        {
+            (1, "Lun"), (2, "Mar"), (3, "Mié"), (4, "Jue"), (5, "Vie"), (6, "Sáb"), (0, "Dom")
+        };
+    }
+
+    /// <summary>Pantalla de alta / actualización de un servicio (formulario del tipo elegido).</summary>
+    public class FormServicioViewModel
+    {
+        /// <summary>null = todavía no se elige el tipo (se muestra el selector de tipo).</summary>
+        public ServicioFormBase? Formulario { get; set; }
+
+        /// <summary>Proveedor preseleccionado (viene de Proveedores › Asociar).</summary>
+        public ulong? IdProveedor { get; set; }
+        public string? NombreProveedor { get; set; }
+
+        /// <summary>Servicios del mismo tipo que ya tiene el proveedor (informativo).</summary>
+        public List<Servicios> ServiciosDelProveedor { get; set; } = new();
+    }
+
+    // ========================== DISPONIBILIDAD ==========================
+
+    /// <summary>Formulario para agregar o ajustar el cupo y el precio de un rango de fechas.</summary>
+    public class DisponibilidadFormViewModel
+    {
+        [Display(Name = "Desde")]
+        [Required(ErrorMessage = "Indica la fecha inicial.")]
+        [DataType(DataType.Date)]
+        public DateTime? desde { get; set; }
+
+        [Display(Name = "Hasta (incluido)")]
+        [DataType(DataType.Date)]
+        public DateTime? hasta { get; set; }
+
+        [Display(Name = "Cupo por día")]
+        [Required(ErrorMessage = "Indica el cupo (0 = cerrar esas fechas).")]
+        [Range(0, 100000, ErrorMessage = "El cupo debe estar entre 0 y 100,000.")]
+        public int? cupo { get; set; }
+
+        [Display(Name = "Precio por día")]
+        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        public decimal? precio { get; set; }
+    }
+
+    /// <summary>Un día de disponibilidad_servicio.</summary>
+    public record DiaDisponibilidad(DateOnly fecha, int total, int disponible, decimal precio)
+    {
+        public int vendidos => total - disponible;
+    }
+
+    /// <summary>Pantalla Servicios › Disponibilidad.</summary>
+    public class DisponibilidadViewModel
+    {
+        public Servicios Servicio { get; set; } = new();
+        public string NombreProveedor { get; set; } = string.Empty;
+
+        /// <summary>Vuelo: solo existe su fecha de salida (no se agregan otras fechas).</summary>
+        public DateOnly? FechaFija { get; set; }
+
+        /// <summary>Periodo que se muestra en la tabla.</summary>
+        public DateOnly Desde { get; set; }
+        public DateOnly Hasta { get; set; }
+        public List<DiaDisponibilidad> Dias { get; set; } = new();
+
+        public DisponibilidadFormViewModel Formulario { get; set; } = new();
+
+        public const int DiasPorPagina = 60;
+        public const int MaximoDiasPorCambio = 366;
     }
 }

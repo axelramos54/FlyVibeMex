@@ -114,9 +114,11 @@ GO
 /* ---------- Datos semilla de prueba ---------- */
 INSERT INTO dbo.roles_usuarios (nombre, descripcion, activo)
 VALUES
-    ('CLIENTE',       'Viajero que busca, reserva y paga servicios',            1),
-    ('AGENTE',        'Personal de la agencia que gestiona reservas y soporte', 1),
-    ('ADMINISTRADOR', 'Acceso al panel interno y catalogos',                     1);
+    ('CLIENTE',       'Viajero que busca, reserva y paga servicios',                                1),
+    ('SOPORTE',       'Atiende los tickets de soporte de los clientes',                             1),
+    ('AGENTE',        'Gestiona reservaciones y reembolsos de los clientes',                        1),
+    ('ADMINISTRADOR', 'Panel interno y Gestor de ventas (catalogo)',                                1),
+    ('SA',            'Super administrador: todo el panel, usuarios, catalogos base y bitacora',   1);
 GO
 
 -- Los IDs de rol se buscan por nombre (no se asume que sean 1, 2, 3).

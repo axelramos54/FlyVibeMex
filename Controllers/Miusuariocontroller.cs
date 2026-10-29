@@ -14,7 +14,7 @@ namespace FlyVibeMex.Controllers;
 /// </summary>
 /// <remarks>
 /// - Requiere sesión. El id de la cuenta SIEMPRE sale de la cookie; nunca del formulario.
-/// - Internos (AGENTE / SOPORTE / ADMINISTRADOR): solo lectura. Con <c>?cliente=ID</c> ("Ver como cliente") ven la
+/// - Internos (SOPORTE / AGENTE / ADMINISTRADOR / SA): solo lectura. Con <c>?cliente=ID</c> ("Ver como cliente") ven la
 ///   cuenta de un cliente para comprobar que lo que añadieron / modificaron / eliminaron ya aparece. Todas las
 ///   acciones de cliente (cancelar, tarjetas) llevan además [Authorize(Roles = CLIENTE)]: aunque alguien arme el
 ///   POST a mano, el servidor responde "Acceso denegado". Su propio perfil y contraseña sí los pueden cambiar.

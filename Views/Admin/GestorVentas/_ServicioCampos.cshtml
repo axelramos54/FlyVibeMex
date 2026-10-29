@@ -1,8 +1,33 @@
-@* Campos comunes de la tabla servicios. Los usan los formularios de hospedaje, vehículo y evento. *@
+@* Campos comunes de la tabla servicios (proveedor, nombre, descripción, precio, moneda, política y, al actualizar, activo).
+   Los usa _FormServicio.cshtml para todos los tipos. ViewData["Proveedores"] = lista para el <select> (la carga el controlador). *@
 @model ServicioFormBase
+@{
+    var proveedores = ViewData["Proveedores"] as List<SelectListItem> ?? new List<SelectListItem>();
+}
 
 <h3 class="h6">Datos del servicio</h3>
 <div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="id_proveedor" class="form-label"></label>
+        <select asp-for="id_proveedor" asp-items="proveedores" class="form-select" required>
+            <option value="">— Selecciona —</option>
+        </select>
+        @if (proveedores.Count == 0)
+        {
+            <div class="form-text">No hay proveedores activos. <a asp-action="AltaProveedor">Da de alta uno primero</a>.</div>
+        }
+        <span asp-validation-for="id_proveedor" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label" for="tipo_fijo">Tipo de servicio</label>
+        <input id="tipo_fijo" class="form-control" value="@TiposGestor.Nombre(Model.Slug)" disabled />
+        @if (!Model.EsAlta)
+        {
+            <div class="form-text">El tipo de un servicio existente no se puede cambiar.</div>
+        }
+    </div>
+
     <div class="col-12">
         <label asp-for="nombre" class="form-label"></label>
         <input asp-for="nombre" class="form-control" maxlength="150" required />
@@ -17,7 +42,11 @@
 
     <div class="col-md-6">
         <label asp-for="precio_base" class="form-label"></label>
-        <input asp-for="precio_base" type="number" step="0.01" min="0" class="form-control" required />
+        <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input asp-for="precio_base" type="number" step="0.01" min="0" max="99999999.99" class="form-control" required />
+        </div>
+        <div class="form-text">Precio de referencia ("desde $X"). El precio que se cobra es el de cada fecha en la disponibilidad.</div>
         <span asp-validation-for="precio_base" class="text-danger small"></span>
     </div>
 
@@ -30,4 +59,15 @@
     <div class="col-12">
         <partial name="~/Views/Admin/GestorVentas/_PoliticaCancelacionCampos.cshtml" model="Model" />
     </div>
+
+    @if (!Model.EsAlta)
+    {
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="activo" class="form-check-input" />
+                <label asp-for="activo" class="form-check-label"></label>
+            </div>
+            <div class="form-text">Si lo desmarcas deja de mostrarse en el sitio (las reservaciones existentes no cambian).</div>
+        </div>
+    }
 </div>

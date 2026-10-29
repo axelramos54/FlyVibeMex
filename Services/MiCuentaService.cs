@@ -34,7 +34,7 @@ public sealed class MiCuentaService : IMiCuentaService
         {
             IdUsuario = idUsuario,
             IdCuenta = idUsuario,
-            EsInterno = usuario.IsInRole(Roles.Agente) || usuario.IsInRole(Roles.Soporte) || usuario.IsInRole(Roles.Administrador)
+            EsInterno = Roles.EsInterno(usuario)
         };
 
         // Solo un interno puede ver otra cuenta, y solo de un CLIENTE (nunca la de otro interno).

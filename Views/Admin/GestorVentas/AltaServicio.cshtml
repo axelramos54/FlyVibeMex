@@ -1,22 +1,79 @@
-@* GET/POST /Admin/GestorVentas/Servicios/Alta (GestorController.AltaServicio) *@
-@model ServicioFormViewModel
+@*
+ GET  /Admin/GestorVentas/Servicios/Alta                          → elegir el tipo de servicio
+ GET  /Admin/GestorVentas/Servicios/Alta?tipo=vuelo&idProveedor=5 → formulario de ese tipo
+ POST /Admin/GestorVentas/Servicios/Alta/{tipo}                   (GestorController.GuardarAlta)
+ "Proveedores › Asociar" llega aquí con el proveedor ya elegido. El paquete tiene su propia pantalla.
+*@
+@model FormServicioViewModel
 @{
-    ViewData["Title"] = "Dar de alta servicio";
+    var f = Model.Formulario;
+    ViewData["Title"] = f is null ? "Dar de alta servicio" : $"Alta de {TiposGestor.Nombre(f.Slug).ToLower()}";
 }
 
-<h1 class="h3 mb-1">Dar de alta servicio</h1>
-<p class="text-muted">
-    Captura los datos generales del servicio. Los detalles de hospedaje o vehículo (capacidad, horarios, imagen…)
-    se agregan desde <strong>Proveedores › Asociar</strong>.
-</p>
+<h1 class="h3 mb-1">@ViewData["Title"]</h1>
 
-<form asp-action="AltaServicio" method="post" class="card card-body" style="max-width: 760px">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-    <partial name="~/Views/Admin/GestorVentas/_ServicioFormCampos.cshtml" model="Model" />
-
-    <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Dar de alta</button>
-        <a class="btn btn-outline-secondary" asp-action="ListaServicios">Cancelar</a>
+@if (f is null)
+{
+    <p class="text-muted">
+        Elige qué vas a dar de alta@(Model.NombreProveedor is null ? "" : $" para {Model.NombreProveedor}").
+        Cada tipo pide sus propios datos y su disponibilidad inicial, y se guarda todo junto.
+    </p>
+    <div class="row g-3" style="max-width: 960px">
+        @foreach (var slug in TiposGestor.Slugs)
+        {
+            <div class="col-sm-6 col-lg-3">
+                <a class="card h-100 text-decoration-none" asp-action="AltaServicio" asp-route-tipo="@slug" asp-route-idProveedor="@Model.IdProveedor">
+                    <div class="card-body">
+                        <h2 class="h5 card-title">@TiposGestor.Nombre(slug)</h2>
+                        <p class="card-text small text-muted mb-0">@TiposGestor.Descripcion(slug)</p>
+                    </div>
+                </a>
+            </div>
+        }
+        <div class="col-sm-6 col-lg-3">
+            <a class="card h-100 text-decoration-none" asp-action="CrearPaquete">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Paquete</h2>
+                    <p class="card-text small text-muted mb-0">Combina varios servicios; tiene su propia pantalla.</p>
+                </div>
+            </a>
+        </div>
     </div>
-</form>
+}
+else
+{
+    <p class="text-muted">
+        Se guardan juntos el servicio, sus datos de @TiposGestor.Nombre(f.Slug).ToLower() y su disponibilidad: al terminar ya aparece en el sitio.
+        <a asp-action="AltaServicio" asp-route-idProveedor="@Model.IdProveedor">Cambiar de tipo</a>
+    </p>
+
+    <partial name="~/Views/Admin/GestorVentas/_FormServicio.cshtml" model="f" />
+
+    if (Model.NombreProveedor is not null)
+    {
+        <h2 class="h5 mt-4">@TiposGestor.Nombre(f.Slug) de @Model.NombreProveedor</h2>
+        if (Model.ServiciosDelProveedor.Count == 0)
+        {
+            <p class="text-muted">Este proveedor aún no tiene servicios de este tipo.</p>
+        }
+        else
+        {
+            <div class="table-responsive" style="max-width: 860px">
+                <table class="table table-sm table-hover align-middle">
+                    <thead><tr><th>Nombre</th><th class="text-end">Precio base</th><th>Estado</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var s in Model.ServiciosDelProveedor)
+                        {
+                            <tr>
+                                <td>@s.nombre</td>
+                                <td class="text-end">$@s.precio_base.ToString("N2") @s.moneda</td>
+                                <td>@(s.activo ? "Activo" : "Inactivo")</td>
+                                <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="ActualizarServicio" asp-route-id="@s.id">Abrir</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+}

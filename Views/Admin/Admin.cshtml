@@ -1,51 +1,87 @@
+@*
+ Views/Admin/Admin.cshtml — GET /Admin (AdminController.Index)
+ Inicio del panel: cada quien ve solo las secciones de su rol (ver Models/Auth/Roles.cs).
+ El menú y las tarjetas se ocultan por comodidad; la protección real es el [Authorize(Roles = ...)] de cada controlador.
+*@
 @{
     ViewData["Title"] = "Panel de administración";
+    var verSoporte = Roles.Puede(User, Roles.PanelSoporte);
+    var verGestor = Roles.Puede(User, Roles.PanelGestor);
+    var verSA = Roles.Puede(User, Roles.PanelSA);
+    var verReservaciones = Roles.Puede(User, Roles.PanelReservaciones);
 }
 
 @section Menu {
-    <a class="m-1" asp-controller="Soporte" asp-action="Index">Soporte</a>
-    <a class="m-1" asp-controller="Gestor" asp-action="Index">Gestor Ventas</a>
-    <a class="m-1" asp-controller="SA" asp-action="Index">SA</a>
+    @if (verSoporte)
+    {
+        <a class="m-1" asp-controller="Soporte" asp-action="Index">Soporte</a>
+    }
+    @if (verGestor)
+    {
+        <a class="m-1" asp-controller="Gestor" asp-action="Index">Gestor Ventas</a>
+    }
+    @if (verSA)
+    {
+        <a class="m-1" asp-controller="SA" asp-action="Index">SA</a>
+    }
     <a class="m-1" asp-controller="Home" asp-action="Index">Ir al sitio</a>
 }
 
 <div class="p-4 mb-4 bg-light border rounded-3">
     <h1 class="h2">Panel de administración</h1>
-    <p class="lead mb-1">Estás en el área interna de FlyVibeMex.</p>
-    <p class="mb-0 text-muted">
-        Desde aquí entras a las herramientas de cada área. Elige la sección que te corresponde
-        en las tarjetas de abajo o en el menú superior.
-    </p>
+    <p class="lead mb-1">Hola, @User.Identity?.Name. Estás en el área interna de FlyVibeMex.</p>
+    <p class="mb-0 text-muted">Aquí solo aparecen las herramientas de tu rol.</p>
 </div>
 
 <div class="row g-3">
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body d-flex flex-column">
-                <h2 class="h5 card-title">Soporte</h2>
-                <p class="card-text">Atiende los tickets de los clientes, da seguimiento a los que tienes en curso y consulta tu historial.</p>
-                <a class="btn btn-primary mt-auto" asp-controller="Soporte" asp-action="Index">Entrar a Soporte</a>
+    @if (verSoporte)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5 card-title">Soporte</h2>
+                    <p class="card-text">Atiende los tickets de los clientes, da seguimiento a los que tienes en curso y consulta tu historial.</p>
+                    <a class="btn btn-primary mt-auto" asp-controller="Soporte" asp-action="Index">Entrar a Soporte</a>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body d-flex flex-column">
-                <h2 class="h5 card-title">Gestor de ventas</h2>
-                <p class="card-text">Da de alta y administra proveedores, paquetes y promociones.</p>
-                <a class="btn btn-primary mt-auto" asp-controller="Gestor" asp-action="Index">Entrar a Gestor de ventas</a>
+    }
+    @if (verReservaciones)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5 card-title">Reservaciones y reembolsos</h2>
+                    <p class="card-text">Busca reservaciones, cancela a nombre del cliente y aprueba o rechaza reembolsos.</p>
+                    <span class="badge text-bg-secondary mt-auto align-self-start">Próximamente</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body d-flex flex-column">
-                <h2 class="h5 card-title">SA</h2>
-                <p class="card-text">Administración general del sistema.</p>
-                <a class="btn btn-primary mt-auto" asp-controller="SA" asp-action="Index">Entrar a SA</a>
+    }
+    @if (verGestor)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5 card-title">Gestor de ventas</h2>
+                    <p class="card-text">Proveedores, servicios (vuelos, hospedajes, vehículos, tours), su disponibilidad, paquetes y promociones.</p>
+                    <a class="btn btn-primary mt-auto" asp-controller="Gestor" asp-action="Index">Entrar a Gestor de ventas</a>
+                </div>
             </div>
         </div>
-    </div>
+    }
+    @if (verSA)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5 card-title">SA</h2>
+                    <p class="card-text">Usuarios y roles, catálogos base, bitácora y contenido del sitio.</p>
+                    <a class="btn btn-primary mt-auto" asp-controller="SA" asp-action="Index">Entrar a SA</a>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <p class="text-muted small mt-4 mb-0">Esta área es solo para personal autorizado de FlyVibeMex.</p>

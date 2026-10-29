@@ -1,22 +1,18 @@
-@* GET/POST /Admin/GestorVentas/Servicios/{id}/Actualizar (GestorController.ActualizarServicio) *@
-@model ServicioFormViewModel
+@*
+ GET  /Admin/GestorVentas/Servicios/{id}/Actualizar (GestorController.ActualizarServicio)
+ POST /Admin/GestorVentas/Servicios/{id}/Actualizar (GestorController.GuardarActualizacion)
+ Se edita todo menos el tipo. Las compras ya hechas conservan su precio y su política (snapshot, regla R4).
+*@
+@model FormServicioViewModel
 @{
+    var f = Model.Formulario!;
     ViewData["Title"] = "Actualizar servicio";
-    ViewData["EsActualizar"] = true;
 }
 
-<h1 class="h3 mb-1">Actualizar servicio</h1>
+<h1 class="h3 mb-1">Actualizar @TiposGestor.Nombre(f.Slug).ToLower()</h1>
 <p class="text-muted">
-    Modifica la información y presiona Confirmar. Cambiar el precio base no afecta a las reservaciones ya hechas.
+    Modifica la información y presiona Guardar cambios. Las reservaciones ya hechas no cambian
+    (conservan el precio y la política con la que se compraron). El cupo por fecha se cambia en <strong>Disponibilidad</strong>.
 </p>
 
-<form asp-action="ActualizarServicio" asp-route-id="@Model.id" method="post" class="card card-body" style="max-width: 760px">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-    <partial name="~/Views/Admin/GestorVentas/_ServicioFormCampos.cshtml" model="Model" />
-
-    <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Confirmar</button>
-        <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-nombre="@Model.nombre" asp-route-incluirInactivos="true">Cancelar</a>
-    </div>
-</form>
+<partial name="~/Views/Admin/GestorVentas/_FormServicio.cshtml" model="f" />

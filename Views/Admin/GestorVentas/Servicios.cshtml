@@ -84,6 +84,10 @@ else
                     <tr class="@(s.activo ? "" : "table-secondary")">
                         <td>
                             <div class="fw-semibold">@s.nombre</div>
+                            @if (Model.Detalles.TryGetValue(s.id, out var detalle))
+                            {
+                                <div class="small">@detalle</div>
+                            }
                             @if (!string.IsNullOrWhiteSpace(s.descripcion))
                             {
                                 <div class="text-muted small text-truncate" style="max-width: 320px">@s.descripcion</div>
@@ -96,6 +100,15 @@ else
                             @if (s.activo)
                             {
                                 <span class="badge text-bg-success">Activo</span>
+                                var dias = Model.DiasDisponibles.GetValueOrDefault(s.id);
+                                if (dias == 0)
+                                {
+                                    <div class="small text-danger">Sin cupo: no aparece en el sitio</div>
+                                }
+                                else
+                                {
+                                    <div class="small text-muted">@dias día(s) con cupo</div>
+                                }
                             }
                             else
                             {
@@ -105,6 +118,7 @@ else
                         <td class="text-end">
                             <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                                 <a class="btn btn-sm btn-outline-primary" asp-action="ActualizarServicio" asp-route-id="@s.id">Actualizar</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-action="Disponibilidad" asp-route-id="@s.id">Disponibilidad</a>
                                 @if (s.activo)
                                 {
                                     <a class="btn btn-sm btn-outline-danger" asp-action="DarDeBajaServicio" asp-route-id="@s.id">Dar de baja</a>

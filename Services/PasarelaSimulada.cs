@@ -10,7 +10,7 @@ namespace FlyVibeMex.Services;
 /// Tarjetas de prueba:
 ///   4242 4242 4242 4242 → aprobada
 ///   4000 0000 0000 0002 → rechazada (cualquier tarjeta cuyos últimos 4 dígitos sean 0002)
-/// Seguridad (regla R5): el número completo y el CVV solo existen en memoria durante la validación;
+/// Seguridad: el número completo y el CVV solo existen en memoria durante la validación;
 /// de la tarjeta solo se guardan marca, últimos 4 dígitos, vencimiento, alias y un token falso.
 /// </remarks>
 public static class PasarelaSimulada

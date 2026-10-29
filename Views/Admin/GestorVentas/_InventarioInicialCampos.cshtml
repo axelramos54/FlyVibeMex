@@ -1,0 +1,38 @@
+@* Disponibilidad inicial (tabla disponibilidad_servicio): una fila por día del rango con el mismo cupo y precio.
+   Solo en el ALTA de hospedaje, vehículo y evento; después se ajusta en Servicios › Disponibilidad.
+   Sin estas filas el servicio no aparece en las búsquedas del sitio (regla R3). *@
+@model ServicioConInventarioFormBase
+@{
+    var (titulo, cupo, ayuda) = Model.Slug switch
+    {
+        "hospedaje" => ("Disponibilidad inicial (por noche)", "Habitaciones por noche", "Una fila por noche (cada fecha es la noche en que se duerme ahí)."),
+        "vehiculo" => ("Disponibilidad inicial (por día)", "Vehículos por día", "Una fila por día de renta."),
+        _ => ("Fechas del tour / evento", "Lugares por fecha", "Si es un solo día, deja \"Hasta\" igual a \"Desde\".")
+    };
+}
+
+<h3 class="h6">@titulo</h3>
+<p class="small text-muted">@ayuda Puedes agregar o cambiar fechas después en <strong>Disponibilidad</strong>.</p>
+<div class="row g-3">
+    <div class="col-md-3">
+        <label asp-for="inventario_desde" class="form-label"></label>
+        <input asp-for="inventario_desde" class="form-control" required />
+        <span asp-validation-for="inventario_desde" class="text-danger small"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="inventario_hasta" class="form-label"></label>
+        <input asp-for="inventario_hasta" class="form-control" />
+        <span asp-validation-for="inventario_hasta" class="text-danger small"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="inventario_cupo" class="form-label">@cupo</label>
+        <input asp-for="inventario_cupo" type="number" min="1" max="100000" class="form-control" required />
+        <span asp-validation-for="inventario_cupo" class="text-danger small"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="inventario_precio" class="form-label"></label>
+        <input asp-for="inventario_precio" type="number" step="0.01" min="0" class="form-control" />
+        <div class="form-text">Vacío = precio base.</div>
+        <span asp-validation-for="inventario_precio" class="text-danger small"></span>
+    </div>
+</div>

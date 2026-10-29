@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -8,34 +9,31 @@ namespace FlyVibeMex.Controllers;
 
 /// <summary>
 /// Panel del gestor de ventas: <c>/Admin/GestorVentas</c>. Las vistas están en <c>Views/Admin/GestorVentas/</c>.
+/// Los datos los maneja <see cref="IGestorCatalogoService"/> (EF Core + bitácora).
 /// </summary>
 /// <remarks>
 /// Reglas de seguridad que sigue este controlador:
+/// - Solo ADMINISTRADOR y SA (<see cref="Roles.PanelGestor"/>).
 /// - Los GET solo consultan; todo lo que modifica datos es POST.
 /// - [AutoValidateAntiforgeryToken]: todo POST exige el token que agrega el &lt;form&gt; tag helper.
 /// - Los formularios se reciben en ViewModels (solo los campos permitidos) y se validan en el servidor.
-/// - El id del proveedor siempre sale de la URL y se busca en la BD; nunca se confía en un campo oculto.
+/// - El id del proveedor / servicio siempre sale de la URL y se busca en la BD; nunca se confía en un campo oculto.
 /// </remarks>
 [Route("Admin/GestorVentas")]
 [AutoValidateAntiforgeryToken]
-[Authorize(Roles = Roles.Administrador)]   // el atributo aplica también a GestorController.ProveedoresServicios.cs
-// NOTA: es "partial" porque el listado de proveedores y el CRUD de servicios están en
+[Authorize(Roles = Roles.PanelGestor)]   // el atributo aplica también a GestorController.ProveedoresServicios.cs
+// NOTA: es "partial" porque el listado de proveedores, los servicios y la disponibilidad están en
 //       Controllers/GestorController.ProveedoresServicios.cs (misma clase, otro archivo).
 public partial class GestorController : Controller
 {
     private const string Carpeta = "~/Views/Admin/GestorVentas/";
 
-    // Mientras no haya BD, las pantallas de un proveedor se abren con un "proveedor de prueba".
-    // Cuando conectes la BD cámbialo a false: un id que no existe devolverá 404.
-    private static readonly bool ModoSinBD = true;
-
-    // Imágenes: se guardan como archivo en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
-    private readonly IAlmacenImagenes _imagenes;
+    private readonly IGestorCatalogoService _gestor;
 
     // NOTA: el constructor va SOLO en este archivo (la otra parte de la clase "partial" no debe declarar otro).
-    public GestorController(IAlmacenImagenes imagenes)
+    public GestorController(IGestorCatalogoService gestor)
     {
-        _imagenes = imagenes;
+        _gestor = gestor;
     }
 
     private IActionResult Vista(string nombre, object? modelo = null) => View(Carpeta + nombre + ".cshtml", modelo);
@@ -50,37 +48,37 @@ public partial class GestorController : Controller
 
     // GET /Admin/GestorVentas/Proveedores/Alta
     [HttpGet("Proveedores/Alta")]
-    public IActionResult AltaProveedor()
+    public async Task<IActionResult> AltaProveedor(CancellationToken cancellationToken)
     {
-        CargarUbicaciones();
+        await CargarUbicacionesAsync(cancellationToken);
         return Vista("AltaProveedor", new ProveedorFormViewModel());
     }
 
     // POST /Admin/GestorVentas/Proveedores/Alta
     [HttpPost("Proveedores/Alta")]
-    public IActionResult AltaProveedor(
-        [Bind("id_ubicacion,tipo_proveedor,nombre,telefono,correo")] ProveedorFormViewModel datos)
+    public async Task<IActionResult> AltaProveedor(
+        [Bind("id_ubicacion,tipo_proveedor,nombre,telefono,correo")] ProveedorFormViewModel datos, CancellationToken cancellationToken)
     {
-        // TODO BD: validar que teléfono y correo no existan ya (son UNIQUE) y que la ubicación exista.
-        //   if (existeCorreo) ModelState.AddModelError(nameof(datos.correo), "Ya hay un proveedor con ese correo.");
-
-        if (!ModelState.IsValid)
+        if (ModelState.IsValid)
         {
-            CargarUbicaciones();
-            return Vista("AltaProveedor", datos);
+            var resultado = await _gestor.GuardarProveedorAsync(null, datos, IdUsuario(), cancellationToken);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(ListaProveedores), new { nombre = datos.nombre.Trim() });
+            }
+            AgregarErrores(resultado);
         }
 
-        // TODO BD: INSERT INTO proveedores (id_ubicacion, tipo_proveedor, nombre, telefono, correo)
-        //          activo, creado_en y actualizado_en los pone la BD con sus DEFAULT.
-        TempData["Exito"] = $"Los datos de \"{datos.nombre}\" son válidos. El guardado se activará al conectar la base de datos.";
-        return RedirectToAction(nameof(GestionarProveedores), new { nombre = datos.nombre });
+        await CargarUbicacionesAsync(cancellationToken);
+        return Vista("AltaProveedor", datos);
     }
 
     // ============================== GESTIONAR PROVEEDORES ==============================
 
     // GET /Admin/GestorVentas/Proveedores?nombre=xxx
     [HttpGet("Proveedores")]
-    public IActionResult GestionarProveedores(string? nombre)
+    public async Task<IActionResult> GestionarProveedores(string? nombre, CancellationToken cancellationToken)
     {
         var vm = new GestionarProveedoresViewModel { Nombre = nombre?.Trim() };
 
@@ -93,7 +91,7 @@ public partial class GestorController : Controller
             else
             {
                 vm.Buscado = true;
-                vm.Resultados = BuscarProveedoresPorNombre(vm.Nombre);
+                vm.Resultados = await _gestor.ProveedoresAsync(vm.Nombre, null, incluirInactivos: true, maximo: 20, cancellationToken);
             }
         }
 
@@ -104,36 +102,36 @@ public partial class GestorController : Controller
 
     // GET /Admin/GestorVentas/Proveedores/5/Actualizar
     [HttpGet("Proveedores/{id}/Actualizar")]
-    public IActionResult Actualizar(ulong id)
+    public async Task<IActionResult> Actualizar(ulong id, CancellationToken cancellationToken)
     {
-        var proveedor = ObtenerProveedorOPrueba(id);
+        var proveedor = await _gestor.ProveedorAsync(id, cancellationToken);
         if (proveedor is null) return NotFound();
 
-        CargarUbicaciones();
+        await CargarUbicacionesAsync(cancellationToken);
         return Vista("Actualizar", ProveedorFormViewModel.Desde(proveedor));
     }
 
     // POST /Admin/GestorVentas/Proveedores/5/Actualizar
     [HttpPost("Proveedores/{id}/Actualizar")]
-    public IActionResult Actualizar(ulong id,
-        [Bind("id_ubicacion,tipo_proveedor,nombre,telefono,correo,activo")] ProveedorFormViewModel datos)
+    public async Task<IActionResult> Actualizar(ulong id,
+        [Bind("id_ubicacion,tipo_proveedor,nombre,telefono,correo,activo")] ProveedorFormViewModel datos, CancellationToken cancellationToken)
     {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
+        if (await _gestor.ProveedorAsync(id, cancellationToken) is null) return NotFound();
         datos.id = id; // el id sale de la URL, no del formulario
 
-        // TODO BD: validar que teléfono y correo no los tenga OTRO proveedor (UNIQUE).
-
-        if (!ModelState.IsValid)
+        if (ModelState.IsValid)
         {
-            CargarUbicaciones();
-            return Vista("Actualizar", datos);
+            var resultado = await _gestor.GuardarProveedorAsync(id, datos, IdUsuario(), cancellationToken);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(ListaProveedores), new { nombre = datos.nombre.Trim(), incluirInactivos = !datos.activo });
+            }
+            AgregarErrores(resultado);
         }
 
-        // TODO BD: UPDATE proveedores SET ..., actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        TempData["Exito"] = $"Los cambios de \"{datos.nombre}\" son válidos. Se guardarán cuando se conecte la base de datos.";
-        return RedirectToAction(nameof(GestionarProveedores), new { nombre = datos.nombre });
+        await CargarUbicacionesAsync(cancellationToken);
+        return Vista("Actualizar", datos);
     }
 
     // ----- Dar de baja (doble confirmación) -----
@@ -141,9 +139,9 @@ public partial class GestorController : Controller
     // GET /Admin/GestorVentas/Proveedores/5/Baja          → confirmación 1
     // GET /Admin/GestorVentas/Proveedores/5/Baja?paso=2   → confirmación 2 (formulario POST)
     [HttpGet("Proveedores/{id}/Baja")]
-    public IActionResult DarDeBaja(ulong id, int paso = 1)
+    public async Task<IActionResult> DarDeBaja(ulong id, int paso = 1, CancellationToken cancellationToken = default)
     {
-        var proveedor = ObtenerProveedorOPrueba(id);
+        var proveedor = await _gestor.ProveedorAsync(id, cancellationToken);
         if (proveedor is null) return NotFound();
 
         ViewData["Paso"] = paso == 2 ? 2 : 1;
@@ -152,12 +150,12 @@ public partial class GestorController : Controller
 
     // POST /Admin/GestorVentas/Proveedores/5/Baja   → ejecuta la baja
     [HttpPost("Proveedores/{id}/Baja")]
-    public IActionResult ConfirmarBaja(ulong id, bool confirmo)
+    public async Task<IActionResult> ConfirmarBaja(ulong id, bool confirmo, CancellationToken cancellationToken)
     {
-        var proveedor = ObtenerProveedorOPrueba(id);
+        var proveedor = await _gestor.ProveedorAsync(id, cancellationToken);
         if (proveedor is null) return NotFound();
 
-        // La segunda confirmación se valida en el servidor (no basta con un confirm() de JavaScript).
+        // La segunda confirmación se valida en el servidor (no basta con el "required" del navegador).
         if (!confirmo)
         {
             ModelState.AddModelError("confirmo", "Marca la casilla para confirmar la baja.");
@@ -165,90 +163,18 @@ public partial class GestorController : Controller
             return Vista("DarDeBaja", proveedor);
         }
 
-        // TODO BD: baja LÓGICA, no DELETE (la tabla servicios hace referencia al proveedor):
-        //          UPDATE proveedores SET activo = 0, actualizado_en = CURRENT_TIMESTAMP WHERE id = @id
-        TempData["Exito"] = $"La baja de \"{proveedor.nombre}\" fue confirmada. Se aplicará cuando se conecte la base de datos.";
-        return RedirectToAction(nameof(GestionarProveedores), new { nombre = proveedor.nombre });
+        // Baja LÓGICA, nunca DELETE (la tabla servicios hace referencia al proveedor).
+        var resultado = await _gestor.CambiarEstadoProveedorAsync(id, false, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
+        return RedirectToAction(nameof(ListaProveedores), new { incluirInactivos = true });
     }
 
-    // ----- Asociar (hospedajes, vehículos, eventos) -----
+    // ----- Asociar = dar de alta un servicio con este proveedor ya elegido -----
 
     // GET /Admin/GestorVentas/Proveedores/5/Asociar?tipo=hospedaje
     [HttpGet("Proveedores/{id}/Asociar")]
-    public IActionResult Asociar(ulong id, string? tipo)
-    {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
-        tipo = AsociarViewModel.Normalizar(tipo);   // solo hospedaje | vehiculo | evento
-        ServicioFormBase? formulario = tipo switch
-        {
-            "hospedaje" => new HospedajeFormViewModel(),
-            "vehiculo" => new VehiculoFormViewModel(),
-            "evento" => new EventoFormViewModel(),
-            _ => null
-        };
-
-        return VistaAsociar(proveedor, tipo, formulario);
-    }
-
-    // POST /Admin/GestorVentas/Proveedores/5/Asociar/Hospedaje
-    [HttpPost("Proveedores/{id}/Asociar/Hospedaje")]
-    [RequestSizeLimit(5_000_000)]
-    public IActionResult AsociarHospedaje(ulong id, HospedajeFormViewModel datos)
-    {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
-        ValidarImagen(datos.imagen, nameof(datos.imagen));
-        if (datos.hora_entrada is not null && datos.hora_salida is null)
-            ModelState.AddModelError(nameof(datos.hora_salida), "Si indicas hora de entrada, indica también la de salida.");
-
-        if (!ModelState.IsValid) return VistaAsociar(proveedor, "hospedaje", datos);
-
-        // TODO BD (en una transacción):
-        //   1) INSERT servicios (id_proveedor = @id, tipo_servicio = 'HOSPEDAJE', nombre, descripcion, precio_base, moneda)
-        //   2) string? ruta = datos.imagen is { Length: > 0 } ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Hospedajes) : null;
-        //   3) INSERT hospedajes (..., imagen_ruta = ruta)   — si la transacción falla: _imagenes.Eliminar(ruta)
-        return ExitoAsociacion(id, proveedor, "hospedaje", datos.nombre);
-    }
-
-    // POST /Admin/GestorVentas/Proveedores/5/Asociar/Vehiculo
-    [HttpPost("Proveedores/{id}/Asociar/Vehiculo")]
-    [RequestSizeLimit(5_000_000)]
-    public IActionResult AsociarVehiculo(ulong id, VehiculoFormViewModel datos)
-    {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
-        ValidarImagen(datos.imagen, nameof(datos.imagen));
-
-        if (!ModelState.IsValid) return VistaAsociar(proveedor, "vehiculo", datos);
-
-        // TODO BD (en una transacción):
-        //   1) INSERT servicios (id_proveedor = @id, tipo_servicio = 'VEHICULO', ...)
-        //   2) string? ruta = datos.imagen is { Length: > 0 } ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Vehiculos) : null;
-        //   3) INSERT vehiculos (..., imagen_ruta = ruta)    — si la transacción falla: _imagenes.Eliminar(ruta)
-        return ExitoAsociacion(id, proveedor, "vehiculo", datos.nombre);
-    }
-
-    // POST /Admin/GestorVentas/Proveedores/5/Asociar/Evento
-    [HttpPost("Proveedores/{id}/Asociar/Evento")]
-    public IActionResult AsociarEvento(ulong id, EventoFormViewModel datos)
-    {
-        var proveedor = ObtenerProveedorOPrueba(id);
-        if (proveedor is null) return NotFound();
-
-        if (datos.fecha is not null && datos.fecha.Value.Date < DateTime.Today)
-            ModelState.AddModelError(nameof(datos.fecha), "La fecha del evento no puede ser en el pasado.");
-
-        if (!ModelState.IsValid) return VistaAsociar(proveedor, "evento", datos);
-
-        // TODO BD (en una transacción):
-        //   1) INSERT servicios (id_proveedor = @id, tipo_servicio = 'EVENTO', ...)
-        //   2) INSERT disponibilidad_servicio (id_servicio, fecha, cantidad_total, cantidad_disponible = cantidad_total, precio_fecha)
-        return ExitoAsociacion(id, proveedor, "evento", datos.nombre);
-    }
+    public IActionResult Asociar(ulong id, string? tipo) =>
+        RedirectToAction(nameof(AltaServicio), new { tipo = TiposGestor.Normalizar(tipo), idProveedor = id });
 
     // ============================== PAQUETES Y PROMOCIONES ==============================
     // Pantallas pendientes: por ahora muestran un aviso de "en construcción".
@@ -273,90 +199,27 @@ public partial class GestorController : Controller
         return Vista("EnConstruccion");
     }
 
-    private IActionResult VistaAsociar(Proveedores proveedor, string? tipo, ServicioFormBase? formulario)
-    {
-        if (formulario is not null) formulario.id_proveedor = proveedor.id;
-        CargarUbicaciones();
+    /// <summary>Id del usuario de la cookie (para la bitácora). [Authorize] garantiza que existe.</summary>
+    private ulong IdUsuario() => ulong.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        var vm = new AsociarViewModel
+    /// <summary>Pasa los errores del servicio a ModelState (con el prefijo del formulario, si lo tiene).</summary>
+    private void AgregarErrores(ResultadoOperacion resultado, string prefijo = "")
+    {
+        if (resultado.Errores is { Count: > 0 } errores)
         {
-            Proveedor = proveedor,
-            Tipo = tipo,
-            Formulario = formulario,
-            ServiciosAsociados = tipo is null ? new List<Servicios>() : ObtenerServiciosAsociados(proveedor.id, tipo)
-        };
-        return Vista("Asociar", vm);
-    }
-
-    private IActionResult ExitoAsociacion(ulong id, Proveedores proveedor, string tipo, string nombreServicio)
-    {
-        TempData["Exito"] = $"Los datos de \"{nombreServicio}\" para {proveedor.nombre} son válidos. " +
-                            "Se guardarán cuando se conecte la base de datos.";
-        return RedirectToAction(nameof(Asociar), new { id, tipo });
-    }
-
-    /// <summary>Valida tamaño (2 MB) y tipo REAL de la imagen con <see cref="IAlmacenImagenes"/>.</summary>
-    private void ValidarImagen(IFormFile? imagen, string campo)
-    {
-        var error = _imagenes.Validar(imagen);
-        if (error is not null) ModelState.AddModelError(campo, error);
-    }
-
-    private Proveedores? ObtenerProveedorOPrueba(ulong id)
-    {
-        var proveedor = ObtenerProveedor(id);
-        if (proveedor is null && ModoSinBD)
-        {
-            ViewData["SinBD"] = true;
-            proveedor = new Proveedores
-            {
-                id = id,
-                nombre = "Proveedor de prueba",
-                tipo_proveedor = "OTRO",
-                telefono = "0000000000",
-                correo = "prueba@flyvibemex.com",
-                activo = true
-            };
+            foreach (var (campo, mensaje) in errores)
+                ModelState.AddModelError(prefijo.Length == 0 ? campo : $"{prefijo}.{campo}", mensaje);
         }
-        return proveedor;
+        else
+        {
+            ModelState.AddModelError(string.Empty, resultado.Mensaje);
+        }
     }
 
-    private void CargarUbicaciones()
+    private async Task CargarUbicacionesAsync(CancellationToken cancellationToken)
     {
-        ViewData["Ubicaciones"] = ObtenerUbicaciones()
+        ViewData["Ubicaciones"] = (await _gestor.UbicacionesAsync(cancellationToken))
             .Select(u => new SelectListItem($"{u.municipio_ciudad}, {u.estado}, {u.pais}", u.id.ToString()))
             .ToList();
-    }
-
-    // ===================== Acceso a datos (pendiente de conectar a la BD) =====================
-    // Cuando conectes la BD solo cambias estos métodos. Usa SIEMPRE consultas parametrizadas
-    // (EF Core lo hace solo); nunca armes el SQL concatenando lo que escribió el usuario.
-
-    private List<Proveedores> BuscarProveedoresPorNombre(string nombre)
-    {
-        // TODO BD: _db.Proveedores.Where(p => p.nombre.Contains(nombre)).OrderBy(p => p.nombre).Take(20).ToList();
-        // Sin BD busca entre los proveedores de prueba (ver GestorController.ProveedoresServicios.cs).
-        return ObtenerProveedores(nombre, null, incluirInactivos: true).Take(20).ToList();
-    }
-
-    private Proveedores? ObtenerProveedor(ulong id)
-    {
-        // TODO BD: _db.Proveedores.Find(id);
-        if (!ModoSinBD) return null;
-        ViewData["SinBD"] = true;
-        return ProveedoresDePrueba().FirstOrDefault(p => p.id == id);
-    }
-
-    private List<Ubicaciones> ObtenerUbicaciones()
-    {
-        // TODO BD: _db.Ubicaciones.Where(u => u.activo).OrderBy(u => u.municipio_ciudad).ToList();
-        return new List<Ubicaciones>();
-    }
-
-    private List<Servicios> ObtenerServiciosAsociados(ulong idProveedor, string tipo)
-    {
-        // TODO BD: _db.Servicios.Where(s => s.id_proveedor == idProveedor
-        //                                && s.tipo_servicio == AsociarViewModel.TipoServicio(tipo)).ToList();
-        return new List<Servicios>();
     }
 }

@@ -9,7 +9,8 @@
 
    Requisitos: haber ejecutado sql/00_db_prueba_conexion.sql y sql/01_esquema.sql.
    Se puede ejecutar varias veces: VACÍA las 24 tablas de 01_esquema.sql y las vuelve a llenar.
-   No borra usuarios: solo agrega 2 si no existen (agente.prueba y ana.lopez).
+   No borra usuarios: solo agrega 4 si no existen (agente.prueba, ana.lopez, soporte.prueba y sa.prueba).
+   También vacía la bitácora del panel (sus registros apuntan a datos que se vuelven a crear).
 
    Las fechas son RELATIVAS al día en que se ejecuta (disponibilidad de hoy a +29 días,
    vuelos en +3 y +7 días, viaje "urgente" en +2 días), salvo FV-260901 (12 al 15 de diciembre
@@ -18,8 +19,10 @@
    Usuarios para probar (contraseña de TODOS: FlyVibe#Prueba2026, solo para esta base):
        cliente.prueba@flyvibemex.test   CLIENTE        reservación FV-260902 (viaje en 2 días)
        ana.lopez@flyvibemex.test        CLIENTE        FV-260901 (confirmada) y FV-260903 (cancelada, reembolso)
-       agente.prueba@flyvibemex.test    AGENTE         atiende el ticket EN_PROCESO
-       admin.prueba@flyvibemex.test     ADMINISTRADOR
+       soporte.prueba@flyvibemex.test   SOPORTE        atiende el ticket EN_PROCESO
+       agente.prueba@flyvibemex.test    AGENTE         reservaciones y reembolsos
+       admin.prueba@flyvibemex.test     ADMINISTRADOR  panel + Gestor de ventas
+       sa.prueba@flyvibemex.test        SA             todo el panel
    Los nombres de proveedores y bancos son ficticios. Las tarjetas son tokens falsos: NO hay
    números de tarjeta ni CVV (regla R5).
 
@@ -46,11 +49,20 @@ BEGIN
     SET NOEXEC ON;
 END
 GO
+IF OBJECT_ID(N'dbo.bitacora', N'U') IS NULL
+   OR NOT EXISTS (SELECT 1 FROM dbo.roles_usuarios WHERE nombre = 'SOPORTE')
+   OR NOT EXISTS (SELECT 1 FROM dbo.roles_usuarios WHERE nombre = 'SA')
+BEGIN
+    RAISERROR(N'Faltan los roles SOPORTE/SA o la tabla bitacora. Ejecuta primero sql/07_roles_panel_bitacora.sql.', 16, 1);
+    SET NOEXEC ON;
+END
+GO
 
 SET XACT_ABORT ON;   -- cualquier error deshace TODO el script
 BEGIN TRANSACTION;
 
 /* ---------- Vaciar (de hijas a padres) ---------- */
+DELETE FROM dbo.bitacora;
 DELETE FROM dbo.solicitudes_soporte;
 DELETE FROM dbo.historial_estado_reembolso;
 DELETE FROM dbo.reembolsos;
@@ -98,9 +110,22 @@ IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'ana.lopez@flyvibemex.t
 
 DECLARE @uCliente BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'cliente.prueba@flyvibemex.test');
 DECLARE @uAna     BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'ana.lopez@flyvibemex.test');
-DECLARE @uAgente  BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'agente.prueba@flyvibemex.test');
+IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'soporte.prueba@flyvibemex.test')
+    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
+    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SOPORTE'),
+            'Soporte', 'Prueba', 'FlyVibe', 'soporte.prueba@flyvibemex.test', '9610000006',
+            'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 
-IF @uCliente IS NULL OR @uAna IS NULL OR @uAgente IS NULL
+IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'sa.prueba@flyvibemex.test')
+    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
+    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
+            'Super', 'Admin', 'FlyVibe', 'sa.prueba@flyvibemex.test', '9610000007',
+            'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
+
+DECLARE @uAgente  BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'agente.prueba@flyvibemex.test');
+DECLARE @uSoporte BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'soporte.prueba@flyvibemex.test');
+
+IF @uCliente IS NULL OR @uAna IS NULL OR @uAgente IS NULL OR @uSoporte IS NULL
     THROW 50001, N'No se encontraron los usuarios de prueba. Ejecuta de nuevo sql/00_db_prueba_conexion.sql.', 1;
 
 /* =====================================================================================
@@ -466,10 +491,10 @@ VALUES
     (@uCliente, NULL, NULL, N'ASESORIA', N'Paquete para 6 personas',
      N'¿El paquete Chiapas mágico se puede contratar para 6 personas en diciembre?', N'ABIERTA',
      DATEADD(HOUR, -5, @ahora), DATEADD(HOUR, -5, @ahora)),
-    (@uAna, @r3, @uAgente, N'PROBLEMA', N'Reembolso de reservación cancelada',
+    (@uAna, @r3, @uSoporte, N'PROBLEMA', N'Reembolso de reservación cancelada',
      N'Cancelé la reservación FV-260903 y quiero saber cuándo llega el reembolso.', N'EN_PROCESO',
      DATEADD(DAY, 1, @creada3), DATEADD(HOUR, -2, @ahora)),
-    (@uCliente, @r2, @uAgente, N'ASESORIA', N'Factura de mi compra',
+    (@uCliente, @r2, @uSoporte, N'ASESORIA', N'Factura de mi compra',
      N'Necesito la factura de la reservación FV-260902.', N'CERRADA',
      DATEADD(DAY, -5, @ahora), DATEADD(DAY, -4, @ahora));
 

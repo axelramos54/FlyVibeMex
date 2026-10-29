@@ -1,0 +1,153 @@
+@*
+ GET  /Admin/GestorVentas/Servicios/{id}/Disponibilidad?desde=yyyy-MM-dd (GestorController.Disponibilidad)
+ POST /Admin/GestorVentas/Servicios/{id}/Disponibilidad                  (GestorController.GuardarDisponibilidad)
+ Cupo y precio por fecha (tabla disponibilidad_servicio). Sin filas con cupo, el servicio no aparece en el sitio (R3).
+ - Agregar o ajustar un rango: si la fecha ya existe se actualiza (nunca se duplica) y el cupo nunca baja de lo vendido.
+ - Cupo 0 = cerrar esas fechas.  Precio vacío = conservar el precio de cada fecha (o el precio base si es nueva).
+ - Vuelo: solo existe el día de su salida.
+*@
+@model DisponibilidadViewModel
+@{
+    ViewData["Title"] = "Disponibilidad";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var s = Model.Servicio;
+    var esVuelo = Model.FechaFija is not null;
+    var unidad = s.tipo_servicio switch
+    {
+        "HOSPEDAJE" => "habitaciones por noche",
+        "VEHICULO" => "vehículos por día",
+        "VUELO" => "asientos",
+        _ => "lugares por fecha"
+    };
+    var anterior = Model.Desde.AddDays(-DisponibilidadViewModel.DiasPorPagina);
+    var siguiente = Model.Hasta.AddDays(1);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Disponibilidad de @s.nombre</h1>
+        <p class="text-muted mb-0">
+            @ServicioFormViewModel.NombreTipo(s.tipo_servicio) · @Model.NombreProveedor · Cupo en @unidad
+            @if (!s.activo)
+            {
+                <span class="badge text-bg-secondary ms-1">Servicio inactivo: no se muestra en el sitio</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="ActualizarServicio" asp-route-id="@s.id">Datos del servicio</a>
+        <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@s.id_proveedor">Volver a servicios</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    @* ---- Agregar o ajustar ---- *@
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">@(esVuelo ? "Asientos de esta salida" : "Agregar o ajustar fechas")</h2>
+                <form asp-action="GuardarDisponibilidad" asp-route-id="@s.id" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+
+                    @if (esVuelo)
+                    {
+                        <input type="hidden" asp-for="Formulario.desde" asp-format="{0:yyyy-MM-dd}" />
+                        <input type="hidden" asp-for="Formulario.hasta" asp-format="{0:yyyy-MM-dd}" />
+                        <p class="small">Salida del <strong>@(Model.FechaFija?.ToString("dddd dd/MM/yyyy", es))</strong>.</p>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label asp-for="Formulario.desde" class="form-label"></label>
+                            <input asp-for="Formulario.desde" class="form-control" required />
+                            <span asp-validation-for="Formulario.desde" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Formulario.hasta" class="form-label"></label>
+                            <input asp-for="Formulario.hasta" class="form-control" />
+                            <span asp-validation-for="Formulario.hasta" class="text-danger small"></span>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label asp-for="Formulario.cupo" class="form-label">Cupo (@unidad)</label>
+                        <input asp-for="Formulario.cupo" type="number" min="0" max="100000" class="form-control" required />
+                        <div class="form-text">0 = cerrar. No puede ser menor a lo ya vendido.</div>
+                        <span asp-validation-for="Formulario.cupo" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Formulario.precio" class="form-label"></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input asp-for="Formulario.precio" type="number" step="0.01" min="0" class="form-control" />
+                        </div>
+                        <div class="form-text">Vacío = conservar el precio de cada fecha (las nuevas toman el precio base: $@s.precio_base.ToString("N2")).</div>
+                        <span asp-validation-for="Formulario.precio" class="text-danger small"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @* ---- Fechas del periodo ---- *@
+    <div class="col-lg-8">
+        @if (!esVuelo)
+        {
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Disponibilidad" asp-route-id="@s.id" asp-route-desde="@anterior.ToString("yyyy-MM-dd")">← Anteriores</a>
+                <span class="small text-muted">Del @Model.Desde.ToString("dd/MM/yyyy") al @Model.Hasta.ToString("dd/MM/yyyy")</span>
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Disponibilidad" asp-route-id="@s.id" asp-route-desde="@siguiente.ToString("yyyy-MM-dd")">Siguientes →</a>
+            </div>
+        }
+
+        @if (Model.Dias.Count == 0)
+        {
+            <div class="alert alert-warning">
+                No hay fechas cargadas en este periodo. Mientras no tenga cupo, este servicio no aparece en las búsquedas del sitio.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th class="text-end">Cupo</th>
+                            <th class="text-end">Vendidos</th>
+                            <th class="text-end">Disponibles</th>
+                            <th class="text-end">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.Dias)
+                        {
+                            <tr class="@(d.total == 0 ? "table-secondary" : d.disponible == 0 ? "table-warning" : "")">
+                                <td class="text-nowrap">@d.fecha.ToString("ddd dd/MM/yyyy", es)</td>
+                                <td class="text-end">@d.total</td>
+                                <td class="text-end">@d.vendidos</td>
+                                <td class="text-end">
+                                    @if (d.total == 0)
+                                    {
+                                        <span class="badge text-bg-secondary">Cerrado</span>
+                                    }
+                                    else if (d.disponible == 0)
+                                    {
+                                        <span class="badge text-bg-warning">Agotado</span>
+                                    }
+                                    else
+                                    {
+                                        @d.disponible
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">$@d.precio.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

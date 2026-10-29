@@ -1,8 +1,8 @@
 /* =====================================================================================
    FlyVibe Mex · 01_esquema.sql
    -------------------------------------------------------------------------------------
-   Crea las 24 tablas restantes del modelo (las otras 2, roles_usuarios y usuarios, las
-   crea sql/00_db_prueba_conexion.sql). Total: 26 tablas = 26 clases de Models/.
+   Crea las 25 tablas restantes del modelo (las otras 2, roles_usuarios y usuarios, las
+   crea sql/00_db_prueba_conexion.sql). Total: 27 tablas = 27 clases de Models/ (incluye bitacora).
 
    Regla de nombres: CADA COLUMNA SE LLAMA IGUAL QUE LA PROPIEDAD DEL MODELO C#
    (nombres nuevos del 21-10-2026): reservaciones.id_usuarioglobal,
@@ -33,7 +33,7 @@
        3) sql/02_seed_demo.sql            (datos de demostración)
        4) Ejecutar la app y abrir /Home/TestDb: "esquemaCompleto" debe ser true.
 
-   ATENCIÓN: borra y vuelve a crear estas 24 tablas (y sus datos) en FlyVibeMex_Test.
+   ATENCIÓN: borra y vuelve a crear estas 25 tablas (y sus datos) en FlyVibeMex_Test.
    No toca roles_usuarios ni usuarios. No se puede ejecutar sobre la base real.
    Requiere SQL Server 2016 o posterior (DROP TABLE IF EXISTS).
    ===================================================================================== */
@@ -56,6 +56,7 @@ END
 GO
 
 /* ---------- Limpieza: de las tablas hijas a las padres ---------- */
+DROP TABLE IF EXISTS dbo.bitacora;
 DROP TABLE IF EXISTS dbo.solicitudes_soporte;
 DROP TABLE IF EXISTS dbo.historial_estado_reembolso;
 DROP TABLE IF EXISTS dbo.reembolsos;
@@ -442,7 +443,22 @@ GO
 CREATE INDEX ix_solicitudes_estado ON dbo.solicitudes_soporte(estado, creada_en);
 GO
 
-/* ---------- Verificación: deben salir 26 tablas ---------- */
+/* ---------- Bitácora del panel: quién cambió qué y cuándo (la consulta el SA) ---------- */
+CREATE TABLE dbo.bitacora(
+    id          BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_bitacora PRIMARY KEY,
+    fecha       DATETIME      NOT NULL CONSTRAINT df_bitacora_fecha DEFAULT(CURRENT_TIMESTAMP),
+    id_usuario  BIGINT        NULL     CONSTRAINT fk_bitacora_usuarios REFERENCES dbo.usuarios(id),
+    accion      NVARCHAR(30)  NOT NULL,   -- CREAR, ACTUALIZAR, BAJA, REACTIVAR, DISPONIBILIDAD…
+    entidad     NVARCHAR(40)  NOT NULL,   -- proveedores, servicios, disponibilidad_servicio…
+    id_entidad  BIGINT        NULL,
+    detalle     NVARCHAR(500) NULL
+);
+GO
+CREATE INDEX ix_bitacora_fecha   ON dbo.bitacora(fecha);
+CREATE INDEX ix_bitacora_entidad ON dbo.bitacora(entidad, id_entidad);
+GO
+
+/* ---------- Verificación: deben salir 27 tablas ---------- */
 SELECT COUNT(*) AS tablas_creadas
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
@@ -450,7 +466,8 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'promociones', N'promocion_servicio', N'estados_reservacion', N'reservaciones',
                N'detalle_reservacion', N'historial_estado_reservacion', N'metodos_pago',
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
-               N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte');
+               N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
+               N'bitacora');
 GO
 
 SET NOEXEC OFF;

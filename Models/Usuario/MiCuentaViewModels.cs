@@ -14,7 +14,7 @@ namespace FlyVibeMex.Models
     /// </summary>
     /// <remarks>
     /// - Cliente: ve y modifica SU cuenta.
-    /// - Interno (AGENTE / SOPORTE / ADMINISTRADOR): solo lectura. Puede elegir un cliente ("Ver como cliente",
+    /// - Interno (SOPORTE / AGENTE / ADMINISTRADOR / SA): solo lectura. Puede elegir un cliente ("Ver como cliente",
     ///   <c>?cliente=ID</c>) para comprobar que lo que añadió / modificó / eliminó ya se ve del lado del cliente.
     ///   Las acciones (cancelar, tarjetas, tickets) además están bloqueadas en el servidor con [Authorize(Roles = CLIENTE)].
     /// </remarks>

@@ -72,6 +72,9 @@ public class FlyVibeMexDbContext : DbContext
     // ===================== Soporte =====================
     public DbSet<SolicitudesSoporte> SolicitudesSoporte => Set<SolicitudesSoporte>();
 
+    // Bitácora del panel
+    public DbSet<Bitacora> Bitacora => Set<Bitacora>();
+
     /// <summary>
     /// Convenciones globales aplicadas a TODAS las entidades antes de construir el modelo.
     /// </summary>
@@ -498,6 +501,22 @@ public class FlyVibeMexDbContext : DbContext
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_agente_asignado).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Bitacora>(e =>
+        {
+            // Quién cambió qué y cuándo en el panel (sql/07_roles_panel_bitacora.sql).
+            e.ToTable("bitacora");
+            e.HasKey(x => x.id);
+            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.fecha).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.Property(x => x.accion).HasMaxLength(30);
+            e.Property(x => x.entidad).HasMaxLength(40);
+            e.Property(x => x.detalle).HasMaxLength(500).IsRequired(false);
+            e.HasIndex(x => x.fecha);
+            e.HasIndex(x => new { x.entidad, x.id_entidad });
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

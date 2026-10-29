@@ -10,7 +10,7 @@ namespace FlyVibeMex.Controllers;
 /// </summary>
 [Route("Admin/SA")]
 [AutoValidateAntiforgeryToken]
-[Authorize(Roles = Roles.Administrador)]
+[Authorize(Roles = Roles.PanelSA)]
 public class SAController : Controller
 {
     // GET /Admin/SA

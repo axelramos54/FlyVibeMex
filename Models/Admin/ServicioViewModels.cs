@@ -28,9 +28,9 @@ namespace FlyVibeMex.Models
     // ========================== SERVICIOS ==========================
 
     /// <summary>
-    /// Formulario de alta / actualización de un servicio (tabla <c>servicios</c>).
-    /// Solo maneja los datos comunes del supertipo; los datos propios de hospedaje o vehículo
-    /// se capturan en la pantalla "Asociar" del proveedor.
+    /// Datos comunes de un servicio (tabla <c>servicios</c>) y ayudantes de tipo (<see cref="OpcionesTipo"/>,
+    /// <see cref="NombreTipo"/>, <see cref="NormalizarTipo"/>) que usan los listados.
+    /// El alta y la actualización usan los formularios por tipo de GestorViewModels.cs (servicio + subtipo juntos).
     /// </summary>
     public class ServicioFormViewModel : IPoliticaCancelacionForm
     {
@@ -143,6 +143,12 @@ namespace FlyVibeMex.Models
 
         public string NombreProveedor(ulong id) =>
             NombresProveedor.TryGetValue(id, out var nombre) ? nombre : $"Proveedor #{id}";
+
+        /// <summary>id del servicio → detalle de su subtipo (ruta y salida del vuelo, ciudad del hospedaje…).</summary>
+        public Dictionary<ulong, string> Detalles { get; set; } = new();
+
+        /// <summary>id del servicio → días a partir de hoy con cupo (0 = no aparece en el sitio).</summary>
+        public Dictionary<ulong, int> DiasDisponibles { get; set; } = new();
     }
 
     /// <summary>Ficha de un servicio para la pantalla "Dar de baja servicio".</summary>
