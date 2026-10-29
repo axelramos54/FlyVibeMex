@@ -1,68 +1,116 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/Miscompras/index.cshtml   —   GET /Miusuario/Miscompras
+ Movimientos de dinero de la cuenta: pagos (con tarjeta enmascarada y referencia) y reembolsos con su estado.
+ Los viajes en sí (fechas, cancelar) están en Mis reservaciones; aquí cada código lleva a su detalle.
+ ============================================================================================
+*@
+@model MisComprasViewModel
 @{
     ViewData["Title"] = "Mis compras";
+    ViewData["Pestana"] = "compras";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var cliente = Model.Contexto.IdClienteVisto?.ToString();
+
+    string ClaseEstado(string estado) => estado switch
+    {
+        "APROBADO" or "PROCESADO" or "REEMBOLSADO" => "text-bg-success",
+        "RECHAZADO" => "text-bg-danger",
+        "SOLICITADO" or "PENDIENTE" => "text-bg-warning",
+        _ => "text-bg-secondary"
+    };
 }
 
-    <!--maqueta toda rancia-->
-   <h2>Mis compras</h2>
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Mis compras</h1>
 
-   <h3 id="viajes_actuales">Actuales</h3>
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
 
-   <div>
-                    <div class="col-12 col-md-6 col-xl-4">
-                <div class="card h-100 mi-tarjeta">
-                    <div class="card-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Grand Oasis Cancún">
-                        <div class="route-badge">
-                            <span class="route-text">Cancún • 5★ All Inclusive</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Grand Oasis Cancún</h5>
-                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                            especialidades y vista panorámica al mar Caribe.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-value">$3,250 <small>MXN</small></span>
-                                </div>
-                                <button type="button" class="btn btn-card-action" data-accion="cancelar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
-                                <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
-                                <a href="#" class="btn btn-card-action">⋮</a> <!-- aqui poner la politica de reembolso y otros datos-->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-   </div>
-   <h3 id="viajes_pasados">Pasadas</h3>
-   <div>
-        <div>
-                    <div class="col-12 col-md-6 col-xl-4">
-                <div class="card h-100 mi-tarjeta">
-                    <div class="card-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Grand Oasis Cancún">
-                        <div class="route-badge">
-                            <span class="route-text">Cancún • 5★ All Inclusive</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Grand Oasis Cancún</h5>
-                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                            especialidades y vista panorámica al mar Caribe.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-value">$3,250 <small>MXN</small></span>
-                                </div>
-            
-                            </div>
-                        </div>
-                    </div>
-                </div>
-   </div>
-   </div>
+    @* ---- Pagos ---- *@
+    <section class="mb-5" aria-labelledby="titulo_pagos">
+        <h2 class="h4 mb-3" id="titulo_pagos">Pagos</h2>
+        @if (Model.Pagos.Count == 0)
+        {
+            <p class="text-muted">Todavía no hay pagos en esta cuenta.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Reserva</th>
+                            <th>Servicio</th>
+                            <th>Método</th>
+                            <th>Estado</th>
+                            <th class="text-end">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Pagos)
+                        {
+                            <tr>
+                                <td class="text-nowrap">@p.fecha.ToString("dd/MM/yyyy HH:mm", es)</td>
+                                <td>
+                                    <a asp-action="Reservacion" asp-route-id="@p.codigo_reserva" asp-route-cliente="@cliente">@p.codigo_reserva</a>
+                                </td>
+                                <td>@p.servicio</td>
+                                <td class="small">
+                                    @p.metodo · @p.tarjeta
+                                    @if (p.referencia is not null)
+                                    {
+                                        <div class="text-muted">Ref. @p.referencia</div>
+                                    }
+                                </td>
+                                <td><span class="badge @ClaseEstado(p.estado)">@p.estado</span></td>
+                                <td class="text-end text-nowrap">$@p.monto.ToString("N2") <small>@p.moneda</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 
-<partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
-
-@section Scripts {
-    <script src="~/assets/js/script_R.js"></script>
-}
+    @* ---- Reembolsos ---- *@
+    <section class="mb-5" aria-labelledby="titulo_reembolsos">
+        <h2 class="h4 mb-3" id="titulo_reembolsos">Reembolsos</h2>
+        @if (Model.Reembolsos.Count == 0)
+        {
+            <p class="text-muted">No hay reembolsos. Para pedir uno, usa “Cancelar y reembolsar” en Mis reservaciones.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Solicitado</th>
+                            <th>Reserva</th>
+                            <th>Motivo</th>
+                            <th>Estado</th>
+                            <th>Resuelto</th>
+                            <th class="text-end">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rb in Model.Reembolsos)
+                        {
+                            <tr>
+                                <td class="text-nowrap">@rb.fecha_solicitud.ToString("dd/MM/yyyy HH:mm", es)</td>
+                                <td>
+                                    <a asp-action="Reservacion" asp-route-id="@rb.codigo_reserva" asp-route-cliente="@cliente">@rb.codigo_reserva</a>
+                                </td>
+                                <td class="small">@rb.motivo</td>
+                                <td><span class="badge @ClaseEstado(rb.estado)">@rb.estado</span></td>
+                                <td class="text-nowrap">@(rb.fecha_resolucion?.ToString("dd/MM/yyyy", es) ?? "En revisión")</td>
+                                <td class="text-end text-nowrap">$@rb.monto.ToString("N2") <small>@rb.moneda</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

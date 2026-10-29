@@ -1,0 +1,219 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/Reservacion/index.cshtml   —   GET /Miusuario/Reservacion/{codigo}
+ Detalle de una reservación: comprobante (snapshot de la compra), política y opciones de cancelación,
+ historial de estados (R6) y reembolsos. Solo la ve el dueño (o un interno en "Ver como cliente", solo lectura).
+ ============================================================================================
+*@
+@model DetalleReservacionViewModel
+@{
+    var c = Model.Comprobante;
+    var r = Model.Reservacion;
+    var op = r.cancelacion;
+    var ctx = Model.Contexto;
+    var cliente = ctx.IdClienteVisto?.ToString();
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+
+    ViewData["Title"] = $"Reserva {c.codigo_reserva}";
+    ViewData["Pestana"] = "reservaciones";
+
+    var claseEstado = r.estado switch
+    {
+        "CONFIRMADA" => "text-bg-success",
+        "CANCELADA" => "text-bg-danger",
+        "COMPLETADA" => "text-bg-secondary",
+        _ => "text-bg-warning"
+    };
+}
+
+@section Styles {
+    <style>
+        /* Al imprimir solo sale el comprobante. */
+        @@media print {
+            header, footer, .d-print-none { display: none !important; }
+            #contenido_main { margin-top: 0 !important; }
+        }
+    </style>
+}
+
+<div class="container mt-2" style="max-width: 900px">
+    <div class="d-print-none">
+        <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="ctx" />
+        <a asp-action="Misreservaciones" asp-route-cliente="@cliente" class="btn btn-link px-0 mb-2">← Volver a mis reservaciones</a>
+    </div>
+
+    @* ---- Comprobante ---- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <div class="text-muted small">FlyVibeMex · Comprobante de reserva</div>
+                    <h1 class="fs-3 fw-bold mb-0">@c.codigo_reserva</h1>
+                </div>
+                <span class="badge @claseEstado fs-6">@r.estado</span>
+            </div>
+
+            <dl class="row mb-3">
+                <dt class="col-sm-4">Servicio</dt>
+                <dd class="col-sm-8">@c.servicio <span class="text-muted">(@TipoCatalogo.NombreTipo(c.tipo))</span></dd>
+
+                <dt class="col-sm-4">Detalle</dt>
+                <dd class="col-sm-8">@c.descripcion</dd>
+
+                <dt class="col-sm-4">Fechas</dt>
+                <dd class="col-sm-8">Del @c.inicio.ToString("dddd dd/MM/yyyy HH:mm", es) al @c.fin.ToString("dddd dd/MM/yyyy HH:mm", es)</dd>
+
+                <dt class="col-sm-4">Fecha de compra</dt>
+                <dd class="col-sm-8">@c.creada_en.ToString("dd/MM/yyyy HH:mm", es)</dd>
+            </dl>
+
+            <table class="table mb-3">
+                <tbody>
+                    <tr>
+                        <td>Precio <span class="small text-muted">($@c.precio_unitario.ToString("N2") × @c.cantidad.ToString("0.##"))</span></td>
+                        <td class="text-end">$@c.subtotal.ToString("N2")</td>
+                    </tr>
+                    @if (c.descuento > 0)
+                    {
+                        <tr class="text-success">
+                            <td>Descuento @if (c.codigo_promocion is not null) { <span class="badge text-bg-success">@c.codigo_promocion</span> }</td>
+                            <td class="text-end">−$@c.descuento.ToString("N2")</td>
+                        </tr>
+                    }
+                    <tr class="fw-bold fs-5">
+                        <td>Total pagado</td>
+                        <td class="text-end">$@c.total.ToString("N2") <small class="fw-normal fs-6">@c.moneda</small></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            @if (c.metodo_pago is not null)
+            {
+                <p class="small mb-1"><strong>Pago:</strong> @c.metodo_pago · @c.tarjeta</p>
+                <p class="small text-muted">
+                    Referencia: @c.referencia_pago
+                    @if (c.fecha_pago is DateTime fechaPago)
+                    {
+                        <span>· @fechaPago.ToString("dd/MM/yyyy HH:mm", es)</span>
+                    }
+                </p>
+            }
+
+            <div class="alert alert-info small mb-0" role="note">
+                <strong>Política de cancelación de esta compra:</strong> @c.politica
+            </div>
+        </div>
+    </div>
+
+    @* ---- Cancelación ---- *@
+    <div class="card shadow-sm mb-4 d-print-none">
+        <div class="card-body">
+            <h2 class="h5">Cancelación</h2>
+            @if (op.puede_cancelar)
+            {
+                <p class="mb-2">@(op.puede_reembolsar ? op.TextoReembolso : op.motivo_no_reembolsar)</p>
+                if (ctx.SoloLectura)
+                {
+                    <p class="small text-muted mb-0">Solo lectura: el cliente puede cancelar esta reservación desde su cuenta.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-outline-danger"
+                                data-accion="cancelar" data-id="@r.id" data-nombre="@r.servicio" data-politica="@op.politica">
+                            Cancelar
+                        </button>
+                        @if (op.puede_reembolsar)
+                        {
+                            <button type="button" class="btn btn-danger"
+                                    data-accion="reembolsar" data-id="@r.id" data-nombre="@r.servicio"
+                                    data-reembolso="@op.TextoReembolso" data-politica="@op.politica">
+                                Cancelar y reembolsar
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted mb-0">@op.motivo_no_cancelar</p>
+            }
+        </div>
+    </div>
+
+    @* ---- Reembolsos ---- *@
+    @if (Model.Reembolsos.Count > 0)
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h5">Reembolsos</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>Solicitado</th><th>Monto</th><th>Estado</th><th>Motivo</th><th>Resuelto</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rb in Model.Reembolsos)
+                            {
+                                <tr>
+                                    <td>@rb.fecha_solicitud.ToString("dd/MM/yyyy HH:mm", es)</td>
+                                    <td>$@rb.monto.ToString("N2") @rb.moneda</td>
+                                    <td><span class="badge text-bg-info">@rb.estado</span></td>
+                                    <td class="small">@rb.motivo</td>
+                                    <td>@(rb.fecha_resolucion?.ToString("dd/MM/yyyy HH:mm", es) ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ---- Historial de estados ---- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Historial</h2>
+            @if (Model.Historial.Count == 0)
+            {
+                <p class="text-muted mb-0">Sin movimientos registrados.</p>
+            }
+            else
+            {
+                <ol class="list-group list-group-numbered">
+                    @foreach (var h in Model.Historial)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-semibold">@h.estado</div>
+                                @if (!string.IsNullOrWhiteSpace(h.motivo))
+                                {
+                                    <div class="small">@h.motivo</div>
+                                }
+                                <div class="small text-muted">@h.quien</div>
+                            </div>
+                            <span class="small text-muted text-nowrap">@h.fecha.ToString("dd/MM/yyyy HH:mm", es)</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 d-print-none">
+        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir comprobante</button>
+        <a asp-action="Misreservaciones" asp-route-cliente="@cliente" class="btn btn-outline-secondary">Mis reservaciones</a>
+    </div>
+</div>
+
+@if (!ctx.SoloLectura)
+{
+    <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
+}
+
+@section Scripts {
+    @if (!ctx.SoloLectura)
+    {
+        <script src="~/assets/js/script_R.js"></script>
+    }
+}

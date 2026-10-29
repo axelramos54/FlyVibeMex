@@ -1,38 +1,160 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/Mistarjetas/index.cshtml   —   GET /Miusuario/Mistarjetas
+ Tarjetas guardadas (simuladas): agregar, cambiar alias y eliminar.
+ Seguridad (regla R5): el número y el CVV se escriben en campos SIN asp-for, así nunca se regresan al navegador
+ aunque el formulario tenga errores. De la tarjeta solo se guardan marca, últimos 4, vencimiento y alias.
+ "Eliminar" la desactiva (activo = 0): los pagos que ya se hicieron con ella siguen apuntando a su registro.
+ Tarjetas de prueba: 4242 4242 4242 4242 (Visa) · 5555 5555 5555 4444 (Mastercard).
+ ============================================================================================
+*@
+@model MisTarjetasViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
 @{
     ViewData["Title"] = "Mis tarjetas";
+    ViewData["Pestana"] = "tarjetas";
+    var soloLectura = Model.Contexto.SoloLectura;
+    var abrirFormulario = ViewData["AbrirFormulario"] as bool? ?? false;
+    var hoy = DateTime.Today;
+
+    var meses = Enumerable.Range(1, 12)
+        .Select(m => new SelectListItem(m.ToString("00"), m.ToString(), Model.Nueva.mes_expiracion == m))
+        .ToList();
+    var anios = Enumerable.Range(hoy.Year, 16)
+        .Select(a => new SelectListItem(a.ToString(), a.ToString(), Model.Nueva.anio_expiracion == a))
+        .ToList();
 }
 
-    <!--maqueta toda rancia-->
-   <h2>Mis tarjetas</h2>
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Mis tarjetas</h1>
 
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
 
-   <div>
-                    <div class="col-12 col-md-6 col-xl-4">
-                <div class="card h-100 mi-tarjeta">
-                    <div class="card-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Grand Oasis Cancún">
-                        <div class="route-badge">
-                            <span class="route-text">Cancún • 5★ All Inclusive</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Grand Oasis Cancún</h5>
-                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                            especialidades y vista panorámica al mar Caribe.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-value">$3,250 <small>MXN</small></span>
+    @* ---- Tarjetas guardadas ---- *@
+    @if (Model.Tarjetas.Count == 0)
+    {
+        <p class="text-muted">No hay tarjetas guardadas en esta cuenta.</p>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            @foreach (var t in Model.Tarjetas)
+            {
+                var idAlias = $"alias_{t.id}";
+                var idEliminar = $"eliminar_{t.id}";
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 shadow-sm @(t.vigente ? "" : "border-danger")">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-bold">@t.marca •••• @t.ultimos4</div>
+                                    <div class="text-muted small">@(t.alias ?? "Sin alias")</div>
                                 </div>
-                                <a href="#" class="btn btn-card-action">Info</a>
-                                <a href="#" class="btn btn-card-action">Actualizar</a>
-                                <a href="#" class="btn btn-card-action">Eliminar</a>
+                                @if (t.vigente)
+                                {
+                                    <span class="badge text-bg-success">Vigente</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-danger">Vencida</span>
+                                }
                             </div>
+                            <div class="small mt-2">
+                                Vence @t.mes_expiracion.ToString("00")/@t.anio_expiracion
+                                · @(t.pagos == 1 ? "1 pago" : $"{t.pagos} pagos")
+                            </div>
+
+                            @if (!soloLectura)
+                            {
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse"
+                                            data-bs-target="#@idAlias" aria-expanded="false" aria-controls="@idAlias">Cambiar alias</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="collapse"
+                                            data-bs-target="#@idEliminar" aria-expanded="false" aria-controls="@idEliminar">Eliminar</button>
+                                </div>
+
+                                <div class="collapse mt-3" id="@idAlias">
+                                    <form asp-action="CambiarAlias" method="post" class="d-flex gap-2">
+                                        <input type="hidden" name="id" value="@t.id" />
+                                        <input name="alias" value="@t.alias" maxlength="40" class="form-control form-control-sm"
+                                               placeholder="Ej. Tarjeta de viajes" aria-label="Alias" />
+                                        <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                                    </form>
+                                </div>
+
+                                <div class="collapse mt-3" id="@idEliminar">
+                                    <div class="alert alert-danger small mb-0">
+                                        <p class="mb-2">¿Eliminar la tarjeta terminada en @t.ultimos4? Ya no aparecerá al pagar.
+                                            Tus compras anteriores no cambian.</p>
+                                        <form asp-action="EliminarTarjeta" method="post" class="d-flex gap-2">
+                                            <input type="hidden" name="id" value="@t.id" />
+                                            <button type="submit" class="btn btn-sm btn-danger">Sí, eliminar</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                                                    data-bs-target="#@idEliminar">No</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
-   </div>
+            }
+        </div>
+    }
 
-  
-   </div>
-   </div>
+    @* ---- Agregar tarjeta (solo clientes) ---- *@
+    @if (!soloLectura)
+    {
+        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="collapse" data-bs-target="#tarjeta_nueva"
+                aria-expanded="@(abrirFormulario ? "true" : "false")" aria-controls="tarjeta_nueva">+ Agregar tarjeta</button>
+
+        <div class="collapse @(abrirFormulario ? "show" : "")" id="tarjeta_nueva">
+            <div class="card shadow-sm" style="max-width: 640px">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Nueva tarjeta</h2>
+                    <p class="small text-muted">Pagos simulados: no se hace ningún cargo. Prueba con 4242 4242 4242 4242.</p>
+
+                    <form asp-action="AgregarTarjeta" method="post" novalidate autocomplete="off">
+                        <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="nueva_numero" class="form-label">Número de tarjeta</label>
+                                @* Sin asp-for a propósito: el número nunca se vuelve a pintar en la página. *@
+                                <input id="nueva_numero" name="Nueva.numero_tarjeta" class="form-control" inputmode="numeric"
+                                       autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456" required />
+                                <span asp-validation-for="Nueva.numero_tarjeta" class="text-danger small"></span>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label asp-for="Nueva.mes_expiracion" class="form-label">Mes</label>
+                                <select asp-for="Nueva.mes_expiracion" asp-items="meses" class="form-select" autocomplete="cc-exp-month">
+                                    <option value="">Mes</option>
+                                </select>
+                                <span asp-validation-for="Nueva.mes_expiracion" class="text-danger small"></span>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label asp-for="Nueva.anio_expiracion" class="form-label">Año</label>
+                                <select asp-for="Nueva.anio_expiracion" asp-items="anios" class="form-select" autocomplete="cc-exp-year">
+                                    <option value="">Año</option>
+                                </select>
+                                <span asp-validation-for="Nueva.anio_expiracion" class="text-danger small"></span>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label for="nueva_cvv" class="form-label">CVV</label>
+                                @* Sin asp-for a propósito: el CVV nunca se guarda ni se vuelve a pintar. *@
+                                <input id="nueva_cvv" name="Nueva.cvv" type="password" class="form-control" inputmode="numeric"
+                                       autocomplete="cc-csc" maxlength="4" required />
+                                <span asp-validation-for="Nueva.cvv" class="text-danger small"></span>
+                            </div>
+                            <div class="col-12 col-md-8">
+                                <label asp-for="Nueva.alias" class="form-label">Alias <span class="text-muted">(opcional)</span></label>
+                                <input asp-for="Nueva.alias" class="form-control" maxlength="40" placeholder="Ej. Tarjeta de viajes" />
+                                <span asp-validation-for="Nueva.alias" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Guardar tarjeta</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>

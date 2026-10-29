@@ -1,0 +1,95 @@
+@*
+ ============================================================================================
+ Parcial: Views/Miusuario/_TarjetaReservacion.cshtml — tarjeta de una reservación (Mis reservaciones).
+ Model: ReservacionTarjetaViewModel. Lee del ViewData de la página:
+   ViewData["SoloLectura"] (bool)   → internos: sin botones de cancelar.
+   ViewData["Cliente"]     (string) → id del cliente en "Ver como cliente" (para el enlace al detalle).
+ Los botones Cancelar / Cancelar y reembolsar abren los modales de _ModalesCancelacion.cshtml (script_R.js);
+ el texto del reembolso y la política salen de lo calculado en el servidor con la política GUARDADA en la compra.
+ ============================================================================================
+*@
+@model ReservacionTarjetaViewModel
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? true;
+    var cliente = ViewData["Cliente"] as string;
+    var op = Model.cancelacion;
+
+    var claseEstado = Model.estado switch
+    {
+        "CONFIRMADA" => "text-bg-success",
+        "CANCELADA" => "text-bg-danger",
+        "COMPLETADA" => "text-bg-secondary",
+        _ => "text-bg-warning"
+    };
+}
+
+<div class="col-12 col-md-6 col-xl-4">
+    <div class="card h-100 shadow-sm">
+        <img src="@Imagenes.UrlOGenerica(Model.imagen_ruta)" class="card-img-top object-fit-cover" style="height: 160px"
+             alt="@Model.servicio" loading="lazy">
+        <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                <span class="small text-muted">@TipoCatalogo.NombreTipo(Model.tipo) · @Model.codigo_reserva</span>
+                <span class="badge @claseEstado">@Model.estado</span>
+            </div>
+            <h3 class="h5 card-title mb-1">@Model.servicio</h3>
+            <p class="small mb-2">
+                @Model.inicio.ToString("ddd dd/MM/yyyy HH:mm", es) → @Model.fin.ToString("ddd dd/MM/yyyy HH:mm", es)
+            </p>
+            <p class="card-text small text-muted mb-2">@Model.descripcion</p>
+
+            @if (Model.estado_reembolso is not null)
+            {
+                <p class="small mb-2">
+                    Reembolso <span class="badge text-bg-info">@Model.estado_reembolso</span>
+                    @if (Model.monto_reembolso_solicitado is decimal montoSolicitado)
+                    {
+                        <span>· $@montoSolicitado.ToString("N2") @Model.moneda</span>
+                    }
+                </p>
+            }
+
+            <div class="mt-auto">
+                <div class="fw-bold fs-5 mb-2">$@Model.total.ToString("N2") <small class="fw-normal fs-6">@Model.moneda</small></div>
+
+                @if (!soloLectura && Model.grupo == GrupoReservacion.Proximo)
+                {
+                    if (op.puede_cancelar)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-accion="cancelar" data-id="@Model.id" data-nombre="@Model.servicio" data-politica="@op.politica">
+                                Cancelar
+                            </button>
+                            @if (op.puede_reembolsar)
+                            {
+                                <button type="button" class="btn btn-sm btn-danger"
+                                        data-accion="reembolsar" data-id="@Model.id" data-nombre="@Model.servicio"
+                                        data-reembolso="@op.TextoReembolso" data-politica="@op.politica">
+                                    Cancelar y reembolsar
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-danger" disabled title="@op.motivo_no_reembolsar">
+                                    Cancelar y reembolsar
+                                </button>
+                            }
+                        </div>
+                        <p class="small text-muted mb-2">
+                            @(op.puede_reembolsar ? op.TextoReembolso : op.motivo_no_reembolsar)
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="small text-muted mb-2">@op.motivo_no_cancelar</p>
+                    }
+                }
+
+                <a asp-controller="Miusuario" asp-action="Reservacion" asp-route-id="@Model.codigo_reserva" asp-route-cliente="@cliente"
+                   class="btn btn-sm btn-outline-primary w-100">Ver detalle y política</a>
+            </div>
+        </div>
+    </div>
+</div>

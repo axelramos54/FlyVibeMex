@@ -6,6 +6,8 @@
  *
  * Botones de las tarjetas (cualquier elemento con estos atributos; de preferencia <button type="button">):
  *   data-accion="cancelar" | "reembolsar"   data-id="<id de la reservación>"   data-nombre="<texto a mostrar>"
+ *   y, opcionales, data-reembolso="<texto del reembolso>"  data-politica="<política de la compra>".
+ *   Cualquier elemento del modal con data-campo="x" recibe el valor de data-x.
  *
  * Flujo de cada modal:
  *   Paso 1 → un clic en "Sí, continuar".
@@ -68,9 +70,15 @@
             if (!modal) return;
 
             reiniciarModal(modal);
-            modal.querySelectorAll('[data-campo="id"]').forEach(campo => { campo.value = disparador.dataset.id || ''; });
-            modal.querySelectorAll('[data-campo="nombre"]').forEach(campo => {
-                campo.textContent = disparador.dataset.nombre || 'esta reservación'; // textContent: nunca HTML
+            // Cada [data-campo="x"] del modal toma el data-x del botón (id, nombre, reembolso, politica…).
+            // En <input> va a value; en el resto, a textContent (nunca HTML).
+            modal.querySelectorAll('[data-campo]').forEach(campo => {
+                const valor = disparador.dataset[campo.dataset.campo] || '';
+                if (campo.tagName === 'INPUT') {
+                    campo.value = valor;
+                } else {
+                    campo.textContent = valor || (campo.dataset.campo === 'nombre' ? 'esta reservación' : '');
+                }
             });
 
             bootstrap.Modal.getOrCreateInstance(modal).show();

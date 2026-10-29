@@ -70,6 +70,11 @@ builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 // Compra: resumen, pago simulado en una transacción y confirmación.
 builder.Services.AddScoped<IReservacionService, ReservacionService>();
 
+// Área del cliente: perfil, tarjetas, reservaciones, cancelaciones y tickets de soporte.
+builder.Services.AddScoped<IMiCuentaService, MiCuentaService>();
+builder.Services.AddScoped<IMisViajesService, MisViajesService>();
+builder.Services.AddScoped<ISoporteClienteService, SoporteClienteService>();
+
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
 // nunca la contraseña ni el hash.

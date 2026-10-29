@@ -5,11 +5,12 @@
  Cómo se usa (al final del contenido de la página):
      <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
      @section Scripts { <script src="~/assets/js/script_R.js"></script> }
- y los botones de cada tarjeta llevan data-accion, data-id (id de la reservación) y data-nombre:
+ y los botones de cada tarjeta llevan data-accion, data-id (id de la reservación), data-nombre y, opcionales,
+ data-reembolso (texto con el monto que se devolvería) y data-politica (política guardada en la compra):
      <button type="button" class="btn btn-card-action" data-accion="cancelar"   data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
      <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
  Flujo:
-   Cancelar               → paso 1: clic en "Sí, continuar" → paso 2: mantener presionado el botón.
+   Cancelar               → paso 1: clic en "Sí, continuar" → paso 2: motivo opcional + mantener presionado el botón.
    Cancelar y reembolsar  → paso 1: clic en "Sí, continuar" → paso 2: escribir el motivo + mantener presionado.
  Archivos asociados (letra R): wwwroot/assets/css/style_R.css y wwwroot/assets/js/script_R.js
  Seguridad: los dos formularios son POST con token antiforgery. El servidor vuelve a validar todo
@@ -51,7 +52,8 @@
                 <div class="modal-body" data-paso="1">
                     <p class="small text-muted mb-2">Confirmación 1 de 2</p>
                     <p class="mb-2">¿Seguro que quieres cancelar <strong data-campo="nombre"></strong>?</p>
-                    <p class="small text-muted mb-0">Revisa la política de cancelación de tu reservación antes de continuar.</p>
+                    <p class="small mb-2">Si solo cancelas, <strong>no se pide reembolso</strong>. Para recuperar tu dinero usa “Cancelar y reembolsar”.</p>
+                    <p class="small text-muted mb-0"><strong>Política de tu compra:</strong> <span data-campo="politica"></span></p>
                 </div>
                 <div class="modal-footer" data-paso="1">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, volver</button>
@@ -61,6 +63,9 @@
                 @* ---- Paso 2: confirmación con clic sostenido ---- *@
                 <div class="modal-body d-none" data-paso="2">
                     <p class="small text-muted mb-2">Confirmación 2 de 2</p>
+                    <label for="motivo_cancelar" class="form-label fw-semibold">Motivo <span class="fw-normal text-muted">(opcional)</span></label>
+                    <textarea id="motivo_cancelar" name="motivo" class="form-control mb-3" rows="2" maxlength="250"
+                              placeholder="Ej. Cambié mis planes."></textarea>
                     <p class="mb-3">
                         Esta es la confirmación final. <strong>Mantén presionado</strong> el botón para cancelar
                         <strong data-campo="nombre"></strong>.
@@ -94,6 +99,8 @@
                 <div class="modal-body" data-paso="1">
                     <p class="small text-muted mb-2">Confirmación 1 de 2</p>
                     <p class="mb-2">¿Seguro que quieres cancelar <strong data-campo="nombre"></strong> y pedir el reembolso?</p>
+                    <p class="mb-2 fw-semibold" data-campo="reembolso"></p>
+                    <p class="small text-muted mb-2"><strong>Política de tu compra:</strong> <span data-campo="politica"></span></p>
                     <p class="small text-muted mb-0">El reembolso queda como <em>solicitado</em> hasta que un agente lo revise.</p>
                 </div>
                 <div class="modal-footer" data-paso="1">

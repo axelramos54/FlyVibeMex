@@ -10,7 +10,6 @@
 *@
 @model BusquedaCatalogoViewModel
 @{
-    var ruta = Model.ParametrosRuta();
     var disponibles = Model.Resultados.Count(r => !r.agotado);
 }
 
@@ -86,7 +85,7 @@ else
                             </div>
                             @if (!r.agotado)
                             {
-                                <a asp-controller="Catalogo" asp-action="Detalle" asp-route-id="@r.id" asp-all-route-data="ruta"
+                                <a asp-controller="Catalogo" asp-action="Detalle" asp-all-route-data="Model.ParametrosRuta(r.id)"
                                    class="btn btn-card-action">Ver detalle</a>
                             }
                         </div>

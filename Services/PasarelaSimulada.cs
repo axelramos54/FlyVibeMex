@@ -66,31 +66,39 @@ public static class PasarelaSimulada
 
     public static string NuevaReferencia() => "SIM-" + Guid.NewGuid().ToString("N")[..16].ToUpperInvariant();
 
-    /// <summary>Valida los datos de una tarjeta nueva. Devuelve los errores por campo del formulario.</summary>
-    public static List<(string campo, string mensaje)> ValidarTarjetaNueva(PagoFormViewModel p, DateOnly hoy)
+    /// <summary>Valida los datos de una tarjeta nueva del formulario de pago. Devuelve los errores por campo.</summary>
+    public static List<(string campo, string mensaje)> ValidarTarjetaNueva(PagoFormViewModel p, DateOnly hoy) =>
+        ValidarTarjeta(p.numero_tarjeta, p.mes_expiracion, p.anio_expiracion, p.cvv, hoy);
+
+    /// <summary>
+    /// Valida número (longitud, Luhn y marca), vencimiento y CVV. La usan el pago (Reservas/Resumen) y el alta de
+    /// tarjetas (Miusuario/Mistarjetas). Las claves de error son los nombres de los campos del formulario:
+    /// numero_tarjeta, mes_expiracion, anio_expiracion y cvv.
+    /// </summary>
+    public static List<(string campo, string mensaje)> ValidarTarjeta(string? numero, byte? mes, ushort? anio, string? cvv, DateOnly hoy)
     {
         var errores = new List<(string, string)>();
-        var digitos = SoloDigitos(p.numero_tarjeta);
+        var digitos = SoloDigitos(numero);
         var marca = Marca(digitos);
 
         if (digitos.Length is < 13 or > 19)
-            errores.Add((nameof(p.numero_tarjeta), "El número debe tener entre 13 y 19 dígitos."));
+            errores.Add(("numero_tarjeta", "El número debe tener entre 13 y 19 dígitos."));
         else if (!LuhnValido(digitos))
-            errores.Add((nameof(p.numero_tarjeta), "El número de tarjeta no es válido. Revisa que esté bien escrito."));
+            errores.Add(("numero_tarjeta", "El número de tarjeta no es válido. Revisa que esté bien escrito."));
         else if (marca is null)
-            errores.Add((nameof(p.numero_tarjeta), "Solo aceptamos Visa, Mastercard o American Express."));
+            errores.Add(("numero_tarjeta", "Solo aceptamos Visa, Mastercard o American Express."));
 
-        if (p.mes_expiracion is null or < 1 or > 12)
-            errores.Add((nameof(p.mes_expiracion), "Elige el mes de vencimiento."));
-        if (p.anio_expiracion is null || p.anio_expiracion < hoy.Year || p.anio_expiracion > hoy.Year + 15)
-            errores.Add((nameof(p.anio_expiracion), "Elige el año de vencimiento."));
-        else if (p.mes_expiracion is >= 1 and <= 12 && !Vigente(p.mes_expiracion.Value, p.anio_expiracion.Value, hoy))
-            errores.Add((nameof(p.mes_expiracion), "La tarjeta está vencida."));
+        if (mes is null or < 1 or > 12)
+            errores.Add(("mes_expiracion", "Elige el mes de vencimiento."));
+        if (anio is null || anio < hoy.Year || anio > hoy.Year + 15)
+            errores.Add(("anio_expiracion", "Elige el año de vencimiento."));
+        else if (mes is >= 1 and <= 12 && !Vigente(mes.Value, anio.Value, hoy))
+            errores.Add(("mes_expiracion", "La tarjeta está vencida."));
 
-        var cvv = SoloDigitos(p.cvv);
+        var soloCvv = SoloDigitos(cvv);
         var largoCvv = marca == "AMEX" ? 4 : 3;
-        if (cvv.Length != largoCvv || cvv.Length != (p.cvv ?? string.Empty).Trim().Length)
-            errores.Add((nameof(p.cvv), $"El CVV debe tener {largoCvv} dígitos."));
+        if (soloCvv.Length != largoCvv || soloCvv.Length != (cvv ?? string.Empty).Trim().Length)
+            errores.Add(("cvv", $"El CVV debe tener {largoCvv} dígitos."));
 
         return errores;
     }

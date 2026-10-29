@@ -1,5 +1,175 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/index.cshtml   —   GET /Miusuario   (internos: /Miusuario?cliente=ID)
+ Mi perfil: datos de la cuenta, formulario de datos personales y cambio de contraseña.
+ - El correo no se cambia aquí (es el usuario para iniciar sesión).
+ - Internos: pueden cambiar SU perfil y SU contraseña, y buscar un cliente para ver su cuenta en solo lectura.
+ - Viendo a un cliente: solo se muestran sus datos, sin formularios.
+ Controlador: MiusuarioController (Index, Perfil, CambiarPassword, VerCliente).
+ ============================================================================================
+*@
+@model MiPerfilViewModel
 @{
     ViewData["Title"] = "Mi perfil";
+    ViewData["Pestana"] = "perfil";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var ctx = Model.Contexto;
+    var cliente = ctx.IdClienteVisto?.ToString();
 }
 
-   <h2>Mi usuario</h2>
+<div class="container mt-2">
+    <h1 class="h3 mb-3">@(ctx.ViendoOtroCliente ? "Perfil del cliente" : "Mi perfil")</h1>
+
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="ctx" />
+
+    @* ---- Resumen de la cuenta ---- *@
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Cuenta</div>
+                    <div class="fs-5 fw-semibold">@Model.Perfil.nombre @Model.Perfil.apellido_paterno @Model.Perfil.apellido_materno</div>
+                    <div>@Model.correo</div>
+                    <div class="small text-muted mt-1">
+                        <span class="badge text-bg-secondary">@Model.rol</span>
+                        · Miembro desde @Model.creado_en.ToString("MMMM yyyy", es)
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a class="card h-100 shadow-sm text-decoration-none" asp-action="Misreservaciones" asp-route-cliente="@cliente">
+                <div class="card-body">
+                    <div class="text-muted small">Viajes próximos</div>
+                    <div class="fs-3 fw-bold">@Model.reservaciones_proximas</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a class="card h-100 shadow-sm text-decoration-none" asp-controller="Solicitar" asp-action="Index" asp-route-cliente="@cliente">
+                <div class="card-body">
+                    <div class="text-muted small">Tickets de soporte abiertos</div>
+                    <div class="fs-3 fw-bold">@Model.tickets_abiertos</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    @if (ctx.ViendoOtroCliente)
+    {
+        @* ---- Datos del cliente (solo lectura) ---- *@
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Datos personales</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Nombre(s)</dt>
+                    <dd class="col-sm-8">@Model.Perfil.nombre</dd>
+                    <dt class="col-sm-4">Apellidos</dt>
+                    <dd class="col-sm-8">@Model.Perfil.apellido_paterno @Model.Perfil.apellido_materno</dd>
+                    <dt class="col-sm-4">Teléfono</dt>
+                    <dd class="col-sm-8">@Model.Perfil.telefono</dd>
+                    <dt class="col-sm-4">Correo</dt>
+                    <dd class="col-sm-8">@Model.correo</dd>
+                </dl>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @* ---- Datos personales ---- *@
+            <div class="col-12 col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Datos personales</h2>
+                        <form asp-action="Perfil" method="post" novalidate>
+                            <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label asp-for="Perfil.nombre" class="form-label"></label>
+                                    <input asp-for="Perfil.nombre" class="form-control" autocomplete="given-name" />
+                                    <span asp-validation-for="Perfil.nombre" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Perfil.apellido_paterno" class="form-label"></label>
+                                    <input asp-for="Perfil.apellido_paterno" class="form-control" autocomplete="family-name" />
+                                    <span asp-validation-for="Perfil.apellido_paterno" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Perfil.apellido_materno" class="form-label"></label>
+                                    <input asp-for="Perfil.apellido_materno" class="form-control" />
+                                    <span asp-validation-for="Perfil.apellido_materno" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Perfil.telefono" class="form-label"></label>
+                                    <input asp-for="Perfil.telefono" class="form-control" type="tel" autocomplete="tel" />
+                                    <span asp-validation-for="Perfil.telefono" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="correo_cuenta">Correo</label>
+                                    <input id="correo_cuenta" class="form-control" value="@Model.correo" readonly />
+                                    <div class="form-text">El correo es tu usuario; no se puede cambiar.</div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3">Guardar datos</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @* ---- Cambio de contraseña ---- *@
+            <div class="col-12 col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Cambiar contraseña</h2>
+                        <form asp-action="CambiarPassword" method="post" novalidate>
+                            <div class="mb-3">
+                                <label asp-for="Password.password_actual" class="form-label"></label>
+                                <input asp-for="Password.password_actual" class="form-control" autocomplete="current-password" />
+                                <span asp-validation-for="Password.password_actual" class="text-danger small"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Password.password_nueva" class="form-label"></label>
+                                <input asp-for="Password.password_nueva" class="form-control" autocomplete="new-password" />
+                                <div class="form-text">Mínimo 8 caracteres, con al menos una letra y un número.</div>
+                                <span asp-validation-for="Password.password_nueva" class="text-danger small"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Password.confirmar_password" class="form-label"></label>
+                                <input asp-for="Password.confirmar_password" class="form-control" autocomplete="new-password" />
+                                <span asp-validation-for="Password.confirmar_password" class="text-danger small"></span>
+                            </div>
+                            <button type="submit" class="btn btn-outline-primary">Cambiar contraseña</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @* ---- Solo personal interno: ver la cuenta de un cliente ---- *@
+            @if (ctx.EsInterno)
+            {
+                <div class="col-12">
+                    <div class="card border-warning shadow-sm">
+                        <div class="card-body">
+                            <h2 class="h5">Ver la cuenta de un cliente</h2>
+                            <p class="small text-muted">
+                                Para comprobar que lo que añadiste, modificaste o eliminaste en el panel ya aparece del lado del cliente.
+                                Es solo lectura: no podrás cancelar, pagar ni cambiar nada en su nombre.
+                            </p>
+                            <form asp-action="VerCliente" method="get" class="row g-2 align-items-end">
+                                <div class="col-sm-8 col-md-6">
+                                    <label for="correo_cliente" class="form-label">Correo del cliente</label>
+                                    <input id="correo_cliente" name="correo" type="email" class="form-control" maxlength="150" required
+                                           placeholder="cliente@correo.com" />
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-warning">Ver su cuenta</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

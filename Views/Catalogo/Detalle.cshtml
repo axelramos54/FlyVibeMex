@@ -188,7 +188,7 @@
                             @if (User.IsInRole(Roles.Cliente))
                             {
                                 @* Solo manda QUÉ se compra (servicio, fechas, personas): el resumen recalcula el precio en el servidor. *@
-                                <a asp-controller="Reservas" asp-action="Resumen" asp-route-id="@Model.id" asp-all-route-data="b.ParametrosRuta()"
+                                <a asp-controller="Reservas" asp-action="Resumen" asp-all-route-data="b.ParametrosRuta(Model.id)"
                                    class="btn btn-primary w-100">Reservar</a>
                             }
                             else if (User.Identity?.IsAuthenticated == true)

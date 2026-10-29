@@ -1,68 +1,73 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/Misreservaciones/index.cshtml   —   GET /Miusuario/Misreservaciones
+ Reservaciones de la cuenta en tres grupos: Próximos, Pasados y Cancelados (los calcula MisViajesService).
+ Cada tarjeta es el parcial _TarjetaReservacion.cshtml; cancelar / reembolsar usa _ModalesCancelacion.cshtml.
+ Internos: solo lectura (ven las tarjetas y el detalle, sin botones).
+ ============================================================================================
+*@
+@model MisReservacionesViewModel
 @{
     ViewData["Title"] = "Mis reservaciones";
+    ViewData["Pestana"] = "reservaciones";
+    ViewData["SoloLectura"] = Model.Contexto.SoloLectura;
+    ViewData["Cliente"] = Model.Contexto.IdClienteVisto?.ToString();
+
+    var grupos = new (string titulo, string id, List<ReservacionTarjetaViewModel> lista, string vacio)[]
+    {
+        ("Próximos", "viajes_proximos", Model.Proximas, "No tienes viajes próximos."),
+        ("Pasados", "viajes_pasados", Model.Pasadas, "Aún no tienes viajes realizados."),
+        ("Cancelados", "viajes_cancelados", Model.Canceladas, "No tienes reservaciones canceladas.")
+    };
 }
 
-    <!--maqueta toda rancia-->
-   <h2>Mis reservaciones</h2>
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Mis reservaciones</h1>
 
-   <h3 id="viajes_actuales">Actuales</h3>
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
 
-   <div>
-                    <div class="col-12 col-md-6 col-xl-4">
-                <div class="card h-100 mi-tarjeta">
-                    <div class="card-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Grand Oasis Cancún">
-                        <div class="route-badge">
-                            <span class="route-text">Cancún • 5★ All Inclusive</span>
-                        </div>
+    @if (Model.Proximas.Count + Model.Pasadas.Count + Model.Canceladas.Count == 0)
+    {
+        <div class="text-center py-5">
+            <p class="fs-5 mb-3">Todavía no hay reservaciones en esta cuenta.</p>
+            @if (!Model.Contexto.SoloLectura)
+            {
+                <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Buscar mi próximo viaje</a>
+            }
+        </div>
+    }
+    else
+    {
+        foreach (var grupo in grupos)
+        {
+            <section class="mb-5" aria-labelledby="@grupo.id">
+                <h2 class="h4 mb-3" id="@grupo.id">@grupo.titulo <span class="badge text-bg-light">@grupo.lista.Count</span></h2>
+                @if (grupo.lista.Count == 0)
+                {
+                    <p class="text-muted">@grupo.vacio</p>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var reservacion in grupo.lista)
+                        {
+                            <partial name="~/Views/Miusuario/_TarjetaReservacion.cshtml" model="reservacion" />
+                        }
                     </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Grand Oasis Cancún</h5>
-                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                            especialidades y vista panorámica al mar Caribe.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-value">$3,250 <small>MXN</small></span>
-                                </div>
-                                <button type="button" class="btn btn-card-action" data-accion="cancelar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar</button>
-                                <button type="button" class="btn btn-card-action" data-accion="reembolsar" data-id="15" data-nombre="Grand Oasis Cancún">Cancelar y reembolsar</button>
-                                <a href="#" class="btn btn-card-action">⋮</a> <!-- aqui poner la politica de reembolso y otros datos-->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-   </div>
-   <h3 id="viajes_pasados">Pasadas</h3>
-   <div>
-        <div>
-                    <div class="col-12 col-md-6 col-xl-4">
-                <div class="card h-100 mi-tarjeta">
-                    <div class="card-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Grand Oasis Cancún">
-                        <div class="route-badge">
-                            <span class="route-text">Cancún • 5★ All Inclusive</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Grand Oasis Cancún</h5>
-                        <p class="card-text">Resort de playa con alberca estilo laguna, restaurantes de
-                            especialidades y vista panorámica al mar Caribe.</p>
-                            <div class="card-footer-box">
-                                <div class="price-box">
-                                    <span class="price-value">$3,250 <small>MXN</small></span>
-                                </div>
-            
-                            </div>
-                        </div>
-                    </div>
-                </div>
-   </div>
-   </div>
+                }
+            </section>
+        }
+    }
+</div>
 
-<partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
+@if (!Model.Contexto.SoloLectura)
+{
+    <partial name="~/Views/Miusuario/_ModalesCancelacion.cshtml" />
+}
 
 @section Scripts {
-    <script src="~/assets/js/script_R.js"></script>
+    @if (!Model.Contexto.SoloLectura)
+    {
+        <script src="~/assets/js/script_R.js"></script>
+    }
 }

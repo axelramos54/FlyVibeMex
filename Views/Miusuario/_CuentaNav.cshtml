@@ -1,0 +1,75 @@
+@*
+ ============================================================================================
+ Parcial: Views/Miusuario/_CuentaNav.cshtml
+ Encabezado común del área del cliente (Perfil, Mis reservaciones, Mis compras, Mis tarjetas y Soporte):
+   - Pestañas de navegación. Si un interno está en "Ver como cliente", cada enlace conserva ?cliente=ID.
+   - Aviso de SOLO LECTURA para AGENTE / SOPORTE / ADMINISTRADOR.
+   - Mensajes TempData["Exito"] / TempData["Error"] (los de cancelar los muestra _ModalesCancelacion).
+ Uso (el parcial recibe una copia del ViewData de la página):
+     @{ ViewData["Pestana"] = "reservaciones"; }
+     <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
+ Valores de "Pestana": perfil | reservaciones | compras | tarjetas | soporte
+ ============================================================================================
+*@
+@model ContextoCuenta
+@{
+    var pestana = ViewData["Pestana"] as string ?? string.Empty;
+    var cliente = Model.IdClienteVisto?.ToString();
+    var exito = TempData["Exito"] as string;
+    var error = TempData["Error"] as string;
+
+    string Clase(string nombre) => nombre == pestana ? "nav-link active" : "nav-link";
+    string? Actual(string nombre) => nombre == pestana ? "page" : null;
+}
+
+@if (Model.ViendoOtroCliente)
+{
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
+        <div>
+            <strong>Solo lectura.</strong> Estás viendo la cuenta de <strong>@Model.NombreClienteVisto</strong>
+            <span class="text-muted">(@Model.CorreoClienteVisto)</span> tal como la ve el cliente.
+        </div>
+        <a asp-controller="Miusuario" asp-action="Index" class="btn btn-sm btn-outline-dark">Volver a mi cuenta</a>
+    </div>
+}
+else if (Model.EsInterno)
+{
+    <div class="alert alert-info" role="status">
+        Tu cuenta es de personal de FlyVibeMex: aquí solo puedes cambiar tus datos y tu contraseña.
+        Para revisar lo que ve un cliente usa <strong>“Ver la cuenta de un cliente”</strong> en
+        <a asp-controller="Miusuario" asp-action="Index" class="alert-link">Mi perfil</a>.
+    </div>
+}
+
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="@Clase("perfil")" aria-current="@Actual("perfil")" asp-controller="Miusuario" asp-action="Index" asp-route-cliente="@cliente">Perfil</a>
+    </li>
+    <li class="nav-item">
+        <a class="@Clase("reservaciones")" aria-current="@Actual("reservaciones")" asp-controller="Miusuario" asp-action="Misreservaciones" asp-route-cliente="@cliente">Mis reservaciones</a>
+    </li>
+    <li class="nav-item">
+        <a class="@Clase("compras")" aria-current="@Actual("compras")" asp-controller="Miusuario" asp-action="Miscompras" asp-route-cliente="@cliente">Mis compras</a>
+    </li>
+    <li class="nav-item">
+        <a class="@Clase("tarjetas")" aria-current="@Actual("tarjetas")" asp-controller="Miusuario" asp-action="Mistarjetas" asp-route-cliente="@cliente">Mis tarjetas</a>
+    </li>
+    <li class="nav-item">
+        <a class="@Clase("soporte")" aria-current="@Actual("soporte")" asp-controller="Solicitar" asp-action="Index" asp-route-cliente="@cliente">Soporte</a>
+    </li>
+</ul>
+
+@if (exito is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="status">
+        @exito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}

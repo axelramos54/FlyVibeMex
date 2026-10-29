@@ -1,5 +1,120 @@
+@*
+ ============================================================================================
+ Vista: Views/Solicitar/index.cshtml   —   GET/POST /Solicitar
+ Soporte del cliente (regla R9): abrir un ticket de asesoría o de problema (opcionalmente ligado a una de sus
+ reservaciones) y ver sus tickets con estado y agente asignado. Las respuestas las da un agente desde el panel.
+ Internos: solo lectura (con ?cliente=ID ven los tickets de ese cliente).
+ Controlador: SolicitarController.
+ ============================================================================================
+*@
+@model MisSolicitudesViewModel
 @{
     ViewData["Title"] = "Soporte";
+    ViewData["Pestana"] = "soporte";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+
+    string ClaseEstado(string estado) => estado switch
+    {
+        "ABIERTA" => "text-bg-warning",
+        "EN_PROCESO" => "text-bg-primary",
+        "CERRADA" => "text-bg-secondary",
+        _ => "text-bg-light"
+    };
+    string TextoEstado(string estado) => estado switch
+    {
+        "ABIERTA" => "Abierta",
+        "EN_PROCESO" => "En proceso",
+        "CERRADA" => "Cerrada",
+        _ => estado
+    };
 }
 
-   <h2>Soporte</h2>
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Soporte</h1>
+
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
+
+    <div class="row g-4">
+        @* ---- Nueva solicitud (solo clientes) ---- *@
+        @if (!Model.Contexto.SoloLectura)
+        {
+            <div class="col-12 col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">¿En qué te ayudamos?</h2>
+                        <form asp-controller="Solicitar" asp-action="Index" method="post" novalidate>
+                            <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+
+                            <div class="mb-3">
+                                <label asp-for="Nueva.tipo" class="form-label"></label>
+                                <select asp-for="Nueva.tipo" asp-items="NuevaSolicitudViewModel.OpcionesTipo()" class="form-select"></select>
+                                <span asp-validation-for="Nueva.tipo" class="text-danger small"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Nueva.id_reservacion" class="form-label"></label>
+                                <select asp-for="Nueva.id_reservacion" asp-items="Model.Reservaciones" class="form-select">
+                                    <option value="">Ninguna / no aplica</option>
+                                </select>
+                                <span asp-validation-for="Nueva.id_reservacion" class="text-danger small"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Nueva.asunto" class="form-label"></label>
+                                <input asp-for="Nueva.asunto" class="form-control" maxlength="120" placeholder="Ej. Quiero cambiar la fecha de mi vuelo" />
+                                <span asp-validation-for="Nueva.asunto" class="text-danger small"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Nueva.mensaje" class="form-label"></label>
+                                <textarea asp-for="Nueva.mensaje" class="form-control" rows="5" maxlength="2000"
+                                          placeholder="Cuéntanos con detalle. Si es sobre una reservación, elígela arriba."></textarea>
+                                <span asp-validation-for="Nueva.mensaje" class="text-danger small"></span>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Enviar solicitud</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ---- Mis tickets ---- *@
+        <div class="col-12 @(Model.Contexto.SoloLectura ? "" : "col-lg-7")">
+            <h2 class="h5 mb-3">@(Model.Contexto.ViendoOtroCliente ? "Tickets del cliente" : "Mis solicitudes") <span class="badge text-bg-light">@Model.Tickets.Count</span></h2>
+            @if (Model.Tickets.Count == 0)
+            {
+                <p class="text-muted">No hay solicitudes de soporte.</p>
+            }
+            else
+            {
+                <div class="list-group shadow-sm">
+                    @foreach (var t in Model.Tickets)
+                    {
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <div class="fw-semibold">#@t.id · @t.asunto</div>
+                                    <div class="small text-muted">
+                                        @(t.tipo == "PROBLEMA" ? "Problema" : "Asesoría")
+                                        @if (t.codigo_reserva is not null)
+                                        {
+                                            <span>· Reserva @t.codigo_reserva</span>
+                                        }
+                                        · @t.creada_en.ToString("dd/MM/yyyy HH:mm", es)
+                                    </div>
+                                </div>
+                                <span class="badge @ClaseEstado(t.estado)">@TextoEstado(t.estado)</span>
+                            </div>
+                            <p class="small mb-1 mt-2 text-break">@t.mensaje</p>
+                            <div class="small text-muted">
+                                @(t.agente is null ? "Sin agente asignado todavía" : $"Atiende: {t.agente}")
+                                · Actualizado @t.actualizada_en.ToString("dd/MM/yyyy HH:mm", es)
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

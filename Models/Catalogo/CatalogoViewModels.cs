@@ -193,6 +193,21 @@ namespace FlyVibeMex.Models
             if (tipo == TipoCatalogo.Hospedaje) parametros["habitaciones"] = habitaciones.ToString();
             return parametros;
         }
+
+        /// <summary>
+        /// Igual que <see cref="ParametrosRuta()"/> pero incluye el <c>id</c> del servicio (enlaces a
+        /// <c>/Catalogo/Detalle/{id}</c> y <c>/Reservas/Resumen?id=</c>).
+        /// </summary>
+        /// <remarks>
+        /// IMPORTANTE: no combinar <c>asp-route-id</c> con <c>asp-all-route-data</c> en la misma etiqueta:
+        /// <c>asp-all-route-data</c> reemplaza el diccionario completo y el id se pierde (la URL sale sin id → 404).
+        /// </remarks>
+        public Dictionary<string, string> ParametrosRuta(ulong idServicio)
+        {
+            var parametros = ParametrosRuta();
+            parametros["id"] = idServicio.ToString();
+            return parametros;
+        }
     }
 
     /// <summary>Una tarjeta de resultados.</summary>
