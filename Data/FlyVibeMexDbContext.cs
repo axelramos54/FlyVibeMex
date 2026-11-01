@@ -6,7 +6,7 @@ namespace FlyVibeMex.Data;
 
 /// <summary>
 /// Contexto de Entity Framework Core de FlyVibe Mex (SQL Server).
-/// Mapea las 27 clases de <c>Models/</c> a las tablas de <c>sql/01_crear_base_datos.sql</c>:
+/// Mapea las 28 clases de <c>Models/</c> a las tablas de <c>sql/01_crear_base_datos.sql</c>:
 /// <b>cada propiedad se llama igual que su columna</b> (snake_case, con los nombres
 /// nuevos de los modelos: <c>id_usuarioglobal</c>, <c>id_usuariog</c>, <c>fecha_inicio</c>…), por eso no se usa
 /// <c>HasColumnName</c>. Incluye conversores globales para los tipos sin signo que SQL Server no tiene.
@@ -71,6 +71,7 @@ public class FlyVibeMexDbContext : DbContext
 
     // ===================== Soporte =====================
     public DbSet<SolicitudesSoporte> SolicitudesSoporte => Set<SolicitudesSoporte>();
+    public DbSet<MensajesSoporte> MensajesSoporte => Set<MensajesSoporte>();
 
     // Bitácora del panel
     public DbSet<Bitacora> Bitacora => Set<Bitacora>();
@@ -501,6 +502,19 @@ public class FlyVibeMexDbContext : DbContext
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_agente_asignado).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Reservaciones>().WithMany().HasForeignKey(x => x.id_reservacion).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MensajesSoporte>(e =>
+        {
+            // Conversación del ticket (T4 fase C): respuestas del cliente y del personal en orden.
+            e.ToTable("mensajes_soporte");
+            e.HasKey(x => x.id);
+            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.mensaje).HasMaxLength(2000);
+            e.HasIndex(x => new { x.id_solicitud, x.creado_en });
+
+            e.HasOne<SolicitudesSoporte>().WithMany().HasForeignKey(x => x.id_solicitud).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Bitacora>(e =>

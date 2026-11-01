@@ -1,0 +1,25 @@
+@* Aprobar o rechazar un reembolso SOLICITADO (lista de reembolsos y detalle de la reservación).
+   ViewData["Volver"] = código de la reservación para regresar a su detalle (si no, se regresa a la lista).
+   El monto NO se edita: es el que calculó la política (o el de cortesía). *@
+@model ReembolsoPanelItem
+@{
+    var volver = ViewData["Volver"] as string;
+    var idMotivo = $"motivo_rechazo_{Model.id}";
+}
+
+<div class="d-flex flex-column gap-2">
+    <form asp-controller="ReservacionesPanel" asp-action="AprobarReembolso" asp-route-id="@Model.id" method="post">
+        <input type="hidden" name="volver" value="@volver" />
+        <button type="submit" class="btn btn-sm btn-success w-100">Aprobar y devolver $@Model.monto.ToString("N2")</button>
+    </form>
+    <details>
+        <summary class="btn btn-sm btn-outline-danger w-100">Rechazar…</summary>
+        <form asp-controller="ReservacionesPanel" asp-action="RechazarReembolso" asp-route-id="@Model.id" method="post" class="mt-2">
+            <input type="hidden" name="volver" value="@volver" />
+            <label for="@idMotivo" class="form-label small mb-1">Motivo (lo verá el cliente)</label>
+            <textarea id="@idMotivo" name="motivo" class="form-control form-control-sm mb-2" rows="2"
+                      minlength="10" maxlength="250" required></textarea>
+            <button type="submit" class="btn btn-sm btn-danger w-100">Confirmar rechazo</button>
+        </form>
+    </details>
+</div>

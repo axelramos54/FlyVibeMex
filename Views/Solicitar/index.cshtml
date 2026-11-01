@@ -2,7 +2,8 @@
  ============================================================================================
  Vista: Views/Solicitar/index.cshtml   —   GET/POST /Solicitar
  Soporte del cliente (regla R9): abrir un ticket de asesoría o de problema (opcionalmente ligado a una de sus
- reservaciones) y ver sus tickets con estado y agente asignado. Las respuestas las da un agente desde el panel.
+ reservaciones) y ver sus tickets con estado y agente asignado. Cada ticket abre su conversación en
+ /Solicitar/Ticket/{id} (Views/Solicitar/Ticket.cshtml), donde el cliente responde mientras no esté cerrado.
  Internos: solo lectura (con ?cliente=ID ven los tickets de ese cliente).
  Controlador: SolicitarController.
  ============================================================================================
@@ -12,6 +13,7 @@
     ViewData["Title"] = "Soporte";
     ViewData["Pestana"] = "soporte";
     var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var cliente = Model.Contexto.IdClienteVisto?.ToString();
 
     string ClaseEstado(string estado) => estado switch
     {
@@ -94,7 +96,8 @@
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between align-items-start gap-2">
                                 <div>
-                                    <div class="fw-semibold">#@t.id · @t.asunto</div>
+                                    <a class="fw-semibold" asp-controller="Solicitar" asp-action="Ticket" asp-route-id="@t.id"
+                                       asp-route-cliente="@cliente">#@t.id · @t.asunto</a>
                                     <div class="small text-muted">
                                         @(t.tipo == "PROBLEMA" ? "Problema" : "Asesoría")
                                         @if (t.codigo_reserva is not null)
@@ -104,12 +107,20 @@
                                         · @t.creada_en.ToString("dd/MM/yyyy HH:mm", es)
                                     </div>
                                 </div>
-                                <span class="badge @ClaseEstado(t.estado)">@TextoEstado(t.estado)</span>
+                                <div class="text-end">
+                                    <span class="badge @ClaseEstado(t.estado)">@TextoEstado(t.estado)</span>
+                                    @if (t.respuesta_nueva)
+                                    {
+                                        <div><span class="badge text-bg-info mt-1">Te respondieron</span></div>
+                                    }
+                                </div>
                             </div>
                             <p class="small mb-1 mt-2 text-break">@t.mensaje</p>
                             <div class="small text-muted">
                                 @(t.agente is null ? "Sin agente asignado todavía" : $"Atiende: {t.agente}")
                                 · Actualizado @t.actualizada_en.ToString("dd/MM/yyyy HH:mm", es)
+                                · @t.mensajes respuesta(s)
+                                · <a asp-controller="Solicitar" asp-action="Ticket" asp-route-id="@t.id" asp-route-cliente="@cliente">Ver conversación</a>
                             </div>
                         </div>
                     }

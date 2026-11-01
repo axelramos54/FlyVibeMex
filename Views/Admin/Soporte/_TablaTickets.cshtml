@@ -1,16 +1,26 @@
-@* Tabla de tickets reutilizada por "Seguir atendiendo" y "Mi historial". *@
-@model List<SolicitudesSoporte>
+@* Tabla de tickets del panel ("Seguir atendiendo", "Mi historial" y "Todos"). ViewData["MostrarAgente"] = true
+   agrega la columna del agente (vista de supervisión). *@
+@model List<TicketPanelItem>
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var mostrarAgente = ViewData["MostrarAgente"] is true;
+}
 
 <div class="table-responsive">
     <table class="table table-hover align-middle">
-        <thead>
+        <thead class="table-light">
             <tr>
                 <th>#</th>
                 <th>Asunto</th>
-                <th>Tipo</th>
+                <th>Cliente</th>
                 <th>Estado</th>
+                @if (mostrarAgente)
+                {
+                    <th>Agente</th>
+                }
                 <th>Creado</th>
-                <th>Última actualización</th>
+                <th>Última actividad</th>
+                <th class="text-end"></th>
             </tr>
         </thead>
         <tbody>
@@ -18,11 +28,35 @@
             {
                 <tr>
                     <td>@t.id</td>
-                    <td>@t.asunto</td>
-                    <td>@t.tipo</td>
-                    <td><span class="badge text-bg-secondary">@t.estado</span></td>
-                    <td>@t.creada_en.ToString("dd/MM/yyyy")</td>
-                    <td>@t.actualizada_en.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        <div class="fw-semibold">@t.asunto</div>
+                        <div class="small text-muted">
+                            @t.TipoTexto
+                            @if (t.codigo_reserva is not null)
+                            {
+                                <span>· Reserva @t.codigo_reserva</span>
+                            }
+                            · @t.mensajes respuesta(s)
+                        </div>
+                        @if (t.espera_respuesta)
+                        {
+                            <span class="badge text-bg-warning">El cliente espera respuesta</span>
+                        }
+                    </td>
+                    <td class="small">
+                        @t.cliente
+                        <div class="text-muted">@t.correo_cliente</div>
+                    </td>
+                    <td><span class="badge @EstadosPanel.Clase(t.estado)">@EstadosPanel.TextoTicket(t.estado)</span></td>
+                    @if (mostrarAgente)
+                    {
+                        <td class="small">@(t.agente ?? "Sin asignar")</td>
+                    }
+                    <td class="small text-nowrap">@t.creada_en.ToString("dd/MM/yyyy", es)</td>
+                    <td class="small text-nowrap">@t.actualizada_en.ToString("dd/MM/yyyy HH:mm", es)</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" asp-controller="Soporte" asp-action="Ticket" asp-route-id="@t.id">Abrir</a>
+                    </td>
                 </tr>
             }
         </tbody>

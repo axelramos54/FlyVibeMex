@@ -1,0 +1,64 @@
+@* GET /Admin/Soporte/Todos (SoporteController.Todos, ADMINISTRADOR y SA): todos los tickets con filtros. *@
+@model ListaTicketsViewModel
+@{
+    ViewData["Title"] = "Todos los tickets";
+    ViewData["MostrarAgente"] = true;   // la tabla agrega la columna del agente
+    var agente = Model.IdAgente?.ToString();
+}
+
+<h1 class="h3 mb-1">Todos los tickets</h1>
+<p class="text-muted">Supervisión: abre cualquier ticket para reasignarlo. Para responder, primero reasígnatelo.</p>
+
+<ul class="nav nav-tabs mb-3">
+    @foreach (var (valor, texto) in ListaTicketsViewModel.Estados)
+    {
+        <li class="nav-item">
+            <a class="nav-link @((Model.Estado ?? "") == valor ? "active" : "")" asp-action="Todos"
+               asp-route-estado="@valor" asp-route-agente="@agente" asp-route-texto="@Model.Texto">@texto</a>
+        </li>
+    }
+</ul>
+
+<form method="get" asp-action="Todos" class="card card-body mb-3">
+    <input type="hidden" name="estado" value="@Model.Estado" />
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label for="agente" class="form-label">Agente</label>
+            <select id="agente" name="agente" class="form-select" asp-items="Model.Agentes">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label for="texto" class="form-label">Buscar</label>
+            <input id="texto" name="texto" value="@Model.Texto" class="form-control" maxlength="100" placeholder="#id, asunto, nombre o correo del cliente" />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">No hay tickets que coincidan con el filtro.</div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Total ticket(s) · página @Model.Pagina de @Model.Paginas</p>
+    <partial name="~/Views/Admin/Soporte/_TablaTickets.cshtml" model="Model.Resultados" />
+
+    if (Model.Paginas > 1)
+    {
+        <nav aria-label="Páginas">
+            <ul class="pagination">
+                @for (var p = 1; p <= Model.Paginas; p++)
+                {
+                    <li class="page-item @(p == Model.Pagina ? "active" : "")">
+                        <a class="page-link" asp-action="Todos" asp-route-estado="@Model.Estado" asp-route-agente="@agente"
+                           asp-route-texto="@Model.Texto" asp-route-pagina="@p">@p</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

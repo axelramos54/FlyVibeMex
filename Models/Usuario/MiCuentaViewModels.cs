@@ -124,6 +124,8 @@ namespace FlyVibeMex.Models
         public string? motivo_no_reembolsar { get; set; }
         public string politica { get; set; } = string.Empty;
         public string moneda { get; set; } = "MXN";
+        /// <summary>Monto del pago APROBADO más reciente (base del reembolso; el de cortesía devuelve todo).</summary>
+        public decimal? monto_pagado { get; set; }
 
         /// <summary>Texto para el modal: "Se te reembolsarán $1,200.00 MXN (100 %)".</summary>
         public string TextoReembolso => monto_reembolso > 0
@@ -190,6 +192,7 @@ namespace FlyVibeMex.Models
 
     public class ReembolsoListadoViewModel
     {
+        public ulong id_reservacion { get; set; }
         public DateTime fecha_solicitud { get; set; }
         public string codigo_reserva { get; set; } = string.Empty;
         public decimal monto { get; set; }
@@ -197,6 +200,10 @@ namespace FlyVibeMex.Models
         public string estado { get; set; } = string.Empty;
         public string motivo { get; set; } = string.Empty;
         public DateTime? fecha_resolucion { get; set; }
+        /// <summary>Referencia de la devolución (simulada) cuando ya se procesó.</summary>
+        public string? referencia { get; set; }
+        /// <summary>Motivo que escribió el personal al RECHAZAR el reembolso (lo ve el cliente).</summary>
+        public string? motivo_rechazo { get; set; }
     }
 
     public class MisComprasViewModel
@@ -287,6 +294,34 @@ namespace FlyVibeMex.Models
         public string? codigo_reserva { get; set; }
         public DateTime creada_en { get; set; }
         public DateTime actualizada_en { get; set; }
+        /// <summary>Respuestas en la conversación (sin contar el mensaje inicial).</summary>
+        public int mensajes { get; set; }
+        /// <summary>El último mensaje es del personal y el ticket sigue abierto: le toca responder al cliente.</summary>
+        public bool respuesta_nueva { get; set; }
+    }
+
+    /// <summary>Un mensaje de la conversación de un ticket (el primero es el mensaje con el que se abrió).</summary>
+    public record MensajeTicketItem(DateTime fecha, string autor, bool es_personal, string texto);
+
+    /// <summary>Respuesta en la conversación de un ticket (cliente o personal).</summary>
+    public class RespuestaTicketForm
+    {
+        [Display(Name = "Tu respuesta")]
+        [Required(ErrorMessage = "Escribe tu mensaje.")]
+        [StringLength(2000, MinimumLength = 2, ErrorMessage = "El mensaje debe tener entre 2 y 2000 caracteres.")]
+        public string mensaje { get; set; } = string.Empty;
+    }
+
+    /// <summary>Pantalla /Solicitar/Ticket/{id}: un ticket del cliente con su conversación.</summary>
+    public class TicketClienteViewModel
+    {
+        public ContextoCuenta Contexto { get; set; } = new();
+        public TicketListadoViewModel Ticket { get; set; } = new();
+        public List<MensajeTicketItem> Mensajes { get; set; } = new();
+        public RespuestaTicketForm Respuesta { get; set; } = new();
+
+        /// <summary>El cliente responde mientras el ticket no esté cerrado (los internos solo leen).</summary>
+        public bool PuedeResponder => !Contexto.SoloLectura && Ticket.estado != "CERRADA";
     }
 
     public class MisSolicitudesViewModel

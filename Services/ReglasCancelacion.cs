@@ -28,6 +28,7 @@ public static class ReglasCancelacion
         var opciones = new OpcionesCancelacion
         {
             moneda = moneda,
+            monto_pagado = montoPagado,
             politica = string.IsNullOrWhiteSpace(politica)
                 ? PoliticaCancelacion.Describir(permiteCancelacion, horasReembolsoTotal, porcentajeTardio)
                 : politica

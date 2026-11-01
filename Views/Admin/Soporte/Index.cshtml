@@ -1,3 +1,5 @@
+@* GET /Admin/Soporte (SoporteController.Index): resumen de lo pendiente y accesos a cada pantalla. *@
+@model ResumenSoporteViewModel
 @{
     ViewData["Title"] = "Soporte";
 }
@@ -6,8 +8,8 @@
     <h1 class="h2">Panel de soporte</h1>
     <p class="lead mb-1">Bienvenido al área de atención a clientes.</p>
     <p class="mb-0 text-muted">
-        Aquí atiendes las solicitudes que levantan los clientes sobre sus reservaciones, pagos y reembolsos.
-        Toma un ticket nuevo, continúa los que ya tienes asignados o revisa los que ya cerraste.
+        Toma el siguiente ticket de la fila, conversa con el cliente hasta resolverlo y ciérralo.
+        Solo quien atiende un ticket puede responderlo y cerrarlo.
     </p>
 </div>
 
@@ -16,7 +18,16 @@
         <div class="card h-100">
             <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title">Atender nuevo ticket</h2>
-                <p class="card-text">Toma la siguiente solicitud que todavía no tiene un agente asignado.</p>
+                <p class="card-text">
+                    @if (Model.EnFila == 0)
+                    {
+                        <span>No hay tickets esperando agente.</span>
+                    }
+                    else
+                    {
+                        <span><strong>@Model.EnFila</strong> ticket(s) esperando agente. Toma el más antiguo.</span>
+                    }
+                </p>
                 <a class="btn btn-primary mt-auto" asp-action="NuevoTicket">Atender nuevo ticket</a>
             </div>
         </div>
@@ -25,7 +36,13 @@
         <div class="card h-100">
             <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title">Seguir atendiendo</h2>
-                <p class="card-text">Continúa con los tickets que tienes asignados y que siguen abiertos.</p>
+                <p class="card-text">
+                    Tienes <strong>@Model.MisActivos</strong> ticket(s) en curso.
+                    @if (Model.EsperanRespuesta > 0)
+                    {
+                        <span class="badge text-bg-warning">@Model.EsperanRespuesta esperan tu respuesta</span>
+                    }
+                </p>
                 <a class="btn btn-outline-primary mt-auto" asp-action="SeguirAtendiendo">Seguir atendiendo</a>
             </div>
         </div>
@@ -34,20 +51,21 @@
         <div class="card h-100">
             <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title">Mi historial de tickets</h2>
-                <p class="card-text">Consulta los tickets que ya resolviste.</p>
+                <p class="card-text">Consulta los tickets que ya cerraste y su conversación.</p>
                 <a class="btn btn-outline-primary mt-auto" asp-action="Historial">Ver historial</a>
             </div>
         </div>
     </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <h2 class="h6">Recuerda</h2>
-        <ul class="mb-0">
-            <li>Nunca pidas al cliente contraseñas ni datos completos de su tarjeta.</li>
-            <li>Antes de cerrar un ticket, confirma con el cliente que su problema quedó resuelto.</li>
-            <li>Si un caso requiere un reembolso, deja registrado el motivo en el ticket.</li>
-        </ul>
-    </div>
+    @if (Model.EsSupervisor)
+    {
+        <div class="col-md-4">
+            <div class="card h-100 border-primary">
+                <div class="card-body d-flex flex-column">
+                    <h2 class="h5 card-title">Todos los tickets</h2>
+                    <p class="card-text">Supervisión: todos los tickets por estado y agente, y reasignación.</p>
+                    <a class="btn btn-outline-primary mt-auto" asp-action="Todos">Ver todos</a>
+                </div>
+            </div>
+        </div>
+    }
 </div>

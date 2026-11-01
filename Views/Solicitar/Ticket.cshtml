@@ -1,0 +1,72 @@
+@*
+ ============================================================================================
+ Vista: Views/Solicitar/Ticket.cshtml   —   GET/POST /Solicitar/Ticket/{id}
+ Conversación de un ticket del cliente (mensaje inicial + respuestas). El cliente responde mientras el ticket esté
+ ABIERTO o EN PROCESO; un ticket CERRADO queda en solo lectura ("abre uno nuevo").
+ Internos: solo lectura (con ?cliente=ID). Controlador: SolicitarController.Ticket.
+ ============================================================================================
+*@
+@model TicketClienteViewModel
+@{
+    ViewData["Title"] = $"Ticket #{Model.Ticket.id}";
+    ViewData["Pestana"] = "soporte";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var t = Model.Ticket;
+    var cliente = Model.Contexto.IdClienteVisto?.ToString();
+    var (clase, texto) = t.estado switch
+    {
+        "ABIERTA" => ("text-bg-warning", "Abierta"),
+        "EN_PROCESO" => ("text-bg-primary", "En proceso"),
+        "CERRADA" => ("text-bg-secondary", "Cerrada"),
+        _ => ("text-bg-light", t.estado)
+    };
+}
+
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Soporte</h1>
+
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h2 class="h4 mb-1">#@t.id · @t.asunto</h2>
+            <div class="small text-muted">
+                @(t.tipo == "PROBLEMA" ? "Problema" : "Asesoría")
+                @if (t.codigo_reserva is not null)
+                {
+                    <span>· Reserva @t.codigo_reserva</span>
+                }
+                · @(t.agente is null ? "Sin agente asignado todavía" : $"Atiende: {t.agente}")
+            </div>
+        </div>
+        <span class="badge fs-6 @clase">@texto</span>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <partial name="~/Views/Shared/_ConversacionTicket.cshtml" model="Model.Mensajes" />
+
+            @if (Model.PuedeResponder)
+            {
+                <hr />
+                <form asp-controller="Solicitar" asp-action="Ticket" asp-route-id="@t.id" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                    <label asp-for="Respuesta.mensaje" class="form-label"></label>
+                    <textarea asp-for="Respuesta.mensaje" class="form-control mb-2" rows="4" maxlength="2000"
+                              placeholder="Escribe tu mensaje para el agente."></textarea>
+                    <span asp-validation-for="Respuesta.mensaje" class="text-danger small d-block mb-2"></span>
+                    <button type="submit" class="btn btn-primary">Enviar</button>
+                </form>
+            }
+            else if (t.estado == "CERRADA")
+            {
+                <div class="alert alert-secondary mt-3 mb-0">
+                    Este ticket está cerrado. Si necesitas algo más,
+                    <a asp-controller="Solicitar" asp-action="Index" class="alert-link">abre una nueva solicitud</a>.
+                </div>
+            }
+        </div>
+    </div>
+
+    <a class="btn btn-outline-secondary" asp-controller="Solicitar" asp-action="Index" asp-route-cliente="@cliente">Volver a Soporte</a>
+</div>

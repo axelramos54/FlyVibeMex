@@ -9,6 +9,10 @@
     <a class="m-1" asp-controller="Soporte" asp-action="NuevoTicket">Atender nuevo ticket</a>
     <a class="m-1" asp-controller="Soporte" asp-action="SeguirAtendiendo">Seguir atendiendo</a>
     <a class="m-1" asp-controller="Soporte" asp-action="Historial">Mi historial de tickets</a>
+    @if (Roles.EsSupervisorSoporte(User))
+    {
+        <a class="m-1" asp-controller="Soporte" asp-action="Todos">Todos los tickets</a>
+    }
     <a class="m-1" asp-controller="Admin" asp-action="Index">Regresar</a>
 }
 

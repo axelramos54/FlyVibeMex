@@ -1,0 +1,126 @@
+@* Detalle de un ticket en el panel: datos, conversación, resumen de la reservación (solo lectura) y acciones según
+   lo que puede hacer quien lo ve (TicketDetalleViewModel.Puede*). Lo usan Ticket.cshtml y NuevoTicket.cshtml. *@
+@model TicketDetalleViewModel
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var t = Model.Ticket;
+    var verReservaciones = Roles.Puede(User, Roles.PanelReservaciones);
+    ViewData["VistaPersonal"] = true;   // la conversación alinea a la derecha los mensajes del personal
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">#@t.id · @t.asunto</h1>
+        <div class="text-muted small">
+            @t.TipoTexto · abierto el @t.creada_en.ToString("dd/MM/yyyy HH:mm", es)
+            · última actividad @t.actualizada_en.ToString("dd/MM/yyyy HH:mm", es)
+        </div>
+    </div>
+    <div class="text-end">
+        <span class="badge fs-6 @EstadosPanel.Clase(t.estado)">@EstadosPanel.TextoTicket(t.estado)</span>
+        <div class="small text-muted mt-1">@(t.agente is null ? "Sin agente asignado" : $"Atiende: {t.agente}")</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    @* ---- Conversación y respuesta ---- *@
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Conversación</h2>
+                <partial name="~/Views/Shared/_ConversacionTicket.cshtml" model="Model.Mensajes" />
+
+                @if (Model.PuedeResponder)
+                {
+                    <hr />
+                    <form asp-controller="Soporte" asp-action="Responder" asp-route-id="@t.id" method="post" novalidate>
+                        <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                        <label asp-for="Respuesta.mensaje" class="form-label">Responder al cliente</label>
+                        <textarea asp-for="Respuesta.mensaje" class="form-control mb-2" rows="4" maxlength="2000"
+                                  placeholder="Escribe tu respuesta. El cliente la verá en su sección de Soporte."></textarea>
+                        <span asp-validation-for="Respuesta.mensaje" class="text-danger small d-block mb-2"></span>
+                        <button type="submit" class="btn btn-primary">Enviar respuesta</button>
+                    </form>
+                }
+                else if (t.estado == "CERRADA")
+                {
+                    <div class="alert alert-secondary small mt-3 mb-0">Ticket cerrado: queda en solo lectura. Si el cliente necesita algo más, abrirá uno nuevo.</div>
+                }
+                else if (t.estado == "EN_PROCESO")
+                {
+                    <div class="alert alert-info small mt-3 mb-0">Lo atiende @t.agente. Para responder, reasígnate el ticket.</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ---- Datos, reservación y acciones ---- *@
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h2 class="h6">Cliente</h2>
+                <div>@t.cliente</div>
+                <div class="small text-muted">@t.correo_cliente</div>
+                @if (!string.IsNullOrEmpty(Model.telefono_cliente))
+                {
+                    <div class="small text-muted">@Model.telefono_cliente</div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h2 class="h6">Reservación relacionada</h2>
+                @if (Model.Reservacion is null)
+                {
+                    <p class="small text-muted mb-0">El ticket no está ligado a una reservación.</p>
+                }
+                else
+                {
+                    <partial name="~/Views/Admin/Reservaciones/_ResumenReservacion.cshtml" model="Model.Reservacion" />
+                    if (verReservaciones)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary mt-2" asp-controller="ReservacionesPanel" asp-action="Detalle"
+                           asp-route-codigo="@Model.Reservacion.codigo_reserva">Abrir en Reservaciones</a>
+                    }
+                    else
+                    {
+                        <p class="small text-muted mt-2 mb-0">Solo lectura. Cancelaciones y reembolsos los gestiona un agente.</p>
+                    }
+                }
+            </div>
+        </div>
+
+        @if (Model.PuedeTomar || Model.PuedeCerrar || Model.PuedeReasignar)
+        {
+            <div class="card">
+                <div class="card-body d-flex flex-column gap-3">
+                    <h2 class="h6 mb-0">Acciones</h2>
+                    @if (Model.PuedeTomar)
+                    {
+                        <form asp-controller="Soporte" asp-action="Tomar" asp-route-id="@t.id" method="post">
+                            <button type="submit" class="btn btn-primary w-100">Tomar este ticket</button>
+                        </form>
+                    }
+                    @if (Model.PuedeCerrar)
+                    {
+                        <form asp-controller="Soporte" asp-action="Cerrar" asp-route-id="@t.id" method="post">
+                            <button type="submit" class="btn btn-outline-danger w-100">Cerrar ticket</button>
+                            <div class="form-text">Ciérralo cuando el problema esté resuelto. El cliente ya no podrá escribir en él.</div>
+                        </form>
+                    }
+                    @if (Model.PuedeReasignar)
+                    {
+                        <form asp-controller="Soporte" asp-action="Reasignar" asp-route-id="@t.id" method="post">
+                            <label for="idAgente" class="form-label small mb-1">Reasignar a</label>
+                            <div class="input-group input-group-sm">
+                                <select id="idAgente" name="idAgente" class="form-select" asp-items="Model.Agentes" required></select>
+                                <button type="submit" class="btn btn-outline-primary">Reasignar</button>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

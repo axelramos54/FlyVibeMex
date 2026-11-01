@@ -47,6 +47,7 @@ BEGIN
 END
 GO
 IF OBJECT_ID(N'dbo.bitacora', N'U') IS NULL OR OBJECT_ID(N'dbo.vuelos', N'U') IS NULL
+   OR OBJECT_ID(N'dbo.mensajes_soporte', N'U') IS NULL
    OR NOT EXISTS (SELECT 1 FROM dbo.roles_usuarios WHERE nombre = 'SA')
    OR NOT EXISTS (SELECT 1 FROM dbo.estados_reservacion WHERE nombre = N'CONFIRMADA')
    OR NOT EXISTS (SELECT 1 FROM dbo.estados_pago WHERE nombre = N'APROBADO')
@@ -62,6 +63,7 @@ BEGIN TRANSACTION;
 
 /* ---------- Vaciar (de hijas a padres) ---------- */
 DELETE FROM dbo.bitacora;
+DELETE FROM dbo.mensajes_soporte;
 DELETE FROM dbo.solicitudes_soporte;
 DELETE FROM dbo.historial_estado_reembolso;
 DELETE FROM dbo.reembolsos;
@@ -476,6 +478,29 @@ VALUES
      N'Necesito la factura de la reservación FV-260902.', N'CERRADA',
      DATEADD(DAY, -5, @ahora), DATEADD(DAY, -4, @ahora));
 
+/* Conversación (T4 fase C): el ticket EN_PROCESO espera respuesta del agente (el último mensaje es del cliente);
+   el CERRADO tiene su conversación completa. El primer mensaje de cada ticket es solicitudes_soporte.mensaje. */
+DECLARE @tkReembolso BIGINT = (SELECT id FROM dbo.solicitudes_soporte WHERE id_usuarioglobal = @uAna AND estado = N'EN_PROCESO');
+DECLARE @tkFactura   BIGINT = (SELECT id FROM dbo.solicitudes_soporte WHERE id_usuarioglobal = @uCliente AND estado = N'CERRADA');
+
+INSERT INTO dbo.mensajes_soporte (id_solicitud, id_usuario, es_personal, mensaje, creado_en)
+VALUES
+    (@tkReembolso, @uSoporte, 1,
+     N'Hola, Ana. Tu reembolso ya está registrado y lo revisa el área de reservaciones; en cuanto lo aprueben te avisamos por aquí.',
+     DATEADD(HOUR, -3, @ahora)),
+    (@tkReembolso, @uAna, 0,
+     N'Gracias. ¿Me pueden confirmar si me regresan el monto completo?',
+     DATEADD(HOUR, -2, @ahora)),
+    (@tkFactura, @uSoporte, 1,
+     N'Claro. Envíanos tu RFC y el uso de CFDI y te mandamos la factura a tu correo.',
+     DATEADD(DAY, -5, DATEADD(HOUR, 2, @ahora))),
+    (@tkFactura, @uCliente, 0,
+     N'Listo, ya les envié mis datos por correo. ¡Gracias!',
+     DATEADD(DAY, -5, DATEADD(HOUR, 5, @ahora))),
+    (@tkFactura, @uSoporte, 1,
+     N'Factura enviada. Cerramos el ticket; si necesitas algo más, abre uno nuevo.',
+     DATEADD(DAY, -4, @ahora));
+
 COMMIT TRANSACTION;
 GO
 
@@ -500,7 +525,8 @@ SELECT 'reservaciones', COUNT(*) FROM dbo.reservaciones UNION ALL
 SELECT 'detalle_reservacion', COUNT(*) FROM dbo.detalle_reservacion UNION ALL
 SELECT 'pagos', COUNT(*) FROM dbo.pagos UNION ALL
 SELECT 'reembolsos', COUNT(*) FROM dbo.reembolsos UNION ALL
-SELECT 'solicitudes_soporte', COUNT(*) FROM dbo.solicitudes_soporte;
+SELECT 'solicitudes_soporte', COUNT(*) FROM dbo.solicitudes_soporte UNION ALL
+SELECT 'mensajes_soporte', COUNT(*) FROM dbo.mensajes_soporte;
 GO
 
 -- Promociones vigentes hoy (deben salir BIENVENIDA10 y CARIBE500).

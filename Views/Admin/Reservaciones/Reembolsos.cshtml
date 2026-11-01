@@ -1,0 +1,90 @@
+@* GET /Admin/Reservaciones/Reembolsos (ReservacionesPanelController.Reembolsos): pendientes (SOLICITADO, el más
+   antiguo primero) o todos. Aprobar = PROCESADO + pago REEMBOLSADO; rechazar pide el motivo que verá el cliente. *@
+@model ListaReembolsosPanelViewModel
+@{
+    var pendientes = Model.Vista == "pendientes";
+    ViewData["Title"] = pendientes ? "Reembolsos pendientes" : "Todos los reembolsos";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var ahora = DateTime.Now;
+}
+
+<h1 class="h3 mb-1">@ViewData["Title"]</h1>
+<p class="text-muted">
+    El monto es el que calculó la política guardada en la compra y no se edita. Un reembolso parcial también deja el
+    pago como REEMBOLSADO (el monto real queda en el reembolso).
+</p>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(pendientes ? "active" : "")" asp-action="Reembolsos" asp-route-vista="pendientes">Pendientes</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(pendientes ? "" : "active")" asp-action="Reembolsos" asp-route-vista="todos">Todos</a>
+    </li>
+</ul>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">@(pendientes ? "No hay reembolsos esperando respuesta." : "Todavía no hay reembolsos.")</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Solicitado</th>
+                    <th>Reserva</th>
+                    <th>Cliente</th>
+                    <th>Motivo</th>
+                    <th class="text-end">Monto</th>
+                    <th>Estado</th>
+                    <th style="width: 220px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rb in Model.Resultados)
+                {
+                    <tr>
+                        <td class="small text-nowrap">
+                            @rb.fecha_solicitud.ToString("dd/MM/yyyy HH:mm", es)
+                            @if (rb.Pendiente)
+                            {
+                                <div class="text-muted">@rb.DiasEsperando(ahora) día(s) esperando</div>
+                            }
+                        </td>
+                        <td>
+                            <a class="font-monospace" asp-action="Detalle" asp-route-codigo="@rb.codigo_reserva">@rb.codigo_reserva</a>
+                        </td>
+                        <td class="small">
+                            @rb.cliente
+                            <div class="text-muted">@rb.correo_cliente</div>
+                        </td>
+                        <td class="small text-break" style="max-width: 260px">@rb.motivo</td>
+                        <td class="text-end text-nowrap">
+                            $@rb.monto.ToString("N2") <small>@rb.moneda</small>
+                            <div class="small text-muted">@rb.Porcentaje.ToString("0") % de $@rb.monto_pagado.ToString("N2")</div>
+                        </td>
+                        <td>
+                            <span class="badge @EstadosPanel.Clase(rb.estado)">@rb.estado</span>
+                            @if (rb.fecha_resolucion is DateTime resuelto)
+                            {
+                                <div class="small text-muted">@resuelto.ToString("dd/MM/yyyy", es)</div>
+                            }
+                            @if (!string.IsNullOrEmpty(rb.referencia))
+                            {
+                                <div class="small text-muted">Ref. @rb.referencia</div>
+                            }
+                        </td>
+                        <td>
+                            @if (rb.Pendiente)
+                            {
+                                <partial name="~/Views/Admin/Reservaciones/_AccionesReembolso.cshtml" model="rb" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

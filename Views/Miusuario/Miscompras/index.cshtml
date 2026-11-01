@@ -103,7 +103,25 @@
                                     <a asp-action="Reservacion" asp-route-id="@rb.codigo_reserva" asp-route-cliente="@cliente">@rb.codigo_reserva</a>
                                 </td>
                                 <td class="small">@rb.motivo</td>
-                                <td><span class="badge @ClaseEstado(rb.estado)">@rb.estado</span></td>
+                                <td>
+                                    <span class="badge @ClaseEstado(rb.estado)">@rb.estado</span>
+                                    @if (rb.estado == "RECHAZADO")
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(rb.motivo_rechazo))
+                                        {
+                                            <div class="small text-danger mt-1">Motivo: @rb.motivo_rechazo</div>
+                                        }
+                                        if (!Model.Contexto.SoloLectura)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary mt-1" asp-controller="Solicitar" asp-action="Index"
+                                               asp-route-reservacion="@rb.id_reservacion">Abrir un ticket</a>
+                                        }
+                                    }
+                                    @if (rb.referencia is not null)
+                                    {
+                                        <div class="small text-muted">Ref. @rb.referencia</div>
+                                    }
+                                </td>
                                 <td class="text-nowrap">@(rb.fecha_resolucion?.ToString("dd/MM/yyyy", es) ?? "En revisión")</td>
                                 <td class="text-end text-nowrap">$@rb.monto.ToString("N2") <small>@rb.moneda</small></td>
                             </tr>

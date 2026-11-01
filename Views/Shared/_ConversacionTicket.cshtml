@@ -1,0 +1,25 @@
+@* Conversación de un ticket (mensaje inicial + respuestas en orden). La usan Views/Solicitar/Ticket.cshtml (cliente)
+   y Views/Admin/Soporte/Ticket.cshtml (personal). ViewData["VistaPersonal"] = true alinea a la derecha los del personal
+   (quien la ve); si no, los del cliente. *@
+@model List<MensajeTicketItem>
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var vistaPersonal = ViewData["VistaPersonal"] is true;
+}
+
+<div class="d-flex flex-column gap-3" aria-label="Conversación del ticket">
+    @foreach (var m in Model)
+    {
+        var propio = m.es_personal == vistaPersonal;
+        <div class="d-flex @(propio ? "justify-content-end" : "justify-content-start")">
+            <div class="card @(m.es_personal ? "border-primary" : "") shadow-sm" style="max-width: 85%">
+                <div class="card-body py-2 px-3">
+                    <div class="small mb-1 @(m.es_personal ? "text-primary" : "text-muted")">
+                        <strong>@m.autor</strong> · @m.fecha.ToString("dd/MM/yyyy HH:mm", es)
+                    </div>
+                    <div class="text-break" style="white-space: pre-line">@m.texto</div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

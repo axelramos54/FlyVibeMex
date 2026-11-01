@@ -1,0 +1,116 @@
+@* GET /Admin/Reservaciones (ReservacionesPanelController.Index): reservaciones de todos los clientes con filtros. *@
+@model ListaReservacionesPanelViewModel
+@{
+    ViewData["Title"] = "Reservaciones";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var f = Model.Filtro;
+    var desde = f.desde?.ToString("yyyy-MM-dd");
+    var hasta = f.hasta?.ToString("yyyy-MM-dd");
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Reservaciones</h1>
+        <p class="text-muted mb-0">Busca una reservación para ver su historial, cancelarla a nombre del cliente o resolver su reembolso.</p>
+    </div>
+    <a class="btn @(Model.ReembolsosPendientes > 0 ? "btn-warning" : "btn-outline-secondary")" asp-action="Reembolsos" asp-route-vista="pendientes">
+        Reembolsos pendientes <span class="badge text-bg-light">@Model.ReembolsosPendientes</span>
+    </a>
+</div>
+
+<form method="get" asp-action="Index" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label for="codigo" class="form-label">Código</label>
+            <input id="codigo" name="codigo" value="@f.codigo" class="form-control" maxlength="30" placeholder="FV-…" />
+        </div>
+        <div class="col-md-3">
+            <label for="correo" class="form-label">Correo del cliente</label>
+            <input id="correo" name="correo" value="@f.correo" class="form-control" maxlength="150" />
+        </div>
+        <div class="col-md-2">
+            <label for="estado" class="form-label">Estado</label>
+            <select id="estado" name="estado" class="form-select" asp-items="Model.Estados">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="desde" class="form-label">Compradas desde</label>
+            <input id="desde" name="desde" type="date" value="@desde" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label for="hasta" class="form-label">hasta</label>
+            <input id="hasta" name="hasta" type="date" value="@hasta" class="form-control" />
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-outline-primary w-100">Buscar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">No hay reservaciones que coincidan con el filtro.</div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Total reservación(es) · página @f.pagina de @Model.Paginas</p>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Cliente</th>
+                    <th>Servicio</th>
+                    <th>Inicio</th>
+                    <th>Estado</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Resultados)
+                {
+                    <tr>
+                        <td>
+                            <div class="font-monospace">@r.codigo_reserva</div>
+                            <div class="small text-muted">@r.creada_en.ToString("dd/MM/yyyy", es)</div>
+                        </td>
+                        <td class="small">
+                            @r.cliente
+                            <div class="text-muted">@r.correo_cliente</div>
+                        </td>
+                        <td class="small">@r.servicio</td>
+                        <td class="small text-nowrap">@(r.inicio?.ToString("dd/MM/yyyy HH:mm", es) ?? "—")</td>
+                        <td>
+                            <span class="badge @EstadosPanel.Clase(r.estado)">@r.estado</span>
+                            @if (r.reembolso_pendiente)
+                            {
+                                <div><span class="badge text-bg-warning">Reembolso pendiente</span></div>
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">$@r.total.ToString("N2") <small>@r.moneda</small></td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Detalle" asp-route-codigo="@r.codigo_reserva">Ver</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    if (Model.Paginas > 1)
+    {
+        <nav aria-label="Páginas">
+            <ul class="pagination flex-wrap">
+                @for (var p = 1; p <= Model.Paginas; p++)
+                {
+                    <li class="page-item @(p == f.pagina ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-codigo="@f.codigo" asp-route-correo="@f.correo"
+                           asp-route-estado="@f.estado" asp-route-desde="@desde" asp-route-hasta="@hasta" asp-route-pagina="@p">@p</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

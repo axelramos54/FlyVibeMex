@@ -1,0 +1,293 @@
+@* GET /Admin/Reservaciones/{codigo} (ReservacionesPanelController.Detalle): todo sobre una reservación y las acciones
+   del personal. Cancelar usa las MISMAS reglas que el cliente (política guardada en la compra); el reembolso del
+   personal se procesa en el mismo paso. *@
+@model DetalleReservacionPanelViewModel
+@{
+    var r = Model.Resumen;
+    ViewData["Title"] = r.codigo_reserva;
+    ViewData["Volver"] = r.codigo_reserva;   // las acciones de reembolso regresan aquí
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var op = Model.Cancelacion;
+    var verSoporte = Roles.Puede(User, Roles.PanelSoporte);
+    var hayPago = op.monto_pagado is > 0m;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1 font-monospace">@r.codigo_reserva</h1>
+        <div class="text-muted small">
+            Comprada el @r.creada_en.ToString("dd/MM/yyyy HH:mm", es)
+            @if (r.Inicio is DateTime inicio)
+            {
+                <span>· inicia el @inicio.ToString("dd/MM/yyyy HH:mm", es)</span>
+            }
+        </div>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge fs-6 @EstadosPanel.Clase(r.estado)">@r.estado</span>
+        <a class="btn btn-sm btn-outline-secondary" asp-controller="Miusuario" asp-action="Reservacion"
+           asp-route-id="@r.codigo_reserva" asp-route-cliente="@r.id_cliente">Ver como el cliente</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Volver</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        @* ---- Servicios ---- *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Servicios</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-2">
+                        <thead>
+                            <tr>
+                                <th>Servicio</th>
+                                <th>Fechas</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var l in r.Lineas)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@l.servicio</div>
+                                        <div class="small text-muted">@ServicioFormViewModel.NombreTipo(l.tipo) · @l.descripcion</div>
+                                        <div class="small"><strong>Política guardada:</strong> @l.politica</div>
+                                    </td>
+                                    <td class="small text-nowrap">
+                                        @l.inicio.ToString("dd/MM/yyyy HH:mm", es)<br />@l.fin.ToString("dd/MM/yyyy HH:mm", es)
+                                    </td>
+                                    <td class="text-end">@l.cantidad.ToString("0.##")</td>
+                                    <td class="text-end text-nowrap">
+                                        $@l.subtotal.ToString("N2")
+                                        @if (l.descuento > 0)
+                                        {
+                                            <div class="small text-success">−$@l.descuento.ToString("N2")</div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <dl class="row small mb-0">
+                    <dt class="col-sm-4">Subtotal</dt>
+                    <dd class="col-sm-8">$@r.subtotal.ToString("N2") @r.moneda</dd>
+                    <dt class="col-sm-4">Descuento</dt>
+                    <dd class="col-sm-8">
+                        $@r.descuento_total.ToString("N2")
+                        @if (Model.promocion is not null)
+                        {
+                            <span class="badge text-bg-light font-monospace">@Model.promocion</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-4">Total</dt>
+                    <dd class="col-sm-8 fw-semibold">$@r.total.ToString("N2") @r.moneda</dd>
+                </dl>
+            </div>
+        </div>
+
+        @* ---- Historial de la reservación ---- *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Historial de estados</h2>
+                @if (Model.Historial.Count == 0)
+                {
+                    <p class="text-muted small mb-0">Sin movimientos.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled small mb-0">
+                        @foreach (var h in Model.Historial)
+                        {
+                            <li class="mb-1">
+                                <span class="text-muted">@h.fecha.ToString("dd/MM/yyyy HH:mm", es)</span>
+                                <span class="badge @EstadosPanel.Clase(h.estado)">@h.estado</span>
+                                @h.quien
+                                @if (!string.IsNullOrWhiteSpace(h.motivo))
+                                {
+                                    <span>— @h.motivo</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        @* ---- Pagos ---- *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Pagos</h2>
+                @if (Model.Pagos.Count == 0)
+                {
+                    <p class="text-muted small mb-0">Sin pagos.</p>
+                }
+                @foreach (var p in Model.Pagos)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <div>
+                                <strong>$@p.monto.ToString("N2") @p.moneda</strong>
+                                <span class="small text-muted">· @p.metodo · @p.tarjeta · @p.fecha.ToString("dd/MM/yyyy HH:mm", es)</span>
+                                @if (p.referencia is not null)
+                                {
+                                    <div class="small text-muted">Ref. @p.referencia</div>
+                                }
+                            </div>
+                            <span class="badge @EstadosPanel.Clase(p.estado) align-self-start">@p.estado</span>
+                        </div>
+                        <ul class="list-unstyled small mb-0 mt-1">
+                            @foreach (var h in p.Historial)
+                            {
+                                <li><span class="text-muted">@h.fecha.ToString("dd/MM/yyyy HH:mm", es)</span> @h.estado @(string.IsNullOrWhiteSpace(h.detalle) ? "" : $"— {h.detalle}")</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ---- Reembolsos ---- *@
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Reembolsos</h2>
+                @if (Model.Reembolsos.Count == 0)
+                {
+                    <p class="text-muted small mb-0">Sin reembolsos.</p>
+                }
+                @foreach (var rb in Model.Reembolsos)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="row g-2">
+                            <div class="@(rb.Pendiente ? "col-md-8" : "col-12")">
+                                <div class="d-flex flex-wrap justify-content-between gap-2">
+                                    <div>
+                                        <strong>$@rb.monto.ToString("N2") @rb.moneda</strong>
+                                        <span class="small text-muted">(@rb.Porcentaje.ToString("0") % del pago) · solicitado el @rb.fecha_solicitud.ToString("dd/MM/yyyy HH:mm", es)</span>
+                                    </div>
+                                    <span class="badge @EstadosPanel.Clase(rb.estado) align-self-start">@rb.estado</span>
+                                </div>
+                                <div class="small">Motivo: @rb.motivo</div>
+                                @if (rb.referencia is not null)
+                                {
+                                    <div class="small text-muted">Ref. @rb.referencia</div>
+                                }
+                                <ul class="list-unstyled small mb-0 mt-1">
+                                    @foreach (var h in rb.Historial)
+                                    {
+                                        <li>
+                                            <span class="text-muted">@h.fecha.ToString("dd/MM/yyyy HH:mm", es)</span>
+                                            <span class="badge @EstadosPanel.Clase(h.estado)">@h.estado</span> @h.quien
+                                            @(string.IsNullOrWhiteSpace(h.motivo) ? "" : $"— {h.motivo}")
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                            @if (rb.Pendiente)
+                            {
+                                <div class="col-md-4">
+                                    <partial name="~/Views/Admin/Reservaciones/_AccionesReembolso.cshtml" model="rb" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        @* ---- Cliente ---- *@
+        <div class="card mb-3">
+            <div class="card-body">
+                <h2 class="h6">Cliente</h2>
+                <div>@r.cliente</div>
+                <div class="small text-muted">@r.correo_cliente</div>
+                <div class="small text-muted">@r.telefono_cliente</div>
+            </div>
+        </div>
+
+        @* ---- Cancelar a nombre del cliente ---- *@
+        <div class="card mb-3 @(op.puede_cancelar ? "border-danger" : "")">
+            <div class="card-body">
+                <h2 class="h6">Cancelar a nombre del cliente</h2>
+                @if (!op.puede_cancelar)
+                {
+                    <p class="small text-muted mb-0">@(op.motivo_no_cancelar ?? "Esta reservación no se puede cancelar.")</p>
+                }
+                else
+                {
+                    <p class="small mb-2"><strong>Política de la compra:</strong> @op.politica</p>
+                    <form asp-action="Cancelar" asp-route-codigo="@r.codigo_reserva" method="post">
+                        <fieldset class="mb-2">
+                            <legend class="form-label small mb-1">¿Qué pasa con el dinero?</legend>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo" id="modo_sin" value="SIN" checked />
+                                <label class="form-check-label small" for="modo_sin">Sin reembolso</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo" id="modo_politica" value="POLITICA" disabled="@(!op.puede_reembolsar)" />
+                                <label class="form-check-label small" for="modo_politica">
+                                    @if (op.puede_reembolsar)
+                                    {
+                                        <span>Según la política: $@op.monto_reembolso.ToString("N2") (@op.porcentaje.ToString("0.##") %)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Según la política: @op.motivo_no_reembolsar</span>
+                                    }
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo" id="modo_cortesia" value="CORTESIA" disabled="@(!hayPago)" />
+                                <label class="form-check-label small" for="modo_cortesia">
+                                    Cortesía 100 %: $@(op.monto_pagado?.ToString("N2") ?? "0.00")
+                                </label>
+                            </div>
+                        </fieldset>
+                        <label for="motivo_cancelacion" class="form-label small mb-1">Motivo (10 a 250 caracteres)</label>
+                        <textarea id="motivo_cancelacion" name="motivo" class="form-control form-control-sm mb-2" rows="3"
+                                  minlength="10" maxlength="250" required
+                                  placeholder="Ej. El hotel cerró por mantenimiento; el cliente lo pidió por teléfono."></textarea>
+                        <button type="submit" class="btn btn-danger btn-sm w-100">Cancelar reservación</button>
+                        <div class="form-text">Con reembolso, se devuelve en este momento (pago REEMBOLSADO). No se puede deshacer.</div>
+                    </form>
+                }
+            </div>
+        </div>
+
+        @* ---- Tickets ---- *@
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">Tickets de soporte</h2>
+                @if (Model.Tickets.Count == 0)
+                {
+                    <p class="small text-muted mb-0">Ninguno ligado a esta reservación.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled small mb-0">
+                        @foreach (var t in Model.Tickets)
+                        {
+                            <li class="mb-2">
+                                @if (verSoporte)
+                                {
+                                    <a asp-controller="Soporte" asp-action="Ticket" asp-route-id="@t.id">#@t.id · @t.asunto</a>
+                                }
+                                else
+                                {
+                                    <span>#@t.id · @t.asunto</span>
+                                }
+                                <span class="badge @EstadosPanel.Clase(t.estado)">@EstadosPanel.TextoTicket(t.estado)</span>
+                                <div class="text-muted">@(t.agente ?? "Sin agente")</div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,11 @@
+@* GET /Admin/Soporte/Ticket/{id} (SoporteController.Ticket): detalle del ticket con su conversación. *@
+@model TicketDetalleViewModel
+@{
+    ViewData["Title"] = $"Ticket #{Model.Ticket.id}";
+}
+
+<partial name="~/Views/Admin/Soporte/_DetalleTicket.cshtml" model="Model" />
+
+<div class="mt-4">
+    <a class="btn btn-outline-secondary" asp-action="SeguirAtendiendo">Volver a mis tickets</a>
+</div>

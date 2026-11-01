@@ -1,0 +1,57 @@
+@* Resumen de SOLO LECTURA de una reservación. Lo usan el ticket de soporte (Views/Admin/Soporte/Ticket.cshtml)
+   y el detalle del panel de Reservaciones. Sin botones de acción. *@
+@model ResumenReservacionViewModel
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+    <div>
+        <div class="fw-semibold font-monospace">@Model.codigo_reserva</div>
+        <div class="small text-muted">Comprada el @Model.creada_en.ToString("dd/MM/yyyy HH:mm", es)</div>
+    </div>
+    <span class="badge @EstadosPanel.Clase(Model.estado)">@Model.estado</span>
+</div>
+
+<ul class="list-unstyled small mb-2">
+    @foreach (var l in Model.Lineas)
+    {
+        <li class="mb-1">
+            <strong>@l.servicio</strong> <span class="text-muted">(@ServicioFormViewModel.NombreTipo(l.tipo))</span><br />
+            @l.inicio.ToString("dd/MM/yyyy HH:mm", es) → @l.fin.ToString("dd/MM/yyyy HH:mm", es) · cantidad @l.cantidad.ToString("0.##")
+            @if (!string.IsNullOrWhiteSpace(l.descripcion))
+            {
+                <div class="text-muted">@l.descripcion</div>
+            }
+        </li>
+    }
+</ul>
+
+<dl class="row small mb-0">
+    <dt class="col-5">Total</dt>
+    <dd class="col-7">$@Model.total.ToString("N2") @Model.moneda</dd>
+    <dt class="col-5">Pago</dt>
+    <dd class="col-7">
+        @if (Model.estado_pago is null)
+        {
+            <span class="text-muted">Sin pago</span>
+        }
+        else
+        {
+            <span class="badge @EstadosPanel.Clase(Model.estado_pago)">@Model.estado_pago</span>
+            <span>$@(Model.monto_pagado?.ToString("N2"))</span>
+        }
+    </dd>
+    <dt class="col-5">Reembolso</dt>
+    <dd class="col-7">
+        @if (Model.estado_reembolso is null)
+        {
+            <span class="text-muted">Ninguno</span>
+        }
+        else
+        {
+            <span class="badge @EstadosPanel.Clase(Model.estado_reembolso)">@Model.estado_reembolso</span>
+            <span>$@(Model.monto_reembolso?.ToString("N2"))</span>
+        }
+    </dd>
+</dl>

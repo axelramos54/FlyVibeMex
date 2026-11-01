@@ -75,6 +75,11 @@ builder.Services.AddScoped<IMiCuentaService, MiCuentaService>();
 builder.Services.AddScoped<IMisViajesService, MisViajesService>();
 builder.Services.AddScoped<ISoporteClienteService, SoporteClienteService>();
 
+// Cancelaciones y reembolsos (una sola regla para el cliente y el panel) + panel de atención (T4 fase C).
+builder.Services.AddScoped<ICancelacionesService, CancelacionesService>();
+builder.Services.AddScoped<IReservacionesPanelService, ReservacionesPanelService>();
+builder.Services.AddScoped<ISoportePanelService, SoportePanelService>();
+
 // Panel: Gestor de ventas (proveedores, servicios con su subtipo y disponibilidad). Escribe en la bitácora.
 builder.Services.AddScoped<IGestorCatalogoService, GestorCatalogoService>();
 builder.Services.AddScoped<IGestorPaquetesService, GestorPaquetesService>();

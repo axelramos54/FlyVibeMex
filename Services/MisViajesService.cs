@@ -1,8 +1,6 @@
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FlyVibeMex.Services;
 
@@ -10,22 +8,26 @@ namespace FlyVibeMex.Services;
 /// <remarks>
 /// Todas las consultas filtran por <c>reservaciones.id_usuarioglobal = cuenta</c>: un cliente nunca ve ni cancela
 /// reservaciones de otra persona (evita IDOR), aunque cambie el id en el navegador.
+/// La cancelación en sí (transacción, cupo, reembolso) está en <see cref="CancelacionesService"/>, compartida con el
+/// panel de Reservaciones del personal.
 /// </remarks>
 public sealed class MisViajesService : IMisViajesService
 {
     private const string EstadoCancelada = "CANCELADA";
     private const string EstadoCompletada = "COMPLETADA";
     private const string EstadoPagoAprobado = "APROBADO";
-    private const string ReembolsoSolicitado = "SOLICITADO";
 
     private readonly FlyVibeMexDbContext _db;
     private readonly IReservacionService _reservaciones;
+    private readonly ICancelacionesService _cancelaciones;
     private readonly ILogger<MisViajesService> _logger;
 
-    public MisViajesService(FlyVibeMexDbContext db, IReservacionService reservaciones, ILogger<MisViajesService> logger)
+    public MisViajesService(FlyVibeMexDbContext db, IReservacionService reservaciones, ICancelacionesService cancelaciones,
+        ILogger<MisViajesService> logger)
     {
         _db = db;
         _reservaciones = reservaciones;
+        _cancelaciones = cancelaciones;
         _logger = logger;
     }
 
@@ -169,21 +171,17 @@ public sealed class MisViajesService : IMisViajesService
         if (reembolsar && !opciones.puede_reembolsar)
             return ResultadoOperacion.Falla(opciones.motivo_no_reembolsar ?? "Esta cancelación no tiene reembolso.");
 
-        try
-        {
-            var estrategia = _db.Database.CreateExecutionStrategy();
-            await estrategia.ExecuteAsync(() =>
-                CancelarEnTransaccionAsync(idUsuario, idReservacion, reembolsar, motivo, opciones, cancellationToken));
-        }
-        catch (ReservacionCambioException)
-        {
+        var resultado = await _cancelaciones.EjecutarAsync(new OrdenCancelacion(
+            idReservacion, idUsuario, IdDueno: idUsuario, PorPersonal: false, motivo,
+            reembolsar ? ModoReembolso.Solicitar : ModoReembolso.Ninguno,
+            reembolsar ? opciones.monto_reembolso : 0,
+            reembolsar ? $"Solicitado por el cliente: {opciones.porcentaje:0.##} % según la política de la compra." : null),
+            cancellationToken);
+
+        if (resultado == ResultadoCancelacion.Cambio)
             return ResultadoOperacion.Falla("La reservación cambió mientras la cancelabas. Recarga la página y revisa su estado.");
-        }
-        catch (Exception ex) when (ex is DbUpdateException or SqlException or RetryLimitExceededException or InvalidOperationException)
-        {
-            _logger.LogError(ex, "No se pudo cancelar la reservación {IdReservacion}.", idReservacion);
+        if (resultado == ResultadoCancelacion.ErrorBd)
             return ResultadoOperacion.Falla("No pudimos cancelar la reservación en este momento. Intenta de nuevo más tarde.");
-        }
 
         _logger.LogInformation("Reservación {Codigo} cancelada por el cliente {IdUsuario} (reembolso: {Reembolso}).",
             reservacion.codigo_reserva, idUsuario, reembolsar);
@@ -192,105 +190,6 @@ public sealed class MisViajesService : IMisViajesService
             ? $"Reservación {reservacion.codigo_reserva} cancelada. Solicitamos un reembolso de ${opciones.monto_reembolso:N2} " +
               $"{opciones.moneda}; un agente lo revisará."
             : $"Reservación {reservacion.codigo_reserva} cancelada.");
-    }
-
-    /// <summary>
-    /// Pasos de la cancelación en una transacción (dentro de la execution strategy: si se reintenta, se repite todo).
-    /// </summary>
-    private async Task CancelarEnTransaccionAsync(ulong idUsuario, ulong idReservacion, bool reembolsar, string? motivo,
-        OpcionesCancelacion opciones, CancellationToken cancellationToken)
-    {
-        _db.ChangeTracker.Clear();
-        await using var transaccion = await _db.Database.BeginTransactionAsync(cancellationToken);
-        var ahora = DateTime.Now;
-
-        var idCancelada = await IdEstadoReservacionAsync(EstadoCancelada, cancellationToken);
-
-        // a) Estado actual (debe seguir sin ser final) y UPDATE condicional: si otra petición la canceló al mismo
-        //    tiempo, no se actualiza ninguna fila y se deshace todo.
-        var actual = await (
-                from r in _db.Reservaciones.AsNoTracking()
-                join e in _db.EstadosReservacion.AsNoTracking() on r.id_estado_reservacion equals e.id
-                where r.id == idReservacion && r.id_usuarioglobal == idUsuario
-                select new { r.id_estado_reservacion, e.es_final })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (actual is null || actual.es_final) throw new ReservacionCambioException();
-
-        var estadoAnterior = actual.id_estado_reservacion;
-        var filas = await _db.Reservaciones
-            .Where(r => r.id == idReservacion && r.id_estado_reservacion == estadoAnterior)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.id_estado_reservacion, idCancelada), cancellationToken);
-        if (filas != 1) throw new ReservacionCambioException();
-
-        _db.HistorialEstadosReservacion.Add(new HistorialEstadoReservacion
-        {
-            id_reservacion = idReservacion,
-            id_estado_reservacion = idCancelada,
-            id_usuario_cambio = idUsuario,
-            fecha_cambio = ahora,
-            motivo = motivo ?? (reembolsar ? "Cancelada por el cliente con reembolso" : "Cancelada por el cliente")
-        });
-
-        // b) Devolver el cupo (R3) de cada servicio de la reservación. Nunca por encima de cantidad_total.
-        var detalles = await (
-                from d in _db.DetallesReservacion.AsNoTracking()
-                join s in _db.Servicios.AsNoTracking() on d.id_servicio equals s.id
-                where d.id_reservacion == idReservacion
-                select new { d.id_servicio, s.tipo_servicio, d.fecha_inicio, d.fecha_fin, d.cantidad })
-            .ToListAsync(cancellationToken);
-
-        foreach (var d in detalles)
-        {
-            var (desde, hasta) = FechasDeInventario(d.tipo_servicio, d.fecha_inicio, d.fecha_fin);
-            var cantidad = (int)Math.Ceiling(d.cantidad);
-            var idServicio = d.id_servicio;
-            await _db.DisponibilidadServicios
-                .Where(x => x.id_servicio == idServicio && x.fecha >= desde && x.fecha <= hasta
-                            && x.cantidad_disponible + cantidad <= x.cantidad_total)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(x => x.cantidad_disponible, x => x.cantidad_disponible + cantidad)
-                    .SetProperty(x => x.actualizado_en, ahora), cancellationToken);
-            // Si una fecha no tiene fila (p. ej. compras de demostración fuera de la ventana del seed) se ignora.
-        }
-
-        // c) Reembolso SOLICITADO del pago aprobado (R8) + su bitácora. Lo aprueba un agente en el panel.
-        if (reembolsar)
-        {
-            var idPago = await (
-                    from p in _db.Pagos.AsNoTracking()
-                    join e in _db.EstadosPago.AsNoTracking() on p.id_estado_pago equals e.id
-                    where p.id_reservacion == idReservacion && e.nombre == EstadoPagoAprobado
-                    orderby p.id descending
-                    select p.id)
-                .Take(1)
-                .ToListAsync(cancellationToken);
-            if (idPago.Count == 0) throw new ReservacionCambioException();
-
-            var reembolso = new Reembolsos
-            {
-                id_pago = idPago[0],
-                monto = opciones.monto_reembolso,
-                motivo = motivo!,
-                estado = ReembolsoSolicitado,
-                fecha_solicitud = ahora,
-                fecha_resolucion = null,
-                referencia_externa = null
-            };
-            _db.Reembolsos.Add(reembolso);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            _db.HistorialEstadosReembolso.Add(new HistorialEstadoReembolso
-            {
-                id_reembolso = reembolso.id,
-                id_usuario_cambio = idUsuario,
-                estado = ReembolsoSolicitado,
-                fecha_cambio = ahora,
-                detalle = $"Solicitado por el cliente: {opciones.porcentaje:0.##} % según la política de la compra."
-            });
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
-        await transaccion.CommitAsync(cancellationToken);
     }
 
     // =============================================================================================
@@ -410,13 +309,23 @@ public sealed class MisViajesService : IMisViajesService
                 orderby rb.fecha_solicitud descending
                 select new ReembolsoListadoViewModel
                 {
+                    id_reservacion = r.id,
                     fecha_solicitud = rb.fecha_solicitud,
                     codigo_reserva = r.codigo_reserva,
                     monto = rb.monto,
                     moneda = p.moneda,
                     estado = rb.estado,
                     motivo = rb.motivo,
-                    fecha_resolucion = rb.fecha_resolucion
+                    fecha_resolucion = rb.fecha_resolucion,
+                    referencia = rb.referencia_externa,
+                    // Lo que escribió el personal al rechazarlo (lo ve el cliente).
+                    motivo_rechazo = rb.estado == "RECHAZADO"
+                        ? _db.HistorialEstadosReembolso
+                            .Where(h => h.id_reembolso == rb.id && h.estado == "RECHAZADO")
+                            .OrderByDescending(h => h.id)
+                            .Select(h => h.detalle)
+                            .FirstOrDefault()
+                        : null
                 })
             .ToListAsync(cancellationToken);
     }
@@ -452,38 +361,5 @@ public sealed class MisViajesService : IMisViajesService
                      .Select(x => new { x.id_servicio, x.imagen_ruta }).ToListAsync(cancellationToken))
             imagenes[p.id_servicio] = p.imagen_ruta!;
         return imagenes;
-    }
-
-    /// <summary>
-    /// Días de disponibilidad que ocupa un servicio comprado: hospedaje y vehículo de la fecha de inicio a la víspera
-    /// de la fecha de fin (noches / días de renta); vuelo, tour y paquete, solo el día de inicio.
-    /// </summary>
-    private static (DateOnly desde, DateOnly hasta) FechasDeInventario(string tipo, DateTime inicio, DateTime fin)
-    {
-        var desde = DateOnly.FromDateTime(inicio);
-        if (TipoCatalogo.UsaRango(tipo))
-        {
-            var ultimo = DateOnly.FromDateTime(fin).AddDays(-1);
-            return (desde, ultimo < desde ? desde : ultimo);
-        }
-        return (desde, desde);
-    }
-
-    private async Task<ushort> IdEstadoReservacionAsync(string nombre, CancellationToken cancellationToken)
-    {
-        var ids = await _db.EstadosReservacion.AsNoTracking()
-            .Where(e => e.nombre == nombre)
-            .Select(e => e.id)
-            .Take(1)
-            .ToListAsync(cancellationToken);
-        return ids.Count > 0
-            ? ids[0]
-            : throw new InvalidOperationException($"Falta el estado de reservación '{nombre}'. Ejecuta sql/01_crear_base_datos.sql.");
-    }
-
-    /// <summary>La reservación ya no está como cuando se calculó (otra petición la canceló o cambió de estado).</summary>
-    private sealed class ReservacionCambioException : Exception
-    {
-        public ReservacionCambioException() : base("La reservación cambió durante la cancelación.") { }
     }
 }

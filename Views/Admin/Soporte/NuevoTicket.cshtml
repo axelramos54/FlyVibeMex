@@ -1,12 +1,13 @@
-@model SolicitudesSoporte
+@* GET /Admin/Soporte/NuevoTicket (SoporteController.NuevoTicket): el ticket ABIERTO sin agente más antiguo.
+   Solo se lee; "Tomar este ticket" es un POST (Tomar/{id}) con UPDATE condicional. *@
+@model TicketDetalleViewModel
 @{
     ViewData["Title"] = "Atender nuevo ticket";
 }
 
-<h1 class="h3 mb-3">Atender nuevo ticket</h1>
-
 @if (Model is null)
 {
+    <h1 class="h3 mb-3">Atender nuevo ticket</h1>
     <div class="alert alert-info">
         <strong>No hay tickets que atender.</strong> Por el momento no hay solicitudes pendientes de asignar.
     </div>
@@ -14,24 +15,8 @@
 }
 else
 {
-    <div class="card" style="max-width: 760px">
-        <div class="card-body">
-            <h2 class="h5 card-title">#@Model.id · @Model.asunto</h2>
-            <dl class="row mb-3">
-                <dt class="col-sm-3">Tipo</dt>
-                <dd class="col-sm-9">@Model.tipo</dd>
-                <dt class="col-sm-3">Reservación</dt>
-                <dd class="col-sm-9">@Model.id_reservacion</dd>
-                <dt class="col-sm-3">Creado</dt>
-                <dd class="col-sm-9">@Model.creada_en.ToString("dd/MM/yyyy HH:mm")</dd>
-                <dt class="col-sm-3">Mensaje</dt>
-                <dd class="col-sm-9">@Model.mensaje</dd>
-            </dl>
-
-            <form asp-action="Tomar" asp-route-id="@Model.id" method="post" class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Tomar este ticket</button>
-                <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
-            </form>
-        </div>
+    <div class="alert alert-light border small">
+        Siguiente en la fila (el más antiguo). Hay <strong>@Model.EnFila</strong> ticket(s) esperando agente.
     </div>
+    <partial name="~/Views/Admin/Soporte/_DetalleTicket.cshtml" model="Model" />
 }

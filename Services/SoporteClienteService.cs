@@ -33,6 +33,8 @@ public sealed class SoporteClienteService : ISoporteClienteService
             .Select(t => new { t.id, t.tipo, t.asunto, t.mensaje, t.estado, t.id_agente_asignado, t.id_reservacion, t.creada_en, t.actualizada_en })
             .ToListAsync(cancellationToken);
 
+        var conversacion = await ConversacionSoporte.ResumenAsync(_db, cancellationToken);
+
         // Nombre de los agentes asignados (pocos: una consulta por agente distinto).
         var agentes = new Dictionary<ulong, string>();
         foreach (var idAgente in tickets.Where(t => t.id_agente_asignado is not null).Select(t => t.id_agente_asignado!.Value).Distinct())
@@ -57,7 +59,10 @@ public sealed class SoporteClienteService : ISoporteClienteService
                 agente = t.id_agente_asignado is ulong a ? agentes.GetValueOrDefault(a) : null,
                 codigo_reserva = t.id_reservacion is ulong r ? codigos.GetValueOrDefault(r) : null,
                 creada_en = t.creada_en,
-                actualizada_en = t.actualizada_en
+                actualizada_en = t.actualizada_en,
+                mensajes = conversacion.GetValueOrDefault(t.id).mensajes,
+                // Le toca al cliente: la última respuesta es del personal y el ticket sigue abierto.
+                respuesta_nueva = t.estado != "CERRADA" && conversacion.TryGetValue(t.id, out var c) && c.ultimoEsPersonal
             }).ToList(),
             Reservaciones = reservaciones.Select(r => new SelectListItem(r.codigo_reserva, r.id.ToString())).ToList()
         };
@@ -90,5 +95,66 @@ public sealed class SoporteClienteService : ISoporteClienteService
 
         _logger.LogInformation("Ticket {IdTicket} creado por el cliente {IdUsuario}.", ticket.id, idUsuario);
         return ResultadoOperacion.Ok($"Recibimos tu solicitud (ticket #{ticket.id}). Un agente la atenderá pronto.");
+    }
+
+    public async Task<TicketClienteViewModel?> TicketAsync(ContextoCuenta contexto, ulong idTicket, CancellationToken cancellationToken = default)
+    {
+        // Solo los tickets de la cuenta del contexto (otro id = "no existe": evita IDOR).
+        var ticket = await _db.SolicitudesSoporte.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.id == idTicket && t.id_usuarioglobal == contexto.IdCuenta, cancellationToken);
+        if (ticket is null) return null;
+
+        var item = (await SolicitudesAsync(contexto, cancellationToken)).Tickets.FirstOrDefault(t => t.id == idTicket);
+        if (item is null) return null;
+        var nombreCliente = await ConversacionSoporte.NombreAsync(_db, ticket.id_usuarioglobal, cancellationToken) ?? "Cliente";
+
+        return new TicketClienteViewModel
+        {
+            Contexto = contexto,
+            Ticket = item,
+            Mensajes = await ConversacionSoporte.MensajesAsync(_db, ticket, nombreCliente, vistaCliente: !contexto.EsInterno, cancellationToken)
+        };
+    }
+
+    public async Task<ResultadoOperacion> ResponderAsync(ulong idUsuario, ulong idTicket, string? mensaje, CancellationToken cancellationToken = default)
+    {
+        mensaje = string.IsNullOrWhiteSpace(mensaje) ? null : mensaje.Trim();
+        if (mensaje is null || mensaje.Length < 2 || mensaje.Length > 2000)
+            return new ResultadoOperacion(false, "Revisa tu mensaje.",
+                new() { (nameof(RespuestaTicketForm.mensaje), "El mensaje debe tener entre 2 y 2000 caracteres.") });
+
+        try
+        {
+            var guardado = false;
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                var ahora = DateTime.Now;
+                // UPDATE condicional: solo el dueño y solo si el ticket no se cerró mientras escribía.
+                var filas = await _db.SolicitudesSoporte
+                    .Where(t => t.id == idTicket && t.id_usuarioglobal == idUsuario && t.estado != "CERRADA")
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.actualizada_en, ahora), cancellationToken);
+                guardado = filas == 1;
+                if (!guardado) return;
+
+                _db.MensajesSoporte.Add(new MensajesSoporte
+                {
+                    id_solicitud = idTicket,
+                    id_usuario = idUsuario,
+                    es_personal = false,
+                    mensaje = mensaje,
+                    creado_en = ahora
+                });
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
+            return guardado
+                ? ResultadoOperacion.Ok("Enviamos tu mensaje. Te avisaremos aquí cuando te respondan.")
+                : ResultadoOperacion.Falla("Este ticket ya está cerrado. Si necesitas algo más, abre una nueva solicitud.");
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo responder el ticket {IdTicket} del cliente {IdUsuario}.", idTicket, idUsuario);
+            return ResultadoOperacion.Falla("No pudimos enviar tu mensaje. Intenta de nuevo más tarde.");
+        }
     }
 }

@@ -21,7 +21,7 @@
                             pa_interno_generar_disponibilidad, pa_interno_insertar_servicio
        Altas del catálogo   pa_alta_proveedor, pa_alta_hospedaje, pa_alta_vehiculo, pa_alta_evento, pa_alta_vuelo
        Operaciones          pa_ajustar_disponibilidad, pa_cancelar_reservacion, pa_resolver_reembolso,
-                            pa_tomar_ticket, pa_cerrar_ticket
+                            pa_tomar_ticket, pa_responder_ticket, pa_reasignar_ticket, pa_cerrar_ticket
        Compra               pa_crear_reservacion_pago
        Consultas/reportes   pa_buscar_disponibilidad, pa_detalle_reservacion, pa_reservaciones_cliente,
                             pa_reporte_ventas, pa_reporte_ocupacion, pa_reembolsos_pendientes,
@@ -571,13 +571,19 @@ GO
    - Reembolso: 100 % si faltan al menos horas_reembolso_total horas para el inicio; si no, el % tardío,
      sobre el pago APROBADO más reciente.
    - Puede hacerlo el dueño (CLIENTE) o el personal (AGENTE, ADMINISTRADOR, SA) a nombre del cliente.
-   - Devuelve el cupo (R3) sin pasar de cantidad_total y, si @reembolsar = 1, deja el reembolso SOLICITADO (R8).
-   - @motivo: obligatorio (10 a 250) al pedir reembolso; opcional (máx. 250) si solo se cancela. */
+   - Devuelve el cupo (R3) sin pasar de cantidad_total.
+   - @reembolsar = 1 del CLIENTE: el reembolso queda SOLICITADO (R8) y lo resuelve el personal (pa_resolver_reembolso).
+   - @reembolsar = 1 del PERSONAL: el reembolso se procesa en el mismo paso (PROCESADO + pago REEMBOLSADO), igual
+     que Services/CancelacionesService.cs. Con @cortesia = 1 se devuelve el 100 % del pago aunque la política diga
+     menos (solo el personal; el motivo es obligatorio).
+   - @motivo: obligatorio (10 a 250) al pedir reembolso y siempre que cancela el personal; opcional (máx. 250) si el
+     cliente solo cancela. */
 CREATE OR ALTER PROCEDURE dbo.pa_cancelar_reservacion
     @id_usuario     BIGINT,
     @id_reservacion BIGINT,
     @reembolsar     BIT           = 0,
-    @motivo         NVARCHAR(250) = NULL
+    @motivo         NVARCHAR(250) = NULL,
+    @cortesia       BIT           = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -601,8 +607,10 @@ BEGIN
         EXEC dbo.pa_interno_validar_rol @id_usuario, 'CLIENTE';
 
     SET @motivo = NULLIF(LTRIM(RTRIM(@motivo)), N'');
-    IF @reembolsar = 1 AND (@motivo IS NULL OR LEN(@motivo) < 10)
-        THROW 51071, N'El motivo del reembolso debe tener entre 10 y 250 caracteres.', 1;
+    IF (@reembolsar = 1 OR @es_personal = 1) AND (@motivo IS NULL OR LEN(@motivo) < 10)
+        THROW 51071, N'El motivo debe tener entre 10 y 250 caracteres.', 1;
+    IF @cortesia = 1 AND (@es_personal = 0 OR @reembolsar = 0)
+        THROW 51079, N'El reembolso de cortesía (100 %) solo lo da el personal al cancelar con reembolso.', 1;
 
     -- Política de la primera línea (en esta versión cada reservación tiene un solo servicio).
     DECLARE @inicio DATETIME, @permite BIT, @horas INT, @pct_tardio DECIMAL(5,2);
@@ -623,6 +631,7 @@ BEGIN
     JOIN dbo.estados_pago AS ep ON ep.id = p.id_estado_pago
     WHERE p.id_reservacion = @id_reservacion AND ep.nombre = N'APROBADO'
     ORDER BY p.id DESC;
+    IF @cortesia = 1 SET @porcentaje = 100;
     DECLARE @monto_reembolso DECIMAL(12,2) = ROUND(COALESCE(@monto_pagado, 0) * @porcentaje / 100, 2);
 
     IF @reembolsar = 1 AND @id_pago IS NULL  THROW 51076, N'No hay un pago aprobado que reembolsar.', 1;
@@ -663,24 +672,46 @@ BEGIN
         ) AS x ON x.id_servicio = ds.id_servicio AND ds.fecha BETWEEN x.desde AND x.hasta
         WHERE ds.cantidad_disponible + x.unidades <= ds.cantidad_total;
 
-        -- c) Reembolso SOLICITADO del pago aprobado (R8) + su bitácora. Lo resuelve un agente (pa_resolver_reembolso).
+        -- c) Reembolso del pago aprobado (R8) + su bitácora. Del cliente: SOLICITADO (lo resuelve el personal con
+        --    pa_resolver_reembolso). Del personal: se procesa aquí mismo (devolución simulada).
         DECLARE @id_reembolso BIGINT = NULL;
         IF @reembolsar = 1
         BEGIN
-            INSERT INTO dbo.reembolsos (id_pago, monto, motivo, estado, fecha_solicitud)
-            VALUES (@id_pago, @monto_reembolso, @motivo, N'SOLICITADO', GETDATE());
+            DECLARE @ahora DATETIME = GETDATE();
+            DECLARE @referencia NVARCHAR(100) =
+                CASE WHEN @es_personal = 1 THEN N'RSIM-' + LEFT(REPLACE(CONVERT(NVARCHAR(36), NEWID()), N'-', N''), 16) END;
+
+            INSERT INTO dbo.reembolsos (id_pago, monto, motivo, estado, fecha_solicitud, fecha_resolucion, referencia_externa)
+            VALUES (@id_pago, @monto_reembolso, @motivo,
+                    CASE WHEN @es_personal = 1 THEN N'PROCESADO' ELSE N'SOLICITADO' END,
+                    @ahora, CASE WHEN @es_personal = 1 THEN @ahora END, @referencia);
             SET @id_reembolso = SCOPE_IDENTITY();
 
             INSERT INTO dbo.historial_estado_reembolso (id_reembolso, id_usuario_cambio, estado, fecha_cambio, detalle)
-            VALUES (@id_reembolso, @id_usuario, N'SOLICITADO', GETDATE(),
+            VALUES (@id_reembolso, @id_usuario, N'SOLICITADO', @ahora,
                     CONCAT(N'Solicitado ', CASE WHEN @es_personal = 1 THEN N'por el personal' ELSE N'por el cliente' END,
-                           N': ', FORMAT(@porcentaje, '0.##'), N' % según la política de la compra.'));
+                           N': ', FORMAT(@porcentaje, '0.##'),
+                           CASE WHEN @cortesia = 1 THEN N' % de cortesía.' ELSE N' % según la política de la compra.' END));
+
+            IF @es_personal = 1
+            BEGIN
+                INSERT INTO dbo.historial_estado_reembolso (id_reembolso, id_usuario_cambio, estado, fecha_cambio, detalle)
+                VALUES (@id_reembolso, @id_usuario, N'APROBADO', DATEADD(SECOND, 1, @ahora), N'Aprobado al cancelar a nombre del cliente'),
+                       (@id_reembolso, @id_usuario, N'PROCESADO', DATEADD(SECOND, 2, @ahora), CONCAT(N'Devolución simulada ', @referencia));
+
+                DECLARE @id_reembolsado SMALLINT = (SELECT id FROM dbo.estados_pago WHERE nombre = N'REEMBOLSADO');
+                UPDATE dbo.pagos SET id_estado_pago = @id_reembolsado WHERE id = @id_pago;
+                INSERT INTO dbo.historial_estado_pago (id_pago, id_estado_pago, fecha_cambio, detalle)
+                VALUES (@id_pago, @id_reembolsado, DATEADD(SECOND, 2, @ahora), CONCAT(N'Reembolso de $', FORMAT(@monto_reembolso, 'N2')));
+            END
         END
 
         IF @es_personal = 1
         BEGIN
             DECLARE @detalle NVARCHAR(500) = CONCAT(N'Cancelación de ', @codigo, N' a nombre del cliente',
-                CASE WHEN @reembolsar = 1 THEN CONCAT(N' con reembolso de $', FORMAT(@monto_reembolso, 'N2'), N' ', @moneda) ELSE N'' END, N'.');
+                CASE WHEN @reembolsar = 1 THEN CONCAT(N' con reembolso de $', FORMAT(@monto_reembolso, 'N2'), N' ', @moneda,
+                                                      CASE WHEN @cortesia = 1 THEN N' (cortesía 100 %)' ELSE N'' END)
+                     ELSE N'' END, N': ', @motivo);
             EXEC dbo.pa_interno_registrar_bitacora @id_usuario, N'CANCELAR', N'reservaciones', @id_reservacion, @detalle;
         END
     COMMIT TRANSACTION;
@@ -787,8 +818,95 @@ BEGIN
 END
 GO
 
-/* Cierra un ticket. SOPORTE solo cierra los suyos; ADMINISTRADOR y SA, cualquiera. Si estaba ABIERTO sin agente,
-   queda asignado a quien lo cierra. */
+/* Agrega un mensaje a la conversación de un ticket (tabla mensajes_soporte).
+   - El CLIENTE dueño del ticket responde mientras no esté CERRADO (ABIERTO o EN_PROCESO).
+   - El personal solo responde los tickets EN_PROCESO que tiene asignados (un ADMINISTRADOR o SA que quiera
+     intervenir primero se lo reasigna con pa_reasignar_ticket). */
+CREATE OR ALTER PROCEDURE dbo.pa_responder_ticket
+    @id_usuario BIGINT,
+    @id_ticket  BIGINT,
+    @mensaje    NVARCHAR(2000)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @dueno BIGINT, @agente BIGINT, @estado NVARCHAR(20);
+    SELECT @dueno = id_usuarioglobal, @agente = id_agente_asignado, @estado = estado
+    FROM dbo.solicitudes_soporte WHERE id = @id_ticket;
+    IF @estado IS NULL THROW 51096, N'El ticket no existe.', 1;
+
+    SET @mensaje = NULLIF(LTRIM(RTRIM(@mensaje)), N'');
+    IF @mensaje IS NULL OR LEN(@mensaje) < 2 THROW 51097, N'Escribe tu mensaje (2 a 2000 caracteres).', 1;
+
+    DECLARE @es_personal BIT = CASE WHEN @id_usuario = @dueno THEN 0 ELSE 1 END;
+    IF @es_personal = 0
+    BEGIN
+        EXEC dbo.pa_interno_validar_rol @id_usuario, 'CLIENTE';
+        IF @estado = N'CERRADA' THROW 51098, N'El ticket está cerrado: abre uno nuevo.', 1;
+    END
+    ELSE
+    BEGIN
+        EXEC dbo.pa_interno_validar_rol @id_usuario, 'SOPORTE,ADMINISTRADOR,SA';
+        IF @estado <> N'EN_PROCESO' OR @agente <> @id_usuario
+            THROW 51099, N'Solo quien atiende el ticket (EN_PROCESO) puede responderlo.', 1;
+    END
+
+    BEGIN TRANSACTION;
+        -- UPDATE condicional: si el ticket se cerró o se reasignó mientras tanto, no se agrega el mensaje.
+        UPDATE dbo.solicitudes_soporte SET actualizada_en = GETDATE()
+        WHERE id = @id_ticket
+          AND ((@es_personal = 0 AND estado <> N'CERRADA')
+            OR (@es_personal = 1 AND estado = N'EN_PROCESO' AND id_agente_asignado = @id_usuario));
+        IF @@ROWCOUNT <> 1 THROW 51100, N'El ticket cambió mientras escribías. Vuelve a abrirlo.', 1;
+
+        INSERT INTO dbo.mensajes_soporte (id_solicitud, id_usuario, es_personal, mensaje, creado_en)
+        VALUES (@id_ticket, @id_usuario, @es_personal, @mensaje, GETDATE());
+    COMMIT TRANSACTION;
+
+    SELECT id, id_solicitud, es_personal, mensaje, creado_en FROM dbo.mensajes_soporte WHERE id = SCOPE_IDENTITY();
+END
+GO
+
+/* Reasigna un ticket que no está cerrado (roles ADMINISTRADOR o SA) a una cuenta activa de SOPORTE, ADMINISTRADOR
+   o SA. Si estaba ABIERTO pasa a EN_PROCESO. */
+CREATE OR ALTER PROCEDURE dbo.pa_reasignar_ticket
+    @id_usuario      BIGINT,
+    @id_ticket       BIGINT,
+    @id_agente_nuevo BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    EXEC dbo.pa_interno_validar_rol @id_usuario, 'ADMINISTRADOR,SA';
+
+    DECLARE @estado NVARCHAR(20), @anterior BIGINT;
+    SELECT @estado = estado, @anterior = id_agente_asignado FROM dbo.solicitudes_soporte WHERE id = @id_ticket;
+    IF @estado IS NULL       THROW 51101, N'El ticket no existe.', 1;
+    IF @estado = N'CERRADA'  THROW 51102, N'El ticket ya está cerrado.', 1;
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol
+        WHERE u.id = @id_agente_nuevo AND u.activo = 1 AND r.nombre IN ('SOPORTE', 'ADMINISTRADOR', 'SA'))
+        THROW 51103, N'Elige una cuenta activa de SOPORTE, ADMINISTRADOR o SA.', 1;
+    IF @anterior = @id_agente_nuevo THROW 51104, N'El ticket ya está asignado a esa persona.', 1;
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.solicitudes_soporte
+        SET id_agente_asignado = @id_agente_nuevo, estado = N'EN_PROCESO', actualizada_en = GETDATE()
+        WHERE id = @id_ticket AND estado <> N'CERRADA'
+          AND (id_agente_asignado = @anterior OR (id_agente_asignado IS NULL AND @anterior IS NULL));
+        IF @@ROWCOUNT <> 1 THROW 51105, N'El ticket cambió mientras se reasignaba.', 1;
+
+        DECLARE @detalle NVARCHAR(500) = CONCAT(N'Ticket #', @id_ticket, N' reasignado de ',
+            COALESCE(CAST(@anterior AS NVARCHAR(20)), N'(sin agente)'), N' a ', @id_agente_nuevo, N'.');
+        EXEC dbo.pa_interno_registrar_bitacora @id_usuario, N'REASIGNAR', N'solicitudes_soporte', @id_ticket, @detalle;
+    COMMIT TRANSACTION;
+
+    SELECT id, estado, id_agente_asignado, actualizada_en FROM dbo.solicitudes_soporte WHERE id = @id_ticket;
+END
+GO
+
+/* Cierra un ticket EN_PROCESO. Solo quien lo atiende (un ADMINISTRADOR o SA primero se lo reasigna). */
 CREATE OR ALTER PROCEDURE dbo.pa_cerrar_ticket
     @id_usuario BIGINT,
     @id_ticket  BIGINT
@@ -802,17 +920,13 @@ BEGIN
     SELECT @estado = estado, @agente = id_agente_asignado FROM dbo.solicitudes_soporte WHERE id = @id_ticket;
     IF @estado IS NULL       THROW 51092, N'El ticket no existe.', 1;
     IF @estado = N'CERRADA'  THROW 51093, N'El ticket ya está cerrado.', 1;
-
-    DECLARE @es_jefe BIT = CASE WHEN EXISTS (
-        SELECT 1 FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol
-        WHERE u.id = @id_usuario AND r.nombre IN ('ADMINISTRADOR', 'SA')) THEN 1 ELSE 0 END;
-    IF @agente IS NOT NULL AND @agente <> @id_usuario AND @es_jefe = 0
-        THROW 51094, N'Solo quien atiende el ticket (o un administrador) puede cerrarlo.', 1;
+    IF @estado <> N'EN_PROCESO' OR @agente <> @id_usuario
+        THROW 51094, N'Solo quien atiende el ticket puede cerrarlo.', 1;
 
     BEGIN TRANSACTION;
         UPDATE dbo.solicitudes_soporte
-        SET estado = N'CERRADA', id_agente_asignado = COALESCE(id_agente_asignado, @id_usuario), actualizada_en = GETDATE()
-        WHERE id = @id_ticket AND estado <> N'CERRADA';
+        SET estado = N'CERRADA', actualizada_en = GETDATE()
+        WHERE id = @id_ticket AND estado = N'EN_PROCESO' AND id_agente_asignado = @id_usuario;
         IF @@ROWCOUNT <> 1 THROW 51095, N'El ticket cambió mientras se cerraba.', 1;
 
         DECLARE @detalle NVARCHAR(500) = CONCAT(N'Ticket #', @id_ticket, N' cerrado.');
@@ -1499,7 +1613,15 @@ EXEC dbo.pa_alta_vuelo @id_usuario = @admin,
 -- Soporte
 DECLARE @ticket BIGINT = (SELECT MIN(id) FROM dbo.solicitudes_soporte WHERE estado = N'ABIERTA');
 EXEC dbo.pa_tomar_ticket @id_usuario = @soporte, @id_ticket = @ticket;
-EXEC dbo.pa_cerrar_ticket @id_usuario = @soporte, @id_ticket = @ticket;
+EXEC dbo.pa_responder_ticket @id_usuario = @soporte, @id_ticket = @ticket, @mensaje = N'Claro, con gusto te ayudo.';
+EXEC dbo.pa_reasignar_ticket @id_usuario = @admin, @id_ticket = @ticket, @id_agente_nuevo = @admin;
+EXEC dbo.pa_cerrar_ticket @id_usuario = @admin, @id_ticket = @ticket;
+
+-- Cancelar a nombre del cliente con reembolso de cortesía (100 %): se procesa en el mismo paso
+DECLARE @id_res2 BIGINT = (SELECT id FROM dbo.reservaciones WHERE codigo_reserva LIKE N'FV-%' AND id_estado_reservacion =
+                           (SELECT id FROM dbo.estados_reservacion WHERE nombre = N'CONFIRMADA') AND id_usuarioglobal = @cliente);
+EXEC dbo.pa_cancelar_reservacion @id_usuario = @agente, @id_reservacion = @id_res2, @reembolsar = 1,
+     @motivo = N'El hotel cerró por mantenimiento.', @cortesia = 1;
 
 -- Reportes
 EXEC dbo.pa_reporte_ventas @desde = '2026-10-01', @hasta = '2026-12-31';

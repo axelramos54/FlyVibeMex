@@ -159,7 +159,13 @@
                                     <td>@rb.fecha_solicitud.ToString("dd/MM/yyyy HH:mm", es)</td>
                                     <td>$@rb.monto.ToString("N2") @rb.moneda</td>
                                     <td><span class="badge text-bg-info">@rb.estado</span></td>
-                                    <td class="small">@rb.motivo</td>
+                                    <td class="small">
+                                        @rb.motivo
+                                        @if (!string.IsNullOrWhiteSpace(rb.motivo_rechazo))
+                                        {
+                                            <div class="text-danger">Rechazado: @rb.motivo_rechazo</div>
+                                        }
+                                    </td>
                                     <td>@(rb.fecha_resolucion?.ToString("dd/MM/yyyy HH:mm", es) ?? "—")</td>
                                 </tr>
                             }

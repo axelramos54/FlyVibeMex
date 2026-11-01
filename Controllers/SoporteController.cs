@@ -1,85 +1,122 @@
+using System.Security.Claims;
+using FlyVibeMex.Models;
+using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using FlyVibeMex.Models;
 
 namespace FlyVibeMex.Controllers;
 
 /// <summary>
-/// Panel de soporte: <c>/Admin/Soporte</c>. Las vistas están en <c>Views/Admin/Soporte/</c>.
+/// Panel de soporte: <c>/Admin/Soporte</c> (roles SOPORTE, ADMINISTRADOR y SA). Vistas en <c>Views/Admin/Soporte/</c>.
 /// </summary>
+/// <remarks>
+/// - Atender nuevo ticket: el ABIERTO sin agente más antiguo; "Tomar" lo asigna con un UPDATE condicional.
+/// - Seguir atendiendo / Mi historial: los tickets propios (en curso / cerrados).
+/// - Ticket/{id}: conversación con el cliente, resumen de solo lectura de su reservación, Responder y Cerrar
+///   (solo quien lo atiende).
+/// - Todos (ADMINISTRADOR y SA): todos los tickets con filtros y Reasignar.
+/// La lógica está en <see cref="ISoportePanelService"/>; el agente sale SIEMPRE de la cookie, nunca del formulario.
+/// </remarks>
 [Route("Admin/Soporte")]
 [AutoValidateAntiforgeryToken]   // todo POST de este controlador exige el token antiforgery
-[Authorize(Roles = Roles.PanelSoporte)] 
+[Authorize(Roles = Roles.PanelSoporte)]
 public class SoporteController : Controller
 {
     private const string Carpeta = "~/Views/Admin/Soporte/";
 
+    private readonly ISoportePanelService _soporte;
+
+    public SoporteController(ISoportePanelService soporte)
+    {
+        _soporte = soporte;
+    }
+
+    // GET /Admin/Soporte  → resumen del panel (fila, mis tickets y los que esperan respuesta)
+    [HttpGet("")]
+    public async Task<IActionResult> Index(CancellationToken cancellationToken) =>
+        Vista("Index", await _soporte.ResumenAsync(IdUsuario(), EsSupervisor(), cancellationToken));
+
+    // GET /Admin/Soporte/NuevoTicket  → muestra el siguiente ticket sin agente (solo CONSULTA; tomarlo es un POST)
+    [HttpGet("NuevoTicket")]
+    public async Task<IActionResult> NuevoTicket(CancellationToken cancellationToken) =>
+        Vista("NuevoTicket", await _soporte.SiguienteAsync(IdUsuario(), EsSupervisor(), cancellationToken));
+
+    // POST /Admin/Soporte/Tomar/5  → asigna el ticket al usuario de la cookie
+    [HttpPost("Tomar/{id}")]
+    public async Task<IActionResult> Tomar(ulong id, CancellationToken cancellationToken)
+    {
+        var resultado = await _soporte.TomarAsync(id, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
+        return resultado.Exitoso ? RedirectToAction(nameof(Ticket), new { id }) : RedirectToAction(nameof(NuevoTicket));
+    }
+
+    // GET /Admin/Soporte/SeguirAtendiendo  → tickets propios que no están cerrados
+    [HttpGet("SeguirAtendiendo")]
+    public async Task<IActionResult> SeguirAtendiendo(CancellationToken cancellationToken) =>
+        Vista("SeguirAtendiendo", await _soporte.MisTicketsAsync(IdUsuario(), cerrados: false, cancellationToken));
+
+    // GET /Admin/Soporte/Historial  → tickets propios ya cerrados
+    [HttpGet("Historial")]
+    public async Task<IActionResult> Historial(CancellationToken cancellationToken) =>
+        Vista("Historial", await _soporte.MisTicketsAsync(IdUsuario(), cerrados: true, cancellationToken));
+
+    // GET /Admin/Soporte/Ticket/5
+    [HttpGet("Ticket/{id}")]
+    public async Task<IActionResult> Ticket(ulong id, CancellationToken cancellationToken)
+    {
+        var vm = await _soporte.DetalleAsync(id, IdUsuario(), EsSupervisor(), cancellationToken);
+        return vm is null ? NotFound() : Vista("Ticket", vm);
+    }
+
+    // POST /Admin/Soporte/Ticket/5/Responder
+    [HttpPost("Ticket/{id}/Responder")]
+    public async Task<IActionResult> Responder(ulong id, [Bind(Prefix = "Respuesta")] RespuestaTicketForm respuesta, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            // Se vuelve a mostrar el ticket con el texto escrito y el error.
+            var vm = await _soporte.DetalleAsync(id, IdUsuario(), EsSupervisor(), cancellationToken);
+            if (vm is null) return NotFound();
+            vm.Respuesta = respuesta;
+            return Vista("Ticket", vm);
+        }
+
+        var resultado = await _soporte.ResponderAsync(id, IdUsuario(), respuesta.mensaje, cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
+        return RedirectToAction(nameof(Ticket), new { id });
+    }
+
+    // POST /Admin/Soporte/Ticket/5/Cerrar
+    [HttpPost("Ticket/{id}/Cerrar")]
+    public async Task<IActionResult> Cerrar(ulong id, CancellationToken cancellationToken)
+    {
+        var resultado = await _soporte.CerrarAsync(id, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
+        return resultado.Exitoso ? RedirectToAction(nameof(Historial)) : RedirectToAction(nameof(Ticket), new { id });
+    }
+
+    // GET /Admin/Soporte/Todos?estado=ABIERTA&agente=0&texto=&pagina=1   (ADMINISTRADOR y SA)
+    [HttpGet("Todos")]
+    [Authorize(Roles = Roles.SupervisionSoporte)]
+    public async Task<IActionResult> Todos(string? estado, ulong? agente, string? texto, int pagina = 1, CancellationToken cancellationToken = default) =>
+        Vista("Todos", await _soporte.TodosAsync(estado, agente, texto, pagina, cancellationToken));
+
+    // POST /Admin/Soporte/Ticket/5/Reasignar   (ADMINISTRADOR y SA)
+    [HttpPost("Ticket/{id}/Reasignar")]
+    [Authorize(Roles = Roles.SupervisionSoporte)]
+    public async Task<IActionResult> Reasignar(ulong id, ulong idAgente, CancellationToken cancellationToken)
+    {
+        var resultado = await _soporte.ReasignarAsync(id, idAgente, IdUsuario(), cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Aviso"] = resultado.Mensaje;
+        return RedirectToAction(nameof(Ticket), new { id });
+    }
+
+    // ============================== Ayudantes ==============================
+
     private IActionResult Vista(string nombre, object? modelo = null) => View(Carpeta + nombre + ".cshtml", modelo);
 
-    // GET /Admin/Soporte  → información general del panel
-    [HttpGet("")]
-    public IActionResult Index() => Vista("Index");
+    /// <summary>Id del usuario de la cookie ([Authorize] garantiza que hay sesión).</summary>
+    private ulong IdUsuario() => ulong.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    // GET /Admin/Soporte/NuevoTicket  → busca el siguiente ticket sin agente asignado
-    // Solo CONSULTA. Tomar el ticket (asignárselo al agente) modifica datos, por eso es un POST aparte.
-    [HttpGet("NuevoTicket")]
-    public IActionResult NuevoTicket()
-    {
-        SolicitudesSoporte? ticket = BuscarSiguienteTicketDisponible();
-        return Vista("NuevoTicket", ticket);
-    }
-
-    // POST /Admin/Soporte/Tomar/5  → asigna el ticket al agente actual
-    [HttpPost("Tomar/{id}")]
-    public IActionResult Tomar(ulong id)
-    {
-        // TODO BD: UPDATE solicitudes_soporte SET id_agente_asignado = @agente, estado = 'EN_PROCESO'
-        //          WHERE id = @id AND id_agente_asignado IS NULL   ← evita que dos agentes tomen el mismo ticket
-        // El id del agente debe salir del usuario autenticado, nunca del formulario.
-        TempData["Aviso"] = "Tomar tickets se activará cuando se conecte la base de datos.";
-        return RedirectToAction(nameof(SeguirAtendiendo));
-    }
-
-    // GET /Admin/Soporte/SeguirAtendiendo  → tickets que el agente tiene en proceso
-    [HttpGet("SeguirAtendiendo")]
-    public IActionResult SeguirAtendiendo()
-    {
-        List<SolicitudesSoporte> tickets = ObtenerTicketsEnCurso();
-        return Vista("SeguirAtendiendo", tickets);
-    }
-
-    // GET /Admin/Soporte/Historial  → tickets que el agente ya cerró
-    [HttpGet("Historial")]
-    public IActionResult Historial()
-    {
-        List<SolicitudesSoporte> tickets = ObtenerHistorial();
-        return Vista("Historial", tickets);
-    }
-
-    // ===================== Acceso a datos (pendiente de conectar a la BD) =====================
-    // Mientras no haya conexión, devuelven "nada" y las vistas muestran el mensaje de que no hay tickets.
-    // Cuando conectes la BD solo cambias estos métodos; las vistas ya están listas para mostrar datos.
-    // El agente se obtendrá de: User.FindFirstValue(ClaimTypes.NameIdentifier)
-
-    private SolicitudesSoporte? BuscarSiguienteTicketDisponible()
-    {
-        // TODO BD: SELECT TOP 1 ... FROM solicitudes_soporte
-        //          WHERE id_agente_asignado IS NULL AND estado = 'ABIERTA' ORDER BY creada_en
-        ViewData["SinBD"] = true;
-        return null;
-    }
-
-    private List<SolicitudesSoporte> ObtenerTicketsEnCurso()
-    {
-        // TODO BD: WHERE id_agente_asignado = @agente AND estado <> 'CERRADA'
-        ViewData["SinBD"] = true;
-        return new List<SolicitudesSoporte>();
-    }
-
-    private List<SolicitudesSoporte> ObtenerHistorial()
-    {
-        // TODO BD: WHERE id_agente_asignado = @agente AND estado = 'CERRADA' ORDER BY actualizada_en DESC
-        ViewData["SinBD"] = true;
-        return new List<SolicitudesSoporte>();
-    }
+    private bool EsSupervisor() => Roles.EsSupervisorSoporte(User);
 }

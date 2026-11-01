@@ -2,7 +2,7 @@
    FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
    Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
-       - las 27 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - las 28 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
        - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
          estados de pago y métodos de pago;
        - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
@@ -471,6 +471,21 @@ GO
 CREATE INDEX ix_solicitudes_estado ON dbo.solicitudes_soporte(estado, creada_en);
 GO
 
+/* Conversación del ticket (T4 fase C). El primer mensaje es solicitudes_soporte.mensaje; aquí van las respuestas
+   del cliente y del personal, en orden. es_personal = 1 si lo escribió alguien de FlyVibeMex (así "quién respondió
+   al último" no depende de que el rol de esa cuenta cambie después). */
+CREATE TABLE dbo.mensajes_soporte(
+    id           BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_mensajes_soporte PRIMARY KEY,
+    id_solicitud BIGINT         NOT NULL CONSTRAINT fk_mensajes_solicitudes REFERENCES dbo.solicitudes_soporte(id),
+    id_usuario   BIGINT         NOT NULL CONSTRAINT fk_mensajes_usuarios REFERENCES dbo.usuarios(id),
+    es_personal  BIT            NOT NULL,
+    mensaje      NVARCHAR(2000) NOT NULL CONSTRAINT ck_mensajes_texto CHECK (LEN(mensaje) > 0),
+    creado_en    DATETIME       NOT NULL CONSTRAINT df_mensajes_creado_en DEFAULT(CURRENT_TIMESTAMP)
+);
+GO
+CREATE INDEX ix_mensajes_solicitud ON dbo.mensajes_soporte(id_solicitud, creado_en);
+GO
+
 /* ---------- Bitácora del panel: quién cambió qué y cuándo (la consulta el SA) ---------- */
 CREATE TABLE dbo.bitacora(
     id          BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_bitacora PRIMARY KEY,
@@ -522,8 +537,8 @@ VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
         'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 GO
 
-/* ---------- Verificación: deben salir 27 tablas y los catálogos ---------- */
-SELECT COUNT(*) AS tablas_creadas   -- 27
+/* ---------- Verificación: deben salir 28 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 28
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -531,7 +546,7 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'detalle_reservacion', N'historial_estado_reservacion', N'metodos_pago',
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
-               N'bitacora');
+               N'mensajes_soporte', N'bitacora');
 
 SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
 SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5

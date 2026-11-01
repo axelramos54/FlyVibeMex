@@ -32,7 +32,10 @@ public static class Roles
     /// <summary>Panel de tickets (/Admin/Soporte).</summary>
     public const string PanelSoporte = Soporte + "," + Administrador + "," + SA;
 
-    /// <summary>Reservaciones y reembolsos del panel.</summary>
+    /// <summary>Supervisión de soporte: ver todos los tickets y reasignarlos (/Admin/Soporte/Todos).</summary>
+    public const string SupervisionSoporte = Administrador + "," + SA;
+
+    /// <summary>Reservaciones y reembolsos del panel (/Admin/Reservaciones).</summary>
     public const string PanelReservaciones = Agente + "," + Administrador + "," + SA;
 
     /// <summary>Gestor de ventas (/Admin/GestorVentas): altas y bajas del catálogo.</summary>
@@ -47,6 +50,9 @@ public static class Roles
     /// <summary>¿El usuario de la cookie es personal de FlyVibeMex?</summary>
     public static bool EsInterno(ClaimsPrincipal usuario) =>
         usuario.IsInRole(Soporte) || usuario.IsInRole(Agente) || usuario.IsInRole(Administrador) || usuario.IsInRole(SA);
+
+    /// <summary>¿Supervisa el soporte (ve todos los tickets y los reasigna)? ADMINISTRADOR o SA.</summary>
+    public static bool EsSupervisorSoporte(ClaimsPrincipal usuario) => usuario.IsInRole(Administrador) || usuario.IsInRole(SA);
 
     /// <summary>¿Puede entrar a una sección? Mismo criterio que [Authorize(Roles = "A,B")]: basta uno de los roles.</summary>
     public static bool Puede(ClaimsPrincipal usuario, string rolesSeparadosPorComa) =>
