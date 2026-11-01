@@ -1,9 +1,8 @@
 /* ============================================================================================
  * style_H.css — Sección H: Hospedajes (buscador de hoteles)
  * Vista que estiliza: Views/Home/Hoteles.cshtml
- * Carga: se enlaza con <link> dentro de la vista parcial. Al inyectarse con innerHTML la hoja se aplica mientras
- * la sección está visible y se elimina junto con su HTML al cargar otra sección (no se acumula). Mientras está
- * cargada, sus reglas globales (*, body) afectan a todo el documento, incluido el shell.
+ * Carga: su vista la enlaza con <link> (página completa desde el 26-10-2026). Sus reglas globales (*, body)
+ * afectan a toda esa página, incluida la barra de navegación.
  * Regla del equipo: los atributos `class` se reservan para utilidades de Bootstrap; los componentes
  * propios se estilizan con selectores #id (p. ej. #mapas_preferidos, #buscador, #tarjetas).
  * NOTA: esta hoja también usa selectores de clase propios (p. ej. .mi-tarjeta, .btn-card-action);
@@ -215,4 +214,4 @@
     #buscador {
         margin-bottom: 20px;
     }
-}
+}

@@ -30,14 +30,6 @@ public class HomeController : Controller
         return View();
     }
 
-    /// <summary>
-    /// GET <c>/Home/Default</c>. Ruta antigua de Inicio: redirige a <c>/</c> (por si quedó algún enlace viejo).
-    /// </summary>
-    public IActionResult Default()
-    {
-        return RedirectToAction(nameof(Index));
-    }
-
     // Enlace anterior a la página 403: ahora la muestra EstadoController (T6.2).
     public IActionResult AccesoDenegado(string? returnUrl) =>
         RedirectToAction("Index", "Estado", new { codigo = 403, returnUrl });
@@ -62,7 +54,6 @@ public class HomeController : Controller
     /// GET <c>/Home/Tours</c>. Devuelve la <b>página</b> <c>Tours.cshtml</c>.
     /// Buscador + tarjetas con datos de la BD.
     /// </summary>
-
     public Task<IActionResult> Tours(BusquedaCatalogoViewModel busqueda,
         [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
         => SeccionCatalogoAsync(TipoCatalogo.Evento, busqueda, catalogo, cancellationToken);
@@ -74,15 +65,6 @@ public class HomeController : Controller
     public Task<IActionResult> Viajes(BusquedaCatalogoViewModel busqueda,
         [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
         => SeccionCatalogoAsync(TipoCatalogo.Vuelo, busqueda, catalogo, cancellationToken);
-
-    /// <summary>
-    /// GET <c>/Home/sesion</c>. Ruta antigua del login (fragmento de la SPA casera): redirige a la página completa
-    /// <c>/Home/IniciarSesion</c>. La vista <c>sesion.cshtml</c> ya no se usa.
-    /// </summary>
-    public IActionResult sesion()
-    {
-        return RedirectToAction(nameof(IniciarSesion));
-    }
 
     // ============================== INICIAR / CERRAR SESIÓN ==============================
 
@@ -98,7 +80,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// POST <c>/Home/IniciarSesion</c>. Lo envía el botón "Iniciar sesión" de <c>sesion.cshtml</c>.
+    /// POST <c>/Home/IniciarSesion</c>. Lo envía el formulario de <c>_FormSesion.cshtml</c> (página IniciarSesion).
     /// Valida con <see cref="IAuthService"/> (consulta parametrizada + hash) y crea la cookie de sesión.
     /// </summary>
     /// <remarks>
@@ -178,15 +160,9 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/card</c>. Devuelve la <b>página</b> <c>card.cshtml</c>: maqueta de prueba con 12 tarjetas
-    /// (hoteles, paquetes, tours y vuelos) que sirve de modelo para los resultados de búsqueda.
+    /// GET <c>/Home/vehiculos</c>. Devuelve la <b>página</b> <c>vehiculos.cshtml</c>.
+    /// Buscador + tarjetas con datos de la BD.
     /// </summary>
-    // NOTA: ya no está en el menú (26-10-2026); solo se abre escribiendo /Home/card. Borrar antes de la entrega.
-    public IActionResult card()
-    {
-        return View();
-    }
-
     public Task<IActionResult> vehiculos(BusquedaCatalogoViewModel busqueda,
         [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
         => SeccionCatalogoAsync(TipoCatalogo.Vehiculo, busqueda, catalogo, cancellationToken);
@@ -401,8 +377,6 @@ public class HomeController : Controller
     /// GET <c>/Home/Error</c>: enlace anterior a la página de error. Desde T6.2 el manejador de excepciones es
     /// <c>/Estado/500</c> (EstadoController); esta acción solo redirige ahí.
     /// </summary>
-    /// NOTA: falta la acción Privacy(). Existe Views/Home/Privacy.cshtml y _Layout.cshtml la enlaza,
-    // pero /Home/Privacy responde 404 porque este controlador no la define.
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error() => RedirectToAction("Index", "Estado", new { codigo = 500 });
 }

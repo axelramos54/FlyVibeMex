@@ -1,0 +1,40 @@
+@*
+ ============================================================================================
+ Views/Shared/_Mensajes.cshtml — mensajes que deja un controlador después de un POST (T7.5).
+   TempData["Exito"] → verde; se oculta solo a los 6 s (wwwroot/assets/js/script_mensajes.js).
+   TempData["Aviso"] → amarillo;  TempData["Error"] → rojo. Estos dos se quedan hasta que el usuario los cierra.
+ Todos traen botón para cerrar (requiere el JS de Bootstrap, que cargan los layouts).
+ Lo incluyen _Layout, _AdminLayout y Crearusuario/Creado. Leer TempData lo consume: NINGUNA otra vista debe pintar
+ estas tres claves (si no, el mensaje saldría dos veces). Las cancelaciones usan sus propias claves
+ (CancelacionExito / CancelacionError) en Views/Miusuario/_ModalesCancelacion.cshtml.
+ Opcional: ViewData["MensajesClase"] = clases del contenedor (p. ej. "container mt-3" en el sitio público).
+ ============================================================================================
+*@
+@{
+    var mensajes = new[]
+        {
+            (Clave: "Exito", Clase: "alert-success", Ocultar: true),
+            (Clave: "Aviso", Clase: "alert-warning", Ocultar: false),
+            (Clave: "Error", Clase: "alert-danger", Ocultar: false)
+        }
+        .Select(m => (Texto: TempData[m.Clave] as string, m.Clase, m.Ocultar))
+        .Where(m => !string.IsNullOrWhiteSpace(m.Texto))
+        .ToList();
+    var claseContenedor = ViewData["MensajesClase"] as string;
+}
+@if (mensajes.Count > 0)
+{
+    <div id="mensajes_sitio" class="@claseContenedor" aria-live="polite">
+        @foreach (var m in mensajes)
+        {
+            @* role="status" para el éxito (no interrumpe al lector de pantalla); role="alert" para avisos y errores. *@
+            <div class="alert @m.Clase alert-dismissible fade show" role="@(m.Ocultar ? "status" : "alert")"
+                 data-ocultar-ms="@(m.Ocultar ? "6000" : null)">
+                @m.Texto
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        }
+    </div>
+    @* defer: corre cuando ya cargó toda la página (y el JS de Bootstrap del final del <body>). *@
+    <script src="~/assets/js/script_mensajes.js" asp-append-version="true" defer></script>
+}

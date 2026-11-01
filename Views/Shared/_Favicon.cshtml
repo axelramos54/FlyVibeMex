@@ -1,0 +1,15 @@
+@*
+ Views/Shared/_Favicon.cshtml — ícono de la pestaña (T7.3). Va dentro del <head> de cada layout / página completa.
+ Si existe wwwroot/assets/img/logo.png se usa como favicon; si no, se declara un ícono vacío para que el navegador
+ no pida /favicon.ico (el de la plantilla de ASP.NET se movió al respaldo en T7; sin archivo, esa petición
+ respondería con la página 404 completa).
+*@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Entorno
+@if (LogoSitio.Existe(Entorno))
+{
+    <link rel="icon" type="image/png" href="~/assets/img/logo.png" asp-append-version="true">
+}
+else
+{
+    <link rel="icon" href="data:,">
+}

@@ -6,6 +6,9 @@
  siendo páginas independientes (Layout = null) y el panel interno usa Views/Admin/_AdminLayout.cshtml.
  Las páginas de error (Views/Estado/*) eligen este layout o el del panel según la zona (EstadoViewModel.Layout).
 
+ T7 (31-10-2026): barra con botón ☰ en pantallas chicas (navbar-expand-lg), header "sticky" (ya no tapa el
+ contenido), marca con logo (_Marca), mensajes comunes (_Mensajes) y footer con enlaces y contacto editable.
+
  Cada vista puede agregar:
    @section Styles  { <link rel="stylesheet" href="~/assets/css/style_X.css"> }   → dentro de <head>
    @section Scripts { <script src="~/assets/js/script_X.js"></script> }          → al final del <body>, DESPUÉS de Bootstrap
@@ -28,53 +31,80 @@
     @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    @* Hoja global: navbar, header fijo, contenedor principal y footer. *@
-    <link rel="stylesheet" href="~/assets/css/style.css">
+    @* Hoja global: navbar, header, contenedor principal, mensajes y footer. *@
+    <link rel="stylesheet" href="~/assets/css/style.css" asp-append-version="true">
+    <partial name="_Favicon" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    @* ---- Barra de navegación (header fijo, ver #navbar en style.css) ---- *@
-    <header>
-        <section class="navbar" id="navbar">
-            <div class="navbar-collapse d-flex">
-                @* Marca: regresa al inicio desde cualquier página. TODO: agregar el logo (wwwroot/assets/img/). *@
-                <div class="navbar-brand d-flex" id="navbar_left">
-                    <a asp-controller="Home" asp-action="Index" class="text-decoration-none"><p class="m-1">FlyVibeMex</p></a>
-                </div>
+    @* ---- Barra de navegación (T7.4): en pantallas de menos de 992 px las secciones se esconden tras el botón ☰.
+         El header es sticky (no fixed): ocupa su lugar en la página, así que nunca tapa el contenido. ---- *@
+    <header class="sticky-top">
+        <nav class="navbar navbar-expand-lg" id="navbar" aria-label="Secciones del sitio">
+            <div class="container-fluid px-0">
+                <a asp-controller="Home" asp-action="Index" class="navbar-brand" id="navbar_left"><partial name="_Marca" /></a>
 
-                <nav class="navbar-item ms-auto d-flex flex-wrap" id="navbar_right" aria-label="Secciones del sitio">
-                    <a class="m-1" asp-controller="Home" asp-action="Index">Inicio</a>
-                    <a class="m-1" asp-controller="Home" asp-action="Viajes">Vuelos</a>
-                    <a class="m-1" asp-controller="Home" asp-action="Hoteles">Hoteles</a>
-                    <a class="m-1" asp-controller="Home" asp-action="vehiculos">Vehículos</a>
-                    <a class="m-1" asp-controller="Home" asp-action="Tours">Tours</a>
-                    <a class="m-1" asp-controller="Home" asp-action="Paquetes">Paquetes</a>
-                    @* Sesión: "Iniciar sesión" o el menú del usuario (Views/Shared/_MenuUsuario.cshtml). *@
-                    <partial name="_MenuUsuario" />
-                </nav>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu_principal"
+                        aria-controls="menu_principal" aria-expanded="false" aria-label="Abrir o cerrar el menú">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="menu_principal">
+                    <div class="navbar-nav ms-auto" id="navbar_right">
+                        <a class="m-1" asp-controller="Home" asp-action="Index">Inicio</a>
+                        <a class="m-1" asp-controller="Home" asp-action="Viajes">Vuelos</a>
+                        <a class="m-1" asp-controller="Home" asp-action="Hoteles">Hoteles</a>
+                        <a class="m-1" asp-controller="Home" asp-action="vehiculos">Vehículos</a>
+                        <a class="m-1" asp-controller="Home" asp-action="Tours">Tours</a>
+                        <a class="m-1" asp-controller="Home" asp-action="Paquetes">Paquetes</a>
+                        @* Sesión: "Iniciar sesión" o el menú del usuario (Views/Shared/_MenuUsuario.cshtml). *@
+                        <partial name="_MenuUsuario" />
+                    </div>
+                </div>
             </div>
-        </section>
+        </nav>
     </header>
 
     <main id="contenido_main">
-        @* Aviso general (p. ej. el que deja ErroresBaseDatosFilter cuando la BD falla al guardar). Los avisos propios
-           de cada pantalla (Exito / Error de Mi cuenta, cancelaciones) los muestran sus vistas. *@
-        @if (TempData["Aviso"] is string avisoGeneral)
-        {
-            <div class="container mt-3">
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    @avisoGeneral
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            </div>
-        }
+        @* Mensajes de TempData (Exito / Aviso / Error), incluido el que deja ErroresBaseDatosFilter cuando la BD falla.
+           Las vistas ya NO los pintan por su cuenta (T7.5). *@
+        @{ ViewData["MensajesClase"] = "container mt-3"; }
+        <partial name="_Mensajes" />
         @RenderBody()
     </main>
 
+    @* ---- Pie de página (T7.3). Texto, correo y teléfono los edita el SA en Contenido del sitio › Pie de página. ---- *@
+    @{
+        var correoContacto = contenidoSitio.Texto(ContenidoSitioClaves.PieCorreo);
+        var telefonoContacto = contenidoSitio.Texto(ContenidoSitioClaves.PieTelefono);
+    }
     <footer>
-        @* Texto editable por el SA (Contenido del sitio › Pie de página); el año se pone solo. *@
-        <p class="mb-1" style="white-space: pre-line">&copy; @DateTime.Now.Year @contenidoSitio.Texto(ContenidoSitioClaves.PieTexto)</p>
-        <a asp-controller="Otros" asp-action="Politicas" class="text-reset">Políticas</a>
+        <div class="container">
+            <nav class="d-flex flex-wrap justify-content-center gap-3 mb-2" aria-label="Información del sitio">
+                <a asp-controller="Otros" asp-action="Politicas">Políticas</a>
+                <a asp-controller="Otros" asp-action="Politicas" asp-fragment="privacidad">Aviso de privacidad</a>
+                <a asp-controller="Solicitar" asp-action="Index">Soporte</a>
+            </nav>
+            @if (!string.IsNullOrWhiteSpace(correoContacto) || !string.IsNullOrWhiteSpace(telefonoContacto))
+            {
+                <p class="mb-2">
+                    @if (!string.IsNullOrWhiteSpace(correoContacto))
+                    {
+                        <a href="mailto:@correoContacto">@correoContacto</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(correoContacto) && !string.IsNullOrWhiteSpace(telefonoContacto))
+                    {
+                        <span aria-hidden="true"> · </span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(telefonoContacto))
+                    {
+                        <a href="tel:@ContenidoSitioClaves.SoloDigitosTelefono(telefonoContacto)">@telefonoContacto</a>
+                    }
+                </p>
+            }
+            @* El año se pone solo. *@
+            <p class="mb-0" style="white-space: pre-line">&copy; @DateTime.Now.Year @contenidoSitio.Texto(ContenidoSitioClaves.PieTexto)</p>
+        </div>
     </footer>
 
     @* JS de Bootstrap (dropdowns, modales…). Los scripts de cada vista van DESPUÉS, en la sección Scripts. *@

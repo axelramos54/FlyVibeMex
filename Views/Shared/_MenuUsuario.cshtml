@@ -1,15 +1,26 @@
 @*
- Views/Shared/_MenuUsuario.cshtml — bloque de sesión de la barra de navegación (lo incluye _Layout.cshtml).
- Sin sesión: botón "Iniciar sesión". Con sesión: menú con el nombre del usuario, sus secciones, el panel
+ Views/Shared/_MenuUsuario.cshtml — bloque de sesión de la barra de navegación (lo incluyen _Layout y _AdminLayout).
+ Sin sesión: botón "Iniciar sesión". Con sesión: menú con las iniciales y el nombre del usuario, sus secciones, el panel
  (solo personal: SOPORTE / AGENTE / ADMINISTRADOR / SA) y "Cerrar sesión", que es un POST con token (no un enlace).
+ T7.3: el círculo con iniciales sustituye a la foto de prueba (imagen-prueba.jpg) que veían todos los usuarios.
+ T7.4: dentro del menú ☰ (pantallas chicas) el desplegable se abre hacia abajo, dentro del mismo menú.
 *@
 @if (User.Identity?.IsAuthenticated == true)
 {
     var esInterno = Roles.EsInterno(User);
-    <div class="dropdown m-1" id="secion">
+    var nombre = User.Identity.Name ?? string.Empty;
+    // Iniciales: primera letra de las dos primeras palabras del nombre ("Juan Carlos" → "JC", "Ana" → "A").
+    var iniciales = string.Concat(nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2)
+        .Select(palabra => char.ToUpperInvariant(palabra[0])));
+    if (iniciales.Length == 0)
+    {
+        iniciales = "?";
+    }
+
+    <div class="dropdown m-1" id="sesion">
         <button type="button" class="btn dropdown-toggle menu-usuario" data-bs-toggle="dropdown" aria-expanded="false">
-            <img class="img-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="" id="foto">
-            <span>@User.Identity.Name</span>
+            <span class="avatar-iniciales" aria-hidden="true">@iniciales</span>
+            <span>@nombre</span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow">
             <li><a class="dropdown-item" asp-controller="Miusuario" asp-action="Index">Mi perfil</a></li>
@@ -21,10 +32,11 @@
             {
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Panel de administración</a></li>
+                <li><a class="dropdown-item" asp-controller="Home" asp-action="Index">Ir al sitio</a></li>
             }
             <li><hr class="dropdown-divider"></li>
             <li>
-                <form asp-controller="Home" asp-action="CerrarSesion" method="post" class="m-0">
+                <form asp-controller="Home" asp-action="CerrarSesion" method="post" class="m-0" data-sin-bloqueo>
                     <button type="submit" class="dropdown-item">Cerrar sesión</button>
                 </form>
             </li>
@@ -33,7 +45,7 @@
 }
 else
 {
-    <div class="m-1" id="secion">
+    <div class="m-1" id="sesion">
         <a class="btn-sesion" asp-controller="Home" asp-action="IniciarSesion">Iniciar sesión</a>
     </div>
 }

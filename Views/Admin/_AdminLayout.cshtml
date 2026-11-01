@@ -2,6 +2,8 @@
     Layout base de todo el panel administrativo.
     - El menú de la derecha lo pone cada panel con  @section Menu { ... }
     - El contenido de cada pantalla aparece donde está @RenderBody()
+    - T7 (31-10-2026): barra con botón ☰ (navbar-expand-lg) y header sticky como el sitio público; a la derecha el
+      mismo menú del usuario que el sitio (_MenuUsuario: nombre, Mi perfil, Cerrar sesión); mensajes con _Mensajes.
 *@
 @{
     var seccion = ViewData["Seccion"] as string;       // lo define el layout de cada panel (Soporte, SA, Gestor)
@@ -17,31 +19,31 @@
     <title>@titulo - Admin FlyVibeMex</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <link rel="stylesheet" href="~/assets/css/style.css">
+    <link rel="stylesheet" href="~/assets/css/style.css" asp-append-version="true">
+    <partial name="_Favicon" />
 </head>
 
 <body>
-    <header>
-        <section class="navbar" id="navbar">
-            <div class="navbar-collapse d-flex"> <!--Este div es para que todo este en una sola linea-->
+    <header class="sticky-top">
+        <nav class="navbar navbar-expand-lg" id="navbar" aria-label="Secciones del panel">
+            <div class="container-fluid px-0">
+                <a asp-controller="Admin" asp-action="Index" class="navbar-brand" id="navbar_left">
+                    <partial name="_Marca" /><span class="etiqueta-panel">Panel</span>
+                </a>
 
-                <div class="navbar-brand d-flex" id="navbar_left">
-                    @* TODO: logo. No dejes un <img src=""> vacío: el navegador vuelve a pedir la misma página. *@
-                    <a class="m-1" asp-controller="Home" asp-action="Index"><p class="m-1">FlyVibeMex</p></a>
-                </div>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu_panel"
+                        aria-controls="menu_panel" aria-expanded="false" aria-label="Abrir o cerrar el menú">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-                <div class="navbar-item ms-auto d-flex flex-wrap align-items-center" id="navbar_right">
-                    @await RenderSectionAsync("Menu", required: false)
-
-                    <div class="m-1" id="secion">
-                        @* TODO (login): mostrar el nombre del usuario autenticado y el botón de salir (POST) *@
-                        <span class="m-1">Mi cuenta</span>
-                        <img class="imf-fluid rounded-circle" src="/assets/img/imagen-prueba.jpg" alt="foto" id="foto">
+                <div class="collapse navbar-collapse" id="menu_panel">
+                    <div class="navbar-nav ms-auto" id="navbar_right">
+                        @await RenderSectionAsync("Menu", required: false)
+                        <partial name="_MenuUsuario" />
                     </div>
                 </div>
-
             </div>
-        </section>
+        </nav>
     </header>
 
     <div class="container mt-3">
@@ -60,15 +62,8 @@
             </ol>
         </nav>
 
-        @* Mensajes que dejan los controladores después de guardar algo (TempData) *@
-        @if (TempData["Exito"] is string exito)
-        {
-            <div class="alert alert-success">@exito</div>
-        }
-        @if (TempData["Aviso"] is string aviso)
-        {
-            <div class="alert alert-warning">@aviso</div>
-        }
+        @* Mensajes que dejan los controladores después de guardar algo (TempData Exito / Aviso / Error, T7.5) *@
+        <partial name="_Mensajes" />
         @if (ViewData["SinBD"] is true)
         {
             <div class="alert alert-secondary small">
@@ -83,7 +78,7 @@
     </main>
 
     <footer>
-
+        <p class="mb-0">&copy; @DateTime.Now.Year FlyVibeMex · Panel interno</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"

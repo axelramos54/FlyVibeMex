@@ -1,7 +1,7 @@
 /* ============================================================================================
  * style_C.css — Sección C: Crear usuario (registro).
  * Vistas que estiliza: Views/Crearusuario/Index.cshtml y Views/Crearusuario/Creado.cshtml
- * (páginas completas, se enlaza desde su <head>; no se carga con cargarPagina).
+ * (páginas completas, se enlaza desde su <head>).
  * Mismo look que el inicio de sesión (style_s.css): fondo degradado de la marca y tarjeta blanca.
  * Regla del equipo: `class` para utilidades de Bootstrap, `#id` para el diseño propio.
  * ============================================================================================ */

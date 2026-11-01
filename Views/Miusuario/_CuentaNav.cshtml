@@ -4,7 +4,8 @@
  Encabezado común del área del cliente (Perfil, Mis reservaciones, Mis compras, Mis tarjetas y Soporte):
    - Pestañas de navegación. Si un interno está en "Ver como cliente", cada enlace conserva ?cliente=ID.
    - Aviso de SOLO LECTURA para SOPORTE / AGENTE / ADMINISTRADOR / SA.
-   - Mensajes TempData["Exito"] / TempData["Error"] (los de cancelar los muestra _ModalesCancelacion).
+   - Los mensajes TempData["Exito"] / ["Error"] ya NO se muestran aquí: los pinta _Layout con
+     Views/Shared/_Mensajes.cshtml (T7.5). Los de cancelar los muestra _ModalesCancelacion.
  Uso (el parcial recibe una copia del ViewData de la página):
      @{ ViewData["Pestana"] = "reservaciones"; }
      <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
@@ -15,8 +16,6 @@
 @{
     var pestana = ViewData["Pestana"] as string ?? string.Empty;
     var cliente = Model.IdClienteVisto?.ToString();
-    var exito = TempData["Exito"] as string;
-    var error = TempData["Error"] as string;
 
     string Clase(string nombre) => nombre == pestana ? "nav-link active" : "nav-link";
     string? Actual(string nombre) => nombre == pestana ? "page" : null;
@@ -41,7 +40,8 @@ else if (Model.EsInterno)
     </div>
 }
 
-<ul class="nav nav-tabs mb-4">
+@* T7.4: en celular las 5 pestañas se quedan en un renglón y se desliza con el dedo (sin scroll horizontal de la página). *@
+<ul class="nav nav-tabs flex-nowrap overflow-x-auto overflow-y-hidden text-nowrap mb-4" id="pestanas_cuenta">
     <li class="nav-item">
         <a class="@Clase("perfil")" aria-current="@Actual("perfil")" asp-controller="Miusuario" asp-action="Index" asp-route-cliente="@cliente">Perfil</a>
     </li>
@@ -58,18 +58,3 @@ else if (Model.EsInterno)
         <a class="@Clase("soporte")" aria-current="@Actual("soporte")" asp-controller="Solicitar" asp-action="Index" asp-route-cliente="@cliente">Soporte</a>
     </li>
 </ul>
-
-@if (exito is not null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="status">
-        @exito
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-    </div>
-}
-@if (error is not null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @error
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-    </div>
-}

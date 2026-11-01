@@ -44,6 +44,8 @@ namespace FlyVibeMex.Models
 
         // ---- Pie de página ----
         public const string PieTexto = "pie.texto";
+        public const string PieCorreo = "pie.correo";      // T7.3: contacto del footer (con enlace mailto: / tel:)
+        public const string PieTelefono = "pie.telefono";
 
         public static readonly IReadOnlyList<DefinicionContenido> Todas = new List<DefinicionContenido>
         {
@@ -108,8 +110,20 @@ namespace FlyVibeMex.Models
                 "Puedes cancelar desde Mis reservaciones. Los reembolsos los revisa un agente y se devuelven a la misma tarjeta.\n" +
                 "Si un reembolso se rechaza, verás el motivo en Mis compras y puedes abrir un ticket para aclararlo.", 4000, Multilinea: true),
 
-            new(PieTexto, SeccionPie, "Texto del pie de página", "FlyVibeMex · Proyecto integrador", 150)
+            new(PieTexto, SeccionPie, "Texto del pie de página", "FlyVibeMex · Proyecto integrador", 150),
+            new(PieCorreo, SeccionPie, "Correo de contacto", "contacto@flyvibemex.com", 100),
+            new(PieTelefono, SeccionPie, "Teléfono de contacto", "55 1234 5678", 30)
         };
+
+        /// <summary>
+        /// Teléfono para el enlace <c>tel:</c> del footer: solo dígitos y un "+" inicial ("55 1234-5678" → "5512345678").
+        /// El texto visible se queda tal como lo escribió el SA.
+        /// </summary>
+        public static string SoloDigitosTelefono(string telefono)
+        {
+            var digitos = new string(telefono.Where(char.IsDigit).ToArray());
+            return telefono.TrimStart().StartsWith('+') ? "+" + digitos : digitos;
+        }
 
         private static readonly Dictionary<string, DefinicionContenido> PorClave = Todas.ToDictionary(d => d.Clave);
 

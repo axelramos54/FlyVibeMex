@@ -121,6 +121,14 @@ public sealed class ContenidoSitioService : IContenidoSitioService
         if (texto.Length > definicion.Maximo)
             return ResultadoOperacion.Falla($"\"{definicion.Etiqueta}\" puede tener máximo {definicion.Maximo} caracteres (tiene {texto.Length}).");
 
+        // T7.3: el contacto del footer se vuelve enlace (mailto: / tel:), así que debe tener un formato válido.
+        if (definicion.Clave == ContenidoSitioClaves.PieCorreo
+            && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(texto))
+            return ResultadoOperacion.Falla("Escribe un correo válido, por ejemplo contacto@flyvibemex.com.");
+        if (definicion.Clave == ContenidoSitioClaves.PieTelefono
+            && ContenidoSitioClaves.SoloDigitosTelefono(texto).TrimStart('+').Length is < 8 or > 15)
+            return ResultadoOperacion.Falla("Escribe un teléfono de 8 a 15 dígitos (puedes usar espacios, guiones o un + al inicio).");
+
         // Si es igual al de por defecto, no hace falta guardarlo: se restaura.
         if (texto == definicion.Defecto) return await RestaurarAsync(clave, idSA, cancellationToken);
 

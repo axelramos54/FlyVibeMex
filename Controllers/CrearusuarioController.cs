@@ -10,7 +10,7 @@ namespace FlyVibeMex.Controllers;
 
 /// <summary>
 /// Registro de clientes: <c>/Crearusuario</c>. Las vistas están en <c>Views/Crearusuario/</c>.
-/// Se llega desde el botón "Crear nueva cuenta" de <c>Views/Home/sesion.cshtml</c>.
+/// Se llega desde el enlace "Crear nueva cuenta" de <c>Views/Home/_FormSesion.cshtml</c> (página Iniciar sesión).
 /// </summary>
 /// <remarks>
 /// Reglas de seguridad:

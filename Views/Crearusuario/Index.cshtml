@@ -2,8 +2,8 @@
  ============================================================================================
  Views/Crearusuario/Index.cshtml — GET/POST /Crearusuario (CrearusuarioController.Index)
  Pantalla del prototipo: Cuenta › Registro ("Crear nueva cuenta").
- Página COMPLETA (Layout = null, no se carga con cargarPagina). Se llega desde el botón
- "Crear nueva cuenta" de Views/Home/sesion.cshtml.
+ Página COMPLETA (Layout = null: pantalla de acceso independiente). Se llega desde el enlace
+ "Crear nueva cuenta" del formulario de inicio de sesión (Views/Home/_FormSesion.cshtml).
  Estilos: wwwroot/assets/css/style_C.css (letra C = Crear usuario).
  Seguridad: POST con token antiforgery; la contraseña viaja solo en este formulario y se guarda como hash.
  ============================================================================================
@@ -22,12 +22,13 @@
     <title>Crear nueva cuenta - FlyVibeMex</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <link rel="stylesheet" href="~/assets/css/style_C.css">
+    <link rel="stylesheet" href="~/assets/css/style_C.css" asp-append-version="true">
+    <partial name="_Favicon" />
 </head>
 
 <body>
     <div class="container card" id="tarjeta_registro">
-        <a asp-controller="Home" asp-action="Index" id="marca_registro" class="d-block text-center text-decoration-none">FlyVibeMex</a>
+        <a asp-controller="Home" asp-action="Index" id="marca_registro" class="d-flex justify-content-center align-items-center gap-2 text-decoration-none"><partial name="_Marca" /></a>
         <h1 id="titulo_registro" class="text-center">Crear nueva cuenta</h1>
         <p id="subtitulo_registro" class="text-center">Regístrate para reservar y consultar tus viajes.</p>
 

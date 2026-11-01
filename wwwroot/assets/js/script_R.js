@@ -2,7 +2,7 @@
  * ============================================================================================
  * script_R.js — Sección R: cancelar reservación / cancelar y reembolsar.
  * Vista asociada: Views/Miusuario/_ModalesCancelacion.cshtml (la usan Mis reservaciones y Mis compras).
- * Estas páginas se cargan completas (no con cargarPagina), por eso este <script> sí se ejecuta.
+ * Estas páginas se cargan completas, por eso este <script> sí se ejecuta.
  *
  * Botones de las tarjetas (cualquier elemento con estos atributos; de preferencia <button type="button">):
  *   data-accion="cancelar" | "reembolsar"   data-id="<id de la reservación>"   data-nombre="<texto a mostrar>"

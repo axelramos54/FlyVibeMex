@@ -1,0 +1,13 @@
+@*
+ Views/Shared/_Marca.cshtml — contenido de la marca: logo + "FlyVibeMex" (T7.3).
+ Cada página pone su propio enlace alrededor (barra del sitio, barra del panel, Iniciar sesión, Crear cuenta):
+     <a asp-controller="Home" asp-action="Index" ...><partial name="_Marca" /></a>
+ El logo es wwwroot/assets/img/logo.png (ver Services/LogoSitio.cs). Si todavía no existe, solo se ve el texto.
+ alt="" porque el texto FlyVibeMex ya está junto a la imagen (un lector de pantalla no lo repite).
+*@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Entorno
+@if (LogoSitio.Existe(Entorno))
+{
+    <img src="~/assets/img/logo.png" asp-append-version="true" alt="" class="logo-sitio" width="36" height="36">
+}
+<span class="texto-marca">FlyVibeMex</span>
