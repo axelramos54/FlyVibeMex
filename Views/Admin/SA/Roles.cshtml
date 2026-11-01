@@ -1,0 +1,45 @@
+@* GET /Admin/SA/Roles (SAController.ListaRoles): los 5 roles, cuántas cuentas tienen y su descripción.
+   Los nombres están fijos en el código (Models/Auth/Roles.cs); solo se edita la descripción. *@
+@model List<RolListadoItem>
+@{
+    ViewData["Title"] = "Roles";
+}
+
+<h1 class="h3 mb-1">Roles</h1>
+<p class="text-muted">
+    Los nombres de los roles están fijos en el código (los usan los permisos de cada pantalla); aquí solo se edita su
+    descripción. Para cambiar el rol de una persona, ábrela en <a asp-action="Usuarios">Usuarios</a>.
+</p>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Rol</th>
+                <th class="text-end">Activas</th>
+                <th class="text-end">Inactivas</th>
+                <th style="width: 50%">Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                var idCampo = $"descripcion_{r.id}";
+                <tr>
+                    <td>
+                        <a class="fw-semibold" asp-action="Usuarios" asp-route-rol="@r.nombre" asp-route-estado="todos">@r.nombre</a>
+                    </td>
+                    <td class="text-end">@r.activas</td>
+                    <td class="text-end">@r.inactivas</td>
+                    <td>
+                        <form asp-action="GuardarDescripcionRol" asp-route-id="@r.id" method="post" class="d-flex gap-2">
+                            <input id="@idCampo" name="descripcion" value="@r.descripcion" maxlength="150" class="form-control form-control-sm"
+                                   aria-label="@($"Descripción de {r.nombre}")" />
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

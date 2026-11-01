@@ -4,11 +4,22 @@
  Pantalla del prototipo: Home / Explorar (pantalla de Inicio que se muestra al abrir el sitio).
  Página completa con Views/Shared/_Layout.cshtml (desde el 26-10-2026; antes era un fragmento de cargarPagina).
  Archivos asociados (letra D): style_D.css y script_D.js (vacío).
- Estado: contenido estático.
+ Estado: los textos y las imágenes los edita el SA en Contenido del sitio › Inicio (IContenidoSitioService;
+ si no hay nada guardado se muestran los textos de siempre, definidos en Models/ContenidoSitioClaves.cs).
  ============================================================================================
 *@
+@inject IContenidoSitioService ContenidoServicio
 @{
     ViewData["Title"] = "Inicio";
+    var c = await ContenidoServicio.ObtenerAsync();
+    // Las 4 tarjetas de categorías: clave del contenido, id del HTML, acción del enlace y texto del botón.
+    var tarjetas = new[]
+    {
+        ("vuelos", "Viajes_card", "Viajes", "Ver viajes"),
+        ("paquetes", "Paquete_card", "Paquetes", "Ver paquetes"),
+        ("hospedaje", "Hospedaje_card", "Hoteles", "Ver hoteles"),
+        ("tours", "Tour_card", "Tours", "Ver tours")
+    };
 }
 
 @section Styles {
@@ -21,99 +32,57 @@
     <section id="seccion_bienvenida">
         <div class="d-flex flex-column flex-md-row gap-3 mb-3 align-items-center">
             <div class="w-100 bg-infor">
-                <h2>Organiza tu viaje</h2>
+                <h2>@c.Texto(ContenidoSitioClaves.BienvenidaTitulo)</h2>
             </div>
 
             <div class="w-100 bg-alert">
-                <p>Menú de bienvenida</p>
-                <p>Empieza a disfrutar con FlyVibe Mex el viaje de tus sueños.</p>
+                <p style="white-space: pre-line">@c.Texto(ContenidoSitioClaves.BienvenidaTexto)</p>
             </div>
         </div>
         <div class="d-flex gap-2">
-            @* NOTA: ambos botones tienen href="#" sin acción.
-                NOTA : "Explorar opciones" → módulo Explorar y reservar; "Mis Viajes" → módulo Mis viajes (aún no existe). *@
             <a asp-controller="Home" asp-action="Paquetes" class="btn btn-hero-primary">Explorar opciones</a>
             <a asp-controller="Miusuario" asp-action="Misreservaciones" class="btn btn-hero-outline">Mis Viajes</a>
         </div>
     </section>
 
     @* ---- Tarjetas de categorías: Vuelos (Viajes), Paquetes, Hospedaje (Hoteles) y Tours ----
-         Cada botón es un enlace normal a la sección (asp-action).
-         
-         NOTA: falta la tarjeta de Vehículos (está en el mapa de sitio); Tours no está en el mapa de sitio.
-         NOTA: las imágenes son URL externas de Unsplash. *@
+         Título, texto e imagen de cada una se editan en el panel SA. NOTA: falta la tarjeta de Vehículos. *@
     <section id="seccion_general" class="mt-4">
         <div class="row g-4">
-            
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="card h-100 mi-tarjeta" id="Viajes_card">
-                    <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80"
-                         class="card-img-top" alt="Vuelos nacionales e internacionales">
-                    <div class="card-body">
-                        <h5 class="card-title">Conoce nuestros vuelos</h5>
-                        <p class="card-text">Vuela a los mejores destinos de México y el mundo con tarifas exclusivas.
-                        </p>
-                        <a asp-controller="Home" asp-action="Viajes" class="btn btn-card-action">Ver viajes</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="card h-100 mi-tarjeta" id="Paquete_card">
-                    <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"
-                         class="card-img-top" alt="Paquetes de viaje">
-                    <div class="card-body">
-                        <h5 class="card-title">Paquetes para ti</h5>
-                        <p class="card-text">Ahorra combinando Vuelo + Hotel con todo incluido para tus vacaciones.</p>
-                        <a asp-controller="Home" asp-action="Paquetes" class="btn btn-card-action">Ver
-                            paquetes</a>
-                        </div>
-                    </div>
-                </div>
-
+            @foreach (var (clave, idHtml, accion, boton) in tarjetas)
+            {
+                var titulo = c.Texto(ContenidoSitioClaves.TarjetaTitulo(clave));
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card h-100 mi-tarjeta" id="Hospedaje_card">
-                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Hoteles y hospedaje">
+                    <div class="card h-100 mi-tarjeta" id="@idHtml">
+                        <img src="@c.Imagen(ContenidoSitioClaves.TarjetaImagen(clave))" class="card-img-top object-fit-cover"
+                             style="height: 180px" alt="@titulo">
                         <div class="card-body">
-                            <h5 class="card-title">Duerme con comodidad</h5>
-                            <p class="card-text">Encuentra desde hoteles boutique hasta resorts de lujo frente al mar.</p>
-                            <a asp-controller="Home" asp-action="Hoteles" class="btn btn-card-action">Ver hoteles</a>
+                            <h5 class="card-title">@titulo</h5>
+                            <p class="card-text" style="white-space: pre-line">@c.Texto(ContenidoSitioClaves.TarjetaTexto(clave))</p>
+                            <a asp-controller="Home" asp-action="@accion" class="btn btn-card-action">@boton</a>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card h-100 mi-tarjeta" id="Tour_card">
-                        <img src="https://images.unsplash.com/photo-1512813195386-6cf811ad3542?auto=format&fit=crop&w=600&q=80"
-                             class="card-img-top" alt="Tours y experiencias">
-                        <div class="card-body">
-                            <h5 class="card-title">Tours y Experiencias</h5>
-                            <p class="card-text">Excursiones guiadas, actividades de aventura y visitas culturales
-                                inolvidables.</p>
-                                <a asp-controller="Home" asp-action="Tours" class="btn btn-card-action">Ver tours</a>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            @* ---- Banner de promociones (texto fijo). NOTA: alimentar desde las promociones vigentes y enlazar a la pantalla Promociones. *@
-            <section id="seccion_promociones" class="mt-4">
-                <div class="promo-content">
-                    <h2>La mejor promoción es la que no dejas pasar</h2>
-                    <p>Aprovecha hasta 12 meses sin intereses en paquetes seleccionados por temporada.</p>
-                </div>
-            </section>
-
-            @* ---- Bloque de contacto (texto fijo). NOTA: enlazar al módulo Soporte › Contactar a un asesor. *@
-            <section id="seccion_contactanos" class="mt-4">
-                <h2>¿Tienes alguna duda sobre tu viaje?</h2>
-                <p>Contáctanos directamente o genera una solicitud de asistencia y nuestro equipo te atenderá de inmediato.</p>
-            </section>
-
+            }
         </div>
+    </section>
+
+    @* ---- Banner de promociones (texto editable). Las promociones no se anuncian: el cliente escribe el código. *@
+    <section id="seccion_promociones" class="mt-4">
+        <div class="promo-content">
+            <h2>@c.Texto(ContenidoSitioClaves.PromoTitulo)</h2>
+            <p style="white-space: pre-line">@c.Texto(ContenidoSitioClaves.PromoTexto)</p>
+        </div>
+    </section>
+
+    @* ---- Bloque de contacto (texto editable) ---- *@
+    <section id="seccion_contactanos" class="mt-4">
+        <h2>@c.Texto(ContenidoSitioClaves.ContactoTitulo)</h2>
+        <p style="white-space: pre-line">@c.Texto(ContenidoSitioClaves.ContactoTexto)</p>
+        <a asp-controller="Solicitar" asp-action="Index" class="btn btn-outline-primary">Solicitar asistencia</a>
+    </section>
+
+</div>
 
 @section Scripts {
     <script src="~/assets/js/script_D.js"></script>

@@ -299,7 +299,7 @@ public class HomeController : Controller
                 esquemaCompleto = tablasConError == 0,
                 tablas,
                 mensaje = tablasConError == 0
-                    ? "Conexión correcta con Entity Framework Core y las 28 tablas coinciden con los modelos."
+                    ? "Conexión correcta con Entity Framework Core y las 29 tablas coinciden con los modelos."
                     : $"Conexión correcta, pero {tablasConError} tabla(s) no coinciden con los modelos. " +
                       "Vuelve a crear la base de prueba con sql/01_crear_base_datos.sql (y después 02 y 03)."
             });
@@ -362,6 +362,7 @@ public class HomeController : Controller
             ("solicitudes_soporte", Probar(db.SolicitudesSoporte)),
             ("mensajes_soporte", Probar(db.MensajesSoporte)),
             ("bitacora", Probar(db.Bitacora)),
+            ("contenido_sitio", Probar(db.ContenidoSitio)),
         };
 
         var resultado = new List<VerificacionTabla>(pruebas.Length);

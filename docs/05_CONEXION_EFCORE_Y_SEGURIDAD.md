@@ -25,12 +25,12 @@
 | `appsettings.json` | `"DatabaseMode": "Test"` y dos cadenas **de ejemplo** (`FlyVibeMex_Test`, `FlyVibeMex_Real`) con el marcador `__SERVIDOR__`. **No contienen servidores ni contraseñas reales.** |
 | `appsettings.Development.json` | Solo niveles de log (EF Core en `Warning`). No lleva cadenas de conexión. |
 | `Data/ConfiguracionBaseDatos.cs` | Lee `DatabaseMode` y elige la cadena correcta. Detecta si la cadena sigue siendo el marcador. |
-| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 28 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y fechas de control con `CURRENT_TIMESTAMP` por defecto. |
+| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 29 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y fechas de control con `CURRENT_TIMESTAMP` por defecto. |
 | `Services/IAuthService.cs`, `Services/AuthService.cs` | Servicio de autenticación seguro (LINQ parametrizado + `PasswordHasher<UsuariosGlobales>`). |
 | `Models/Auth/UsuarioSesion.cs` | DTO `UsuarioSesion` (id, nombre, correo, id_rol) y `ResultadoAutenticacion`. **Sin** `password_hash`. |
 | `Controllers/HomeController.cs` | Nueva acción `GET /Home/TestDb` (solo en Development). |
 | `Program.cs` | Registro del `DbContext` (Test/Real, `EnableRetryOnFailure`, `EnableSensitiveDataLogging(false)`) y de los servicios. |
-| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` con sus 28 tablas (nombres de columna = nombres de propiedad), los catálogos que la app necesita y la cuenta inicial SA. |
+| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` con sus 29 tablas (nombres de columna = nombres de propiedad), los catálogos que la app necesita y la cuenta inicial SA. |
 | `sql/02_procedimientos_almacenados.sql` | Procedimientos almacenados `pa_*` (mismas reglas que la app; la app no los usa). |
 | `sql/03_seed_demo.sql` | Datos de demostración coherentes (cuentas de prueba, catálogo, disponibilidad, promociones, reservaciones, pagos, reembolso y tickets). |
 | `.gitignore` | Ahora ignora `bin/`, `obj/`, `.vs/`, `*.user`, `*.suo`, `appsettings.*.local.json`, `.env`, `secrets.json`. |
@@ -49,7 +49,7 @@ Requisitos: SQL Server (Developer, Express o LocalDB) y SQL Server Management St
    - LocalDB (viene con Visual Studio): `(localdb)\MSSQLLocalDB`
    - Autenticación: **Windows Authentication**.
 2. `Archivo › Abrir › Archivo…` y selecciona `sql/01_crear_base_datos.sql`.
-3. Presiona **F5** (Ejecutar). Al final debe decir `tablas_creadas = 28` y el conteo de catálogos (5 roles, 5 estados de reservación, 4 estados de pago, 3 métodos de pago y 1 usuario).
+3. Presiona **F5** (Ejecutar). Al final debe decir `tablas_creadas = 29` y el conteo de catálogos (5 roles, 5 estados de reservación, 4 estados de pago, 3 métodos de pago y 1 usuario).
 4. Abre y ejecuta (F5) `sql/02_procedimientos_almacenados.sql`. Al final verás la lista de procedimientos `pa_*`.
 5. Abre y ejecuta (F5) `sql/03_seed_demo.sql`. Al final verás los usuarios por rol, el conteo por tabla y las promociones vigentes (`BIENVENIDA10`, `CARIBE500`).
 

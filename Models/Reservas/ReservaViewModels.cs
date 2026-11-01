@@ -63,6 +63,9 @@ namespace FlyVibeMex.Models
         [StringLength(40, ErrorMessage = "Máximo 40 caracteres.")]
         public string? alias { get; set; }
 
+        /// <summary>Banco de la tarjeta nueva (opcional; uno de los activos que administra el SA).</summary>
+        public ulong? id_institucion { get; set; }
+
         /// <summary>Si es <c>false</c>, la tarjeta se guarda oculta (activo = 0) solo porque el pago necesita su id.</summary>
         public bool guardar_tarjeta { get; set; } = true;
 
@@ -108,6 +111,8 @@ namespace FlyVibeMex.Models
 
         public List<SelectListItem> Metodos { get; set; } = new();
         public List<TarjetaGuardada> Tarjetas { get; set; } = new();
+        /// <summary>Bancos activos para la tarjeta nueva (opcional).</summary>
+        public List<SelectListItem> Bancos { get; set; } = new();
 
         /// <summary>Mensaje general (p. ej. "el precio cambió").</summary>
         [BindNever] public string? Aviso { get; set; }

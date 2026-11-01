@@ -1,0 +1,109 @@
+@* GET /Admin/SA/Contenido?seccion=inicio|politicas|pie (SAController.Contenido): textos e imágenes del sitio.
+   Texto plano: los saltos de línea se respetan y nunca se interpreta como HTML. "Restaurar el original" borra lo
+   personalizado (tabla contenido_sitio) y vuelve el texto por defecto (Models/ContenidoSitioClaves.cs). *@
+@model ContenidoSeccionViewModel
+@{
+    ViewData["Title"] = "Contenido del sitio";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var (verUrl, verTexto) = Model.Seccion switch
+    {
+        ContenidoSitioClaves.SeccionPoliticas => (Url.Action("Politicas", "Otros"), "Ver Políticas"),
+        _ => (Url.Action("Index", "Home"), "Ver el Inicio")
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Contenido del sitio</h1>
+        <p class="text-muted mb-0">Los cambios se ven en el sitio al guardar (texto plano; los saltos de línea se respetan).</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="@verUrl" target="_blank" rel="noopener">@verTexto ↗</a>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    @foreach (var (valor, texto) in ContenidoSeccionViewModel.Secciones)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(Model.Seccion == valor ? "active" : "")" asp-action="Contenido" asp-route-seccion="@valor">@texto</a>
+        </li>
+    }
+</ul>
+
+<div class="d-flex flex-column gap-3" style="max-width: 900px">
+    @foreach (var c in Model.Campos)
+    {
+        var d = c.Definicion;
+        var idCampo = $"campo_{d.Clave.Replace('.', '_')}";
+        var idControl = $"control_{d.Clave.Replace('.', '_')}";
+        <div class="card" id="@idCampo">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <h2 class="h6 mb-0">@d.Etiqueta</h2>
+                        <div class="small text-muted font-monospace">@d.Clave</div>
+                    </div>
+                    @if (c.Personalizado)
+                    {
+                        <span class="badge text-bg-primary">
+                            Personalizado @(c.actualizado_por is null ? "" : $"por {c.actualizado_por}")
+                            @(c.actualizado_en?.ToString("dd/MM/yyyy HH:mm", es))
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-light border">Original</span>
+                    }
+                </div>
+
+                @if (d.EsImagen)
+                {
+                    <img src="@c.ImagenActual" alt="@d.Etiqueta" class="rounded border mb-2 object-fit-cover" style="width: 240px; height: 140px" />
+                    <form asp-action="GuardarImagenContenido" method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+                        <input type="hidden" name="clave" value="@d.Clave" />
+                        <input type="hidden" name="seccion" value="@Model.Seccion" />
+                        <input id="@idControl" type="file" name="imagen" accept="image/jpeg,image/png,image/webp" class="form-control form-control-sm"
+                               style="max-width: 360px" required aria-label="@($"Nueva imagen para {d.Etiqueta}")" />
+                        <button type="submit" class="btn btn-sm btn-primary">Subir imagen</button>
+                    </form>
+                    <div class="form-text">JPG, PNG o WEBP, máximo 2 MB.</div>
+                }
+                else
+                {
+                    <form asp-action="GuardarTextoContenido" method="post">
+                        <input type="hidden" name="clave" value="@d.Clave" />
+                        <input type="hidden" name="seccion" value="@Model.Seccion" />
+                        @if (d.Multilinea)
+                        {
+                            <textarea id="@idControl" name="texto" class="form-control mb-2" maxlength="@d.Maximo"
+                                      rows="@(d.Maximo > 1000 ? 10 : 3)" aria-label="@d.Etiqueta">@c.TextoActual</textarea>
+                        }
+                        else
+                        {
+                            <input id="@idControl" name="texto" class="form-control mb-2" maxlength="@d.Maximo" value="@c.TextoActual" aria-label="@d.Etiqueta" />
+                        }
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                            <span class="small text-muted">Máximo @d.Maximo caracteres.</span>
+                        </div>
+                    </form>
+                    if (c.Personalizado)
+                    {
+                        <details class="mt-2">
+                            <summary class="small">Ver el texto original</summary>
+                            <div class="small text-muted border rounded p-2 mt-1" style="white-space: pre-line">@d.Defecto</div>
+                        </details>
+                    }
+                }
+
+                @if (c.Personalizado)
+                {
+                    <form asp-action="RestaurarContenido" method="post" class="mt-2">
+                        <input type="hidden" name="clave" value="@d.Clave" />
+                        <input type="hidden" name="seccion" value="@Model.Seccion" />
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Restaurar el original</button>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+</div>

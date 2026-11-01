@@ -1,16 +1,87 @@
+@* GET /Admin/SA (SAController.Index): contadores del panel y últimas acciones de la bitácora. *@
+@model InicioSAViewModel
 @{
     ViewData["Title"] = "SA";
 }
 
 <div class="p-4 mb-4 bg-light border rounded-3">
     <h1 class="h2">Panel del SA</h1>
-    <p class="lead mb-1">Bienvenido al panel de administración general.</p>
-    <p class="mb-0 text-muted">
-        Desde esta sección se supervisará la operación de toda la plataforma.
-    </p>
+    <p class="lead mb-1">Administración general de la plataforma.</p>
+    <p class="mb-0 text-muted">Usuarios y roles, catálogos base, bitácora y contenido del sitio.</p>
 </div>
 
-<div class="alert alert-info">
-    <strong>Sección en construcción.</strong> Las herramientas del SA todavía se están definiendo
-    y se irán agregando en este panel.
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">Cuentas por rol</h2>
+                <table class="table table-sm mb-2">
+                    <thead><tr><th>Rol</th><th class="text-end">Activas</th><th class="text-end">Inactivas</th></tr></thead>
+                    <tbody>
+                        @foreach (var (rol, activas, inactivas) in Model.CuentasPorRol)
+                        {
+                            <tr>
+                                <td><a asp-action="Usuarios" asp-route-rol="@rol" asp-route-estado="todos">@rol</a></td>
+                                <td class="text-end">@activas</td>
+                                <td class="text-end">@inactivas</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary btn-sm" asp-action="AltaUsuario">+ Cuenta interna</a>
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Usuarios" asp-route-estado="inactivos">
+                        Inactivas <span class="badge text-bg-light">@Model.CuentasInactivas</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h6">Catálogos base</h2>
+                        <ul class="list-unstyled mb-0">
+                            <li><a asp-action="Ubicaciones">Ubicaciones</a></li>
+                            <li><a asp-action="MetodosPago">Métodos de pago</a></li>
+                            <li><a asp-action="Bancos">Bancos</a></li>
+                            <li><a asp-action="ListaRoles">Roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h6">Contenido del sitio</h2>
+                        <p class="small text-muted">Textos e imágenes del Inicio, Políticas y pie de página.</p>
+                        <a class="btn btn-outline-primary btn-sm" asp-action="Contenido">Editar contenido</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="h6 mb-1">Bitácora</h2>
+                            <div class="small text-muted"><strong>@Model.CambiosHoy</strong> cambio(s) hoy en el panel.</div>
+                        </div>
+                        <a class="btn btn-outline-primary btn-sm" asp-action="Bitacora">Ver bitácora</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<h2 class="h5">Últimas acciones</h2>
+@if (Model.Ultimos.Count == 0)
+{
+    <p class="text-muted">Todavía no hay registros en la bitácora.</p>
+}
+else
+{
+    <partial name="~/Views/Admin/SA/_TablaBitacora.cshtml" model="Model.Ultimos" />
+}

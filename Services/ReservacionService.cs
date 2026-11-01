@@ -79,6 +79,7 @@ public sealed class ReservacionService : IReservacionService
             .ToListAsync(cancellationToken);
 
         vm.Tarjetas = await TarjetasVigentesAsync(idUsuario, cancellationToken);
+        vm.Bancos = await BancosCatalogo.OpcionesAsync(_db, solicitud.id_institucion, cancellationToken);
         return vm;
     }
 
@@ -140,6 +141,8 @@ public sealed class ReservacionService : IReservacionService
         else
         {
             var errores = PasarelaSimulada.ValidarTarjetaNueva(pago, hoy);
+            if (!await BancosCatalogo.EsValidoAsync(_db, pago.id_institucion, cancellationToken))
+                errores.Add((nameof(pago.id_institucion), "Elige un banco de la lista o déjalo vacío."));
             if (errores.Count > 0) return new ResultadoPago { Errores = errores };
 
             var digitos = PasarelaSimulada.SoloDigitos(pago.numero_tarjeta);
@@ -147,7 +150,7 @@ public sealed class ReservacionService : IReservacionService
             tarjetaNueva = new TarjetasUsuarios
             {
                 id_usuariog = idUsuario,
-                id_institucion = null,
+                id_institucion = pago.id_institucion,
                 token_referencia = PasarelaSimulada.NuevoToken(),
                 marca = PasarelaSimulada.Marca(digitos)!,
                 ultimos4 = ultimos4,
@@ -228,7 +231,7 @@ public sealed class ReservacionService : IReservacionService
             var copia = new TarjetasUsuarios
             {
                 id_usuariog = tarjetaNueva.id_usuariog,
-                id_institucion = null,
+                id_institucion = tarjetaNueva.id_institucion,
                 token_referencia = tarjetaNueva.token_referencia,
                 marca = tarjetaNueva.marca,
                 ultimos4 = tarjetaNueva.ultimos4,

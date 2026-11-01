@@ -225,6 +225,16 @@
                                     <input type="text" id="alias" name="alias" class="form-control" maxlength="40" value="@s.alias" placeholder="Ej. Mi débito">
                                     <div class="text-danger small">@Error("alias")</div>
                                 </div>
+                                @if (Model.Bancos.Count > 0)
+                                {
+                                    <div class="mb-2">
+                                        <label for="id_institucion" class="form-label">Banco (opcional)</label>
+                                        <select id="id_institucion" name="id_institucion" class="form-select" asp-items="Model.Bancos">
+                                            <option value="">No lo sé / prefiero no decirlo</option>
+                                        </select>
+                                        <div class="text-danger small">@Error("id_institucion")</div>
+                                    </div>
+                                }
                                 <div class="form-check">
                                     @* El hidden va DESPUÉS: si la casilla está marcada se envía "true,false" y gana el primero. *@
                                     <input class="form-check-input" type="checkbox" id="guardar_tarjeta" name="guardar_tarjeta" value="true"

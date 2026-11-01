@@ -49,6 +49,10 @@
                                 <div>
                                     <div class="fw-bold">@t.marca •••• @t.ultimos4</div>
                                     <div class="text-muted small">@(t.alias ?? "Sin alias")</div>
+                                    @if (t.banco is not null)
+                                    {
+                                        <div class="text-muted small">@t.banco</div>
+                                    }
                                 </div>
                                 @if (t.vigente)
                                 {
@@ -150,6 +154,16 @@
                                 <input asp-for="Nueva.alias" class="form-control" maxlength="40" placeholder="Ej. Tarjeta de viajes" />
                                 <span asp-validation-for="Nueva.alias" class="text-danger small"></span>
                             </div>
+                            @if (Model.Bancos.Count > 0)
+                            {
+                                <div class="col-12 col-md-8">
+                                    <label asp-for="Nueva.id_institucion" class="form-label">Banco <span class="text-muted">(opcional)</span></label>
+                                    <select asp-for="Nueva.id_institucion" asp-items="Model.Bancos" class="form-select">
+                                        <option value="">No lo sé / prefiero no decirlo</option>
+                                    </select>
+                                    <span asp-validation-for="Nueva.id_institucion" class="text-danger small"></span>
+                                </div>
+                            }
                         </div>
                         <button type="submit" class="btn btn-primary mt-3">Guardar tarjeta</button>
                     </form>

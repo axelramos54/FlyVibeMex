@@ -6,7 +6,9 @@ public enum CarpetaImagen
     Hospedajes,
     Vehiculos,
     Paquetes,
-    Usuarios
+    Usuarios,
+    /// <summary>Imágenes del contenido del sitio que edita el SA (tarjetas del Inicio).</summary>
+    Contenido
 }
 
 /// <summary>

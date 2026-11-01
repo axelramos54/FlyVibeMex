@@ -1,0 +1,106 @@
+@* GET /Admin/SA/Usuarios (SAController.Usuarios): todas las cuentas con filtros por texto, rol y estado. *@
+@model ListaUsuariosViewModel
+@{
+    ViewData["Title"] = "Usuarios";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var f = Model.Filtro;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Usuarios</h1>
+        <p class="text-muted mb-0">Clientes y personal. Las cuentas no se borran: se desactivan.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="AltaUsuario">+ Cuenta interna</a>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    @foreach (var (valor, texto) in ListaUsuariosViewModel.Estados)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(f.estado == valor ? "active" : "")" asp-action="Usuarios"
+               asp-route-estado="@valor" asp-route-rol="@f.rol" asp-route-texto="@f.texto">@texto</a>
+        </li>
+    }
+</ul>
+
+<form method="get" asp-action="Usuarios" class="card card-body mb-3">
+    <input type="hidden" name="estado" value="@f.estado" />
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label for="texto" class="form-label">Buscar</label>
+            <input id="texto" name="texto" value="@f.texto" class="form-control" maxlength="150" placeholder="Nombre, correo o teléfono" />
+        </div>
+        <div class="col-md-3">
+            <label for="rol" class="form-label">Rol</label>
+            <select id="rol" name="rol" class="form-select" asp-items="Model.Roles">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">No hay cuentas que coincidan con el filtro.</div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Total cuenta(s) · página @f.pagina de @Model.Paginas</p>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Alta</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Resultados)
+                {
+                    <tr class="@(u.activo ? "" : "table-secondary")">
+                        <td>@u.nombre</td>
+                        <td class="small">@u.correo</td>
+                        <td class="small text-nowrap">@u.telefono</td>
+                        <td><span class="badge @(u.rol == Roles.Cliente ? "text-bg-light border" : "text-bg-primary")">@u.rol</span></td>
+                        <td>
+                            @if (u.activo)
+                            {
+                                <span class="badge text-bg-success">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactiva</span>
+                            }
+                        </td>
+                        <td class="small text-nowrap">@u.creado_en.ToString("dd/MM/yyyy", es)</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Usuario" asp-route-id="@u.id">Abrir</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    if (Model.Paginas > 1)
+    {
+        <nav aria-label="Páginas">
+            <ul class="pagination flex-wrap">
+                @for (var p = 1; p <= Model.Paginas; p++)
+                {
+                    <li class="page-item @(p == f.pagina ? "active" : "")">
+                        <a class="page-link" asp-action="Usuarios" asp-route-estado="@f.estado" asp-route-rol="@f.rol"
+                           asp-route-texto="@f.texto" asp-route-pagina="@p">@p</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

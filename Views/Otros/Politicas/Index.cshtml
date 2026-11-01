@@ -1,5 +1,36 @@
+@*
+ Vista: Views/Otros/Politicas/Index.cshtml — GET /Otros/Politicas (OtrosController.Politicas)
+ Términos, privacidad y cancelaciones. Los textos los edita el SA en Contenido del sitio › Políticas
+ (texto plano: los saltos de línea se respetan; Razor codifica el texto, así que no se puede inyectar HTML).
+*@
+@inject IContenidoSitioService ContenidoServicio
 @{
     ViewData["Title"] = "Políticas";
+    var c = await ContenidoServicio.ObtenerAsync();
+    var secciones = new[]
+    {
+        ("terminos", "Términos y condiciones", ContenidoSitioClaves.PoliticasTerminos),
+        ("privacidad", "Aviso de privacidad", ContenidoSitioClaves.PoliticasPrivacidad),
+        ("cancelaciones", "Cancelaciones y reembolsos", ContenidoSitioClaves.PoliticasCancelaciones)
+    };
 }
 
-   <h2>Politicas</h2>
+<div class="container mt-4 mb-5" style="max-width: 900px">
+    <h1 class="h2 mb-3">Políticas</h1>
+    <p class="lead" style="white-space: pre-line">@c.Texto(ContenidoSitioClaves.PoliticasIntro)</p>
+
+    <nav class="mb-4" aria-label="Secciones de las políticas">
+        @foreach (var (ancla, titulo, _) in secciones)
+        {
+            <a class="me-3" href="#@ancla">@titulo</a>
+        }
+    </nav>
+
+    @foreach (var (ancla, titulo, clave) in secciones)
+    {
+        <section id="@ancla" class="mb-4">
+            <h2 class="h4">@titulo</h2>
+            <div style="white-space: pre-line">@c.Texto(clave)</div>
+        </section>
+    }
+</div>

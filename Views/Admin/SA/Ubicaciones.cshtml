@@ -1,0 +1,95 @@
+@* GET /Admin/SA/Ubicaciones (SAController.Ubicaciones): ciudades del catálogo con cuántos proveedores, servicios
+   y paquetes las usan. Desactivar pide confirmación (Ubicaciones/{id}/Baja). *@
+@model ListaUbicacionesViewModel
+@{
+    ViewData["Title"] = "Ubicaciones";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Ubicaciones</h1>
+        <p class="text-muted mb-0">Ciudades donde están los proveedores y los servicios. Una ubicación inactiva oculta sus servicios del catálogo.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="AltaUbicacion">+ Agregar ubicación</a>
+</div>
+
+<form method="get" asp-action="Ubicaciones" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label for="texto" class="form-label">Buscar</label>
+            <input id="texto" name="texto" value="@Model.Texto" class="form-control" maxlength="100" placeholder="Ciudad, estado o código postal" />
+        </div>
+        <div class="col-md-3">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="incluirInactivas" name="incluirInactivas" value="true" checked="@Model.IncluirInactivas" />
+                <label class="form-check-label" for="incluirInactivas">Incluir inactivas</label>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">No hay ubicaciones que coincidan con el filtro.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Ciudad</th>
+                    <th>Estado</th>
+                    <th>C.P.</th>
+                    <th class="text-end">Proveedores</th>
+                    <th class="text-end">Servicios activos</th>
+                    <th class="text-end">Paquetes</th>
+                    <th>Estado</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Resultados)
+                {
+                    <tr class="@(u.activo ? "" : "table-secondary")">
+                        <td class="fw-semibold">@u.municipio_ciudad</td>
+                        <td class="small">@u.estado, @u.pais</td>
+                        <td class="small">@u.codigo_postal</td>
+                        <td class="text-end">@u.proveedores</td>
+                        <td class="text-end">@u.servicios</td>
+                        <td class="text-end">@u.paquetes</td>
+                        <td>
+                            @if (u.activo)
+                            {
+                                <span class="badge text-bg-success">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactiva</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="EditarUbicacion" asp-route-id="@u.id">Editar</a>
+                                @if (u.activo)
+                                {
+                                    <a class="btn btn-sm btn-outline-danger" asp-action="BajaUbicacion" asp-route-id="@u.id">Desactivar</a>
+                                }
+                                else
+                                {
+                                    <form asp-action="CambiarEstadoUbicacion" asp-route-id="@u.id" method="post" class="d-inline">
+                                        <input type="hidden" name="activo" value="true" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Activar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

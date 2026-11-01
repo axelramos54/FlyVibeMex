@@ -213,8 +213,10 @@ public class MiusuarioController : Controller
         {
             mes_expiracion = nueva.mes_expiracion,
             anio_expiracion = nueva.anio_expiracion,
-            alias = nueva.alias
+            alias = nueva.alias,
+            id_institucion = nueva.id_institucion
         };
+        vm.Bancos.ForEach(b => b.Selected = b.Value == nueva.id_institucion?.ToString());
         ViewData["AbrirFormulario"] = true;
         return View("Mistarjetas/index", vm);
     }

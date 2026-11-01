@@ -1,0 +1,37 @@
+@* Tabla de registros de la bitácora (inicio del SA, Bitácora y detalle de un usuario). *@
+@model List<BitacoraItem>
+@{
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Fecha</th>
+                <th>Quién</th>
+                <th>Acción</th>
+                <th>Entidad</th>
+                <th>Detalle</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var b in Model)
+            {
+                <tr>
+                    <td class="small text-nowrap">@b.fecha.ToString("dd/MM/yyyy HH:mm:ss", es)</td>
+                    <td class="small">
+                        @b.usuario
+                        @if (b.rol is not null)
+                        {
+                            <div class="text-muted">@b.rol</div>
+                        }
+                    </td>
+                    <td><span class="badge text-bg-light border">@b.accion</span></td>
+                    <td class="small text-nowrap">@b.entidad @(b.id_entidad is null ? "" : $"#{b.id_entidad}")</td>
+                    <td class="small text-break" style="max-width: 480px">@b.detalle</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

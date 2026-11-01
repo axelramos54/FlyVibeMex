@@ -1,0 +1,76 @@
+@* GET /Admin/SA/Bitacora (SAController.Bitacora): quién cambió qué y cuándo, con filtros. Solo lectura. *@
+@model ListaBitacoraViewModel
+@{
+    ViewData["Title"] = "Bitácora";
+    var f = Model.Filtro;
+    var desde = f.desde?.ToString("yyyy-MM-dd");
+    var hasta = f.hasta?.ToString("yyyy-MM-dd");
+}
+
+<h1 class="h3 mb-1">Bitácora</h1>
+<p class="text-muted">Todo lo que se cambia en el panel (Gestor de ventas, Soporte, Reservaciones y SA) queda aquí.</p>
+
+<form method="get" asp-action="Bitacora" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label for="desde" class="form-label">Desde</label>
+            <input id="desde" name="desde" type="date" value="@desde" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label for="hasta" class="form-label">Hasta</label>
+            <input id="hasta" name="hasta" type="date" value="@hasta" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label for="usuario" class="form-label">Usuario</label>
+            <select id="usuario" name="usuario" class="form-select" asp-items="Model.Usuarios">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="entidad" class="form-label">Entidad</label>
+            <select id="entidad" name="entidad" class="form-select" asp-items="Model.Entidades">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="accion" class="form-label">Acción</label>
+            <select id="accion" name="accion" class="form-select" asp-items="Model.Acciones">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="col-md-9">
+            <label for="texto" class="form-label">El detalle contiene</label>
+            <input id="texto" name="texto" value="@f.texto" class="form-control" maxlength="100" placeholder="Ej. FV-2609, Cancún, BIENVENIDA10" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+            <a class="btn btn-outline-secondary" asp-action="Bitacora">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultados.Count == 0)
+{
+    <div class="alert alert-info">No hay registros con esos filtros.</div>
+}
+else
+{
+    <p class="text-muted small mb-2">@Model.Total registro(s) · página @f.pagina de @Model.Paginas</p>
+    <partial name="~/Views/Admin/SA/_TablaBitacora.cshtml" model="Model.Resultados" />
+
+    if (Model.Paginas > 1)
+    {
+        <nav aria-label="Páginas">
+            <ul class="pagination flex-wrap">
+                @for (var p = 1; p <= Model.Paginas; p++)
+                {
+                    <li class="page-item @(p == f.pagina ? "active" : "")">
+                        <a class="page-link" asp-action="Bitacora" asp-route-desde="@desde" asp-route-hasta="@hasta"
+                           asp-route-usuario="@f.usuario" asp-route-entidad="@f.entidad" asp-route-accion="@f.accion"
+                           asp-route-texto="@f.texto" asp-route-pagina="@p">@p</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

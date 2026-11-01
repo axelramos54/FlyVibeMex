@@ -1,0 +1,62 @@
+@* GET /Admin/SA/MetodosPago (SAController.MetodosPago): nombre visible, descripción y si se ofrece al pagar.
+   No se crean métodos nuevos: la pasarela simulada solo cobra como tarjeta. Debe quedar al menos uno activo. *@
+@model List<MetodoPagoListadoItem>
+@{
+    ViewData["Title"] = "Métodos de pago";
+}
+
+<h1 class="h3 mb-1">Métodos de pago</h1>
+<p class="text-muted">
+    Lo que el cliente elige en el resumen de compra. El cobro es simulado y siempre se hace con tarjeta; por eso aquí
+    solo se edita cómo se muestra cada método y si se ofrece.
+</p>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Método</th>
+                <th>Descripción</th>
+                <th class="text-end">Pagos</th>
+                <th>Estado</th>
+                <th class="text-end"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in Model)
+            {
+                <tr class="@(m.activo ? "" : "table-secondary")">
+                    <td class="fw-semibold">@m.nombre</td>
+                    <td class="small">@(m.descripcion ?? "—")</td>
+                    <td class="text-end">@m.pagos</td>
+                    <td>
+                        @if (m.activo)
+                        {
+                            <span class="badge text-bg-success">Se ofrece</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">No se ofrece</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="EditarMetodoPago" asp-route-id="@m.id">Editar</a>
+                            <form asp-action="CambiarEstadoMetodoPago" asp-route-id="@m.id" method="post" class="d-inline">
+                                <input type="hidden" name="activo" value="@(m.activo ? "false" : "true")" />
+                                @if (m.activo)
+                                {
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Desactivar</button>
+                                }
+                                else
+                                {
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Activar</button>
+                                }
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

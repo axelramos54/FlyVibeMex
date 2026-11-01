@@ -1,0 +1,50 @@
+@* GET /Admin/SA/Ubicaciones/{id}/Baja (SAController.BajaUbicacion): avisa qué dejará de aparecer en el catálogo antes
+   de desactivar. Se permite aunque la usen servicios activos (decisión de la fase D). *@
+@model BajaUbicacionViewModel
+@{
+    var u = Model.Ubicacion;
+    ViewData["Title"] = "Desactivar ubicación";
+    var afectados = u.servicios + u.paquetes;
+}
+
+<h1 class="h3 mb-3">Desactivar @u.municipio_ciudad, @u.estado</h1>
+
+<div class="card @(afectados > 0 ? "border-warning" : "")" style="max-width: 760px">
+    <div class="card-body">
+        @if (afectados == 0 && u.proveedores == 0)
+        {
+            <p>Nadie usa esta ubicación: desactivarla no cambia nada en el catálogo.</p>
+        }
+        else
+        {
+            <p>
+                <strong>@afectados servicio(s) o paquete(s) activo(s)</strong> dejarán de aparecer en el catálogo mientras esté
+                inactiva (no se borran ni se dan de baja; vuelven al reactivarla).
+                @if (u.proveedores > 0)
+                {
+                    <span>También la usan <strong>@u.proveedores</strong> proveedor(es) activo(s) como dirección.</span>
+                }
+            </p>
+            if (Model.Ejemplos.Count > 0)
+            {
+                <ul class="small">
+                    @foreach (var e in Model.Ejemplos)
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+                if (afectados > Model.Ejemplos.Count)
+                {
+                    <p class="small text-muted">… y @(afectados - Model.Ejemplos.Count) más.</p>
+                }
+            }
+            <p class="small text-muted mb-0">Las compras ya hechas no cambian.</p>
+        }
+
+        <form asp-action="CambiarEstadoUbicacion" asp-route-id="@u.id" method="post" class="d-flex gap-2 mt-3">
+            <input type="hidden" name="activo" value="false" />
+            <button type="submit" class="btn btn-danger">Sí, desactivar</button>
+            <a class="btn btn-outline-secondary" asp-action="Ubicaciones">Cancelar</a>
+        </form>
+    </div>
+</div>

@@ -13,6 +13,11 @@
  no servía el botón Atrás y los <script> de cada sección no se ejecutaban. Ahora cada sección es una página con su URL.
  ============================================================================================
 *@
+@inject IContenidoSitioService ContenidoServicio
+@{
+    // Contenido editable por el SA (en caché; si la BD no responde se usan los textos por defecto).
+    var contenidoSitio = await ContenidoServicio.ObtenerAsync();
+}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -55,7 +60,8 @@
     </main>
 
     <footer>
-        <p class="mb-1">&copy; @DateTime.Now.Year FlyVibeMex · Proyecto integrador</p>
+        @* Texto editable por el SA (Contenido del sitio › Pie de página); el año se pone solo. *@
+        <p class="mb-1" style="white-space: pre-line">&copy; @DateTime.Now.Year @contenidoSitio.Texto(ContenidoSitioClaves.PieTexto)</p>
         <a asp-controller="Otros" asp-action="Politicas" class="text-reset">Políticas</a>
     </footer>
 

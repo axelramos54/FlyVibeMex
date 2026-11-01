@@ -98,7 +98,7 @@ El proyecto **no usa migraciones de EF Core**: el esquema vive en `sql/` y los m
 
 | Script | Qué hace |
 |---|---|
-| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` y **borra y vuelve a crear** sus 28 tablas (PK, FK, CHECK, índices) con los catálogos que la app necesita (roles, estados de reservación y pago, métodos de pago) y la cuenta inicial `sa.prueba@flyvibemex.test` |
+| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` y **borra y vuelve a crear** sus 29 tablas (PK, FK, CHECK, índices) con los catálogos que la app necesita (roles, estados de reservación y pago, métodos de pago) y la cuenta inicial `sa.prueba@flyvibemex.test` |
 | `sql/02_procedimientos_almacenados.sql` | 24 procedimientos `pa_*` con las mismas reglas que la app: altas del catálogo (proveedor, hospedaje, vehículo, tour, vuelo con "repetir"), disponibilidad, compra con pago simulado, cancelación y reembolsos, tickets, y reportes (ventas, ocupación, reembolsos pendientes, tickets, bitácora). La app **no** los usa (sigue con EF Core); al final del archivo hay ejemplos para SSMS |
 | `sql/03_seed_demo.sql` | Datos de demostración: 7 cuentas de prueba (una por rol), ubicaciones, proveedores, servicios con subtipo, 30 días de disponibilidad, promociones, reservaciones, pagos, reembolso y tickets |
 

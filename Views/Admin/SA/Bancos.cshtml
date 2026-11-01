@@ -1,0 +1,75 @@
+@* GET /Admin/SA/Bancos (SAController.Bancos): instituciones financieras que el cliente puede elegir (opcional) al
+   guardar una tarjeta. Desactivar un banco no cambia las tarjetas que ya lo tienen. *@
+@model List<InstitucionListadoItem>
+@{
+    ViewData["Title"] = "Bancos";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Bancos</h1>
+        <p class="text-muted mb-0">El cliente puede elegir su banco (opcional) al guardar una tarjeta en Mis tarjetas o al pagar.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="AltaBanco">+ Agregar banco</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No hay bancos. <a asp-action="AltaBanco" class="alert-link">Agrega uno</a>.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Banco</th>
+                    <th>Clave</th>
+                    <th>Código internacional</th>
+                    <th>Teléfono</th>
+                    <th class="text-end">Tarjetas</th>
+                    <th>Estado</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr class="@(b.activo ? "" : "table-secondary")">
+                        <td class="fw-semibold">@b.nombre</td>
+                        <td class="small font-monospace">@(b.clave_institucion ?? "—")</td>
+                        <td class="small font-monospace">@(b.codigo_internacional ?? "—")</td>
+                        <td class="small">@(b.telefono ?? "—")</td>
+                        <td class="text-end">@b.tarjetas</td>
+                        <td>
+                            @if (b.activo)
+                            {
+                                <span class="badge text-bg-success">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactivo</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="EditarBanco" asp-route-id="@b.id">Editar</a>
+                                <form asp-action="CambiarEstadoBanco" asp-route-id="@b.id" method="post" class="d-inline">
+                                    <input type="hidden" name="activo" value="@(b.activo ? "false" : "true")" />
+                                    @if (b.activo)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Activar</button>
+                                    }
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -22,6 +22,7 @@
        Altas del catálogo   pa_alta_proveedor, pa_alta_hospedaje, pa_alta_vehiculo, pa_alta_evento, pa_alta_vuelo
        Operaciones          pa_ajustar_disponibilidad, pa_cancelar_reservacion, pa_resolver_reembolso,
                             pa_tomar_ticket, pa_responder_ticket, pa_reasignar_ticket, pa_cerrar_ticket
+       Usuarios (SA)        pa_cambiar_rol_usuario, pa_cambiar_estado_usuario
        Compra               pa_crear_reservacion_pago
        Consultas/reportes   pa_buscar_disponibilidad, pa_detalle_reservacion, pa_reservaciones_cliente,
                             pa_reporte_ventas, pa_reporte_ocupacion, pa_reembolsos_pendientes,
@@ -938,6 +939,88 @@ END
 GO
 
 /* =====================================================================================
+   USUARIOS (solo SA), igual que Services/SAUsuariosService.cs:
+   - El SA no puede cambiarse el rol ni desactivarse a sí mismo.
+   - Siempre debe quedar al menos un SA activo.
+   ===================================================================================== */
+
+/* Cambia el rol de una cuenta (CLIENTE, SOPORTE, AGENTE, ADMINISTRADOR o SA). */
+CREATE OR ALTER PROCEDURE dbo.pa_cambiar_rol_usuario
+    @id_usuario BIGINT,          -- el SA que hace el cambio
+    @id_cuenta  BIGINT,          -- la cuenta que cambia
+    @rol        VARCHAR(30)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    EXEC dbo.pa_interno_validar_rol @id_usuario, 'SA';
+
+    IF @id_cuenta = @id_usuario THROW 51110, N'No puedes cambiar tu propio rol.', 1;
+
+    DECLARE @id_rol BIGINT = (SELECT id FROM dbo.roles_usuarios WHERE nombre = @rol AND activo = 1);
+    IF @id_rol IS NULL THROW 51111, N'El rol no existe o está inactivo.', 1;
+
+    DECLARE @rol_actual VARCHAR(30), @activo BIT;
+    SELECT @rol_actual = r.nombre, @activo = u.activo
+    FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol
+    WHERE u.id = @id_cuenta;
+    IF @rol_actual IS NULL THROW 51112, N'La cuenta no existe.', 1;
+    IF @rol_actual = @rol  THROW 51113, N'La cuenta ya tiene ese rol.', 1;
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.usuarios SET id_rol = @id_rol WHERE id = @id_cuenta;
+
+        -- Si era SA activo, debe quedar otro SA activo.
+        IF @rol_actual = 'SA' AND @activo = 1 AND NOT EXISTS (
+            SELECT 1 FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol
+            WHERE r.nombre = 'SA' AND u.activo = 1)
+            THROW 51114, N'Debe quedar al menos un SA activo.', 1;
+
+        DECLARE @detalle NVARCHAR(500) = CONCAT(N'Rol de la cuenta ', @id_cuenta, N': ', @rol_actual, N' -> ', @rol, N'.');
+        EXEC dbo.pa_interno_registrar_bitacora @id_usuario, N'CAMBIAR_ROL', N'usuarios', @id_cuenta, @detalle;
+    COMMIT TRANSACTION;
+
+    SELECT u.id, u.correo, r.nombre AS rol, u.activo
+    FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol WHERE u.id = @id_cuenta;
+END
+GO
+
+/* Activa o desactiva una cuenta (una cuenta inactiva no inicia sesión; nunca se borra). */
+CREATE OR ALTER PROCEDURE dbo.pa_cambiar_estado_usuario
+    @id_usuario BIGINT,
+    @id_cuenta  BIGINT,
+    @activo     BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    EXEC dbo.pa_interno_validar_rol @id_usuario, 'SA';
+
+    IF @id_cuenta = @id_usuario AND @activo = 0 THROW 51115, N'No puedes desactivar tu propia cuenta.', 1;
+
+    DECLARE @actual BIT = (SELECT activo FROM dbo.usuarios WHERE id = @id_cuenta);
+    IF @actual IS NULL     THROW 51116, N'La cuenta no existe.', 1;
+    IF @actual = @activo   THROW 51117, N'La cuenta ya está en ese estado.', 1;
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.usuarios SET activo = @activo WHERE id = @id_cuenta AND activo = @actual;
+        IF @@ROWCOUNT <> 1 THROW 51118, N'La cuenta cambió mientras se actualizaba.', 1;
+
+        IF @activo = 0 AND NOT EXISTS (
+            SELECT 1 FROM dbo.usuarios AS u JOIN dbo.roles_usuarios AS r ON r.id = u.id_rol
+            WHERE r.nombre = 'SA' AND u.activo = 1)
+            THROW 51114, N'Debe quedar al menos un SA activo.', 1;
+
+        DECLARE @accion NVARCHAR(30) = CASE WHEN @activo = 1 THEN N'REACTIVAR' ELSE N'BAJA' END;
+        DECLARE @detalle NVARCHAR(500) = CONCAT(N'Cuenta ', @id_cuenta, CASE WHEN @activo = 1 THEN N' activada.' ELSE N' desactivada.' END);
+        EXEC dbo.pa_interno_registrar_bitacora @id_usuario, @accion, N'usuarios', @id_cuenta, @detalle;
+    COMMIT TRANSACTION;
+
+    SELECT id, correo, activo FROM dbo.usuarios WHERE id = @id_cuenta;
+END
+GO
+
+/* =====================================================================================
    COMPRA: reservación + pago simulado en UNA transacción (rol CLIENTE)
    Mismas reglas que Services/CatalogoService.Cotizar y Services/ReservacionService.PagarAsync:
        HOSPEDAJE  @desde = entrada, @hasta = salida (noches = días entre ambas); cantidad = @habitaciones;
@@ -1622,6 +1705,13 @@ DECLARE @id_res2 BIGINT = (SELECT id FROM dbo.reservaciones WHERE codigo_reserva
                            (SELECT id FROM dbo.estados_reservacion WHERE nombre = N'CONFIRMADA') AND id_usuarioglobal = @cliente);
 EXEC dbo.pa_cancelar_reservacion @id_usuario = @agente, @id_reservacion = @id_res2, @reembolsar = 1,
      @motivo = N'El hotel cerró por mantenimiento.', @cortesia = 1;
+
+-- Usuarios (como SA): pasar a soporte.prueba a AGENTE y regresarlo
+DECLARE @sa BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'sa.prueba@flyvibemex.test');
+EXEC dbo.pa_cambiar_rol_usuario @id_usuario = @sa, @id_cuenta = @soporte, @rol = 'AGENTE';
+EXEC dbo.pa_cambiar_rol_usuario @id_usuario = @sa, @id_cuenta = @soporte, @rol = 'SOPORTE';
+EXEC dbo.pa_cambiar_estado_usuario @id_usuario = @sa, @id_cuenta = @cliente, @activo = 0;
+EXEC dbo.pa_cambiar_estado_usuario @id_usuario = @sa, @id_cuenta = @cliente, @activo = 1;
 
 -- Reportes
 EXEC dbo.pa_reporte_ventas @desde = '2026-10-01', @hasta = '2026-12-31';

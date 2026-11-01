@@ -198,9 +198,11 @@ public sealed class MiCuentaService : IMiCuentaService
                 ultimos4 = t.ultimos4,
                 mes_expiracion = t.mes_expiracion,
                 anio_expiracion = t.anio_expiracion,
-                alias = t.alias
+                alias = t.alias,
+                id_institucion = t.id_institucion
             })
             .ToListAsync(cancellationToken);
+        var bancos = await BancosCatalogo.NombresAsync(_db, cancellationToken);
 
         var usosPorTarjeta = await _db.Pagos.AsNoTracking()
             .Join(_db.TarjetasUsuarios.AsNoTracking().Where(t => t.id_usuariog == contexto.IdCuenta),
@@ -211,21 +213,29 @@ public sealed class MiCuentaService : IMiCuentaService
         {
             t.vigente = PasarelaSimulada.Vigente(t.mes_expiracion, t.anio_expiracion, hoy);
             t.pagos = usosPorTarjeta.Count(id => id == t.id);
+            t.banco = t.id_institucion is ulong idBanco ? bancos.GetValueOrDefault(idBanco) : null;
         }
 
-        return new MisTarjetasViewModel { Contexto = contexto, Tarjetas = tarjetas };
+        return new MisTarjetasViewModel
+        {
+            Contexto = contexto,
+            Tarjetas = tarjetas,
+            Bancos = await BancosCatalogo.OpcionesAsync(_db, null, cancellationToken)
+        };
     }
 
     public async Task<ResultadoOperacion> AgregarTarjetaAsync(ulong idUsuario, TarjetaNuevaViewModel tarjeta, CancellationToken cancellationToken = default)
     {
         var errores = PasarelaSimulada.ValidarTarjeta(tarjeta.numero_tarjeta, tarjeta.mes_expiracion, tarjeta.anio_expiracion, tarjeta.cvv, Hoy());
+        if (!await BancosCatalogo.EsValidoAsync(_db, tarjeta.id_institucion, cancellationToken))
+            errores.Add((nameof(tarjeta.id_institucion), "Elige un banco de la lista o déjalo vacío."));
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos de la tarjeta.", errores);
 
         var digitos = PasarelaSimulada.SoloDigitos(tarjeta.numero_tarjeta);
         _db.TarjetasUsuarios.Add(new TarjetasUsuarios
         {
             id_usuariog = idUsuario,
-            id_institucion = null,
+            id_institucion = tarjeta.id_institucion,
             token_referencia = PasarelaSimulada.NuevoToken(),
             marca = PasarelaSimulada.Marca(digitos)!,
             ultimos4 = digitos[^4..],

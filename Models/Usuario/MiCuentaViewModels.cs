@@ -230,6 +230,10 @@ namespace FlyVibeMex.Models
 
         [StringLength(40, ErrorMessage = "Máximo 40 caracteres.")]
         public string? alias { get; set; }
+
+        /// <summary>Banco emisor (opcional): uno de los activos que administra el SA.</summary>
+        [Display(Name = "Banco")]
+        public ulong? id_institucion { get; set; }
     }
 
     public class TarjetaListadoViewModel
@@ -240,6 +244,9 @@ namespace FlyVibeMex.Models
         public byte mes_expiracion { get; set; }
         public ushort anio_expiracion { get; set; }
         public string? alias { get; set; }
+        public ulong? id_institucion { get; set; }
+        /// <summary>Nombre del banco (opcional).</summary>
+        public string? banco { get; set; }
         public bool vigente { get; set; }
         public int pagos { get; set; }
     }
@@ -249,6 +256,8 @@ namespace FlyVibeMex.Models
         public ContextoCuenta Contexto { get; set; } = new();
         public List<TarjetaListadoViewModel> Tarjetas { get; set; } = new();
         public TarjetaNuevaViewModel Nueva { get; set; } = new();
+        /// <summary>Bancos activos para elegir (opcional) al agregar una tarjeta.</summary>
+        public List<SelectListItem> Bancos { get; set; } = new();
     }
 
     // ---------------------------------------------------------------------------------------------

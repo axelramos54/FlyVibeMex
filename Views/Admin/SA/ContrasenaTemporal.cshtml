@@ -1,0 +1,29 @@
+@* Resultado de POST /Admin/SA/Usuarios/Alta y /Usuarios/{id}/Contrasena: la contraseña temporal se muestra
+   UNA sola vez (no se redirige ni se guarda: en la BD solo queda su hash). La respuesta no se guarda en caché. *@
+@model ContrasenaTemporalViewModel
+@{
+    ViewData["Title"] = Model.EsAlta ? "Cuenta creada" : "Contraseña restablecida";
+}
+
+<div class="card border-success" style="max-width: 640px">
+    <div class="card-body">
+        <h1 class="h4">@ViewData["Title"]</h1>
+        <p class="mb-2">
+            <strong>@Model.nombre</strong> · @Model.correo · <span class="badge text-bg-primary">@Model.rol</span>
+        </p>
+        <label class="form-label small mb-1" for="contrasena_temporal">Contraseña temporal</label>
+        <input id="contrasena_temporal" class="form-control form-control-lg font-monospace mb-2" value="@Model.contrasena" readonly />
+        <div class="alert alert-warning small">
+            <strong>Cópiala ahora:</strong> no se vuelve a mostrar y no se puede consultar después (solo se guarda cifrada).
+            Entrégala a la persona por un medio seguro; al entrar, debe cambiarla en <em>Mi perfil</em>.
+            @if (!Model.EsAlta)
+            {
+                <span>La contraseña anterior ya no sirve.</span>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" asp-action="Usuario" asp-route-id="@Model.id">Ir a la cuenta</a>
+            <a class="btn btn-outline-secondary" asp-action="Usuarios">Volver a usuarios</a>
+        </div>
+    </div>
+</div>

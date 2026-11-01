@@ -11,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Caché en memoria: el contenido del sitio que edita el SA (ContenidoSitioService) se lee de la BD cada 10 minutos.
+builder.Services.AddMemoryCache();
+
 // =============================================================================================
 // Base de datos (Entity Framework Core + SQL Server)
 // ---------------------------------------------------------------------------------------------
@@ -80,6 +83,12 @@ builder.Services.AddScoped<ICancelacionesService, CancelacionesService>();
 builder.Services.AddScoped<IReservacionesPanelService, ReservacionesPanelService>();
 builder.Services.AddScoped<ISoportePanelService, SoportePanelService>();
 
+// Panel SA (T4 fase D): usuarios y roles, catálogos base, bitácora y contenido del sitio.
+builder.Services.AddScoped<ISAUsuariosService, SAUsuariosService>();
+builder.Services.AddScoped<ISACatalogosService, SACatalogosService>();
+builder.Services.AddScoped<ISABitacoraService, SABitacoraService>();
+builder.Services.AddScoped<IContenidoSitioService, ContenidoSitioService>();
+
 // Panel: Gestor de ventas (proveedores, servicios con su subtipo y disponibilidad). Escribe en la bitácora.
 builder.Services.AddScoped<IGestorCatalogoService, GestorCatalogoService>();
 builder.Services.AddScoped<IGestorPaquetesService, GestorPaquetesService>();
@@ -102,6 +111,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.Cookie.SameSite = SameSiteMode.Lax;
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = true;
+        // En cada petición: la cuenta debe seguir activa y con el mismo rol (si el SA la cambió, se cierra la sesión).
+        opciones.Events.OnValidatePrincipal = ValidacionSesion.ValidarAsync;
     });
 
 var app = builder.Build();

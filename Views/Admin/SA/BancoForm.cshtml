@@ -1,0 +1,39 @@
+@* GET/POST /Admin/SA/Bancos/Alta y /Bancos/{id}/Editar. Nombre, clave y código no se repiten. *@
+@model InstitucionFormViewModel
+@{
+    ViewData["Title"] = Model.EsAlta ? "Agregar banco" : "Editar banco";
+}
+
+<h1 class="h3 mb-3">@ViewData["Title"]</h1>
+
+<form asp-action="@(Model.EsAlta ? "GuardarBanco" : "GuardarCambiosBanco")" asp-route-id="@(Model.EsAlta ? null : Model.id.ToString())"
+      method="post" class="card card-body" style="max-width: 640px" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="row g-3">
+        <div class="col-12">
+            <label asp-for="nombre" class="form-label"></label>
+            <input asp-for="nombre" class="form-control" maxlength="120" required />
+            <span asp-validation-for="nombre" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="clave_institucion" class="form-label"></label>
+            <input asp-for="clave_institucion" class="form-control font-monospace" maxlength="10" />
+            <span asp-validation-for="clave_institucion" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="codigo_internacional" class="form-label"></label>
+            <input asp-for="codigo_internacional" class="form-control font-monospace text-uppercase" maxlength="15" />
+            <span asp-validation-for="codigo_internacional" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="telefono" class="form-label"></label>
+            <input asp-for="telefono" class="form-control" maxlength="20" />
+            <span asp-validation-for="telefono" class="text-danger small"></span>
+        </div>
+    </div>
+    <div class="form-text mt-2">Clave, código y teléfono son opcionales.</div>
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">@(Model.EsAlta ? "Agregar" : "Guardar cambios")</button>
+        <a class="btn btn-outline-secondary" asp-action="Bancos">Cancelar</a>
+    </div>
+</form>

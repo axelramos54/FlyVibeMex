@@ -1,0 +1,26 @@
+@* GET/POST /Admin/SA/MetodosPago/{id}/Editar (SAController.EditarMetodoPago / GuardarMetodoPago). *@
+@model MetodoPagoFormViewModel
+@{
+    ViewData["Title"] = "Editar método de pago";
+}
+
+<h1 class="h3 mb-3">Editar método de pago</h1>
+
+<form asp-action="GuardarMetodoPago" asp-route-id="@Model.id" method="post" class="card card-body" style="max-width: 640px" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3">
+        <label asp-for="nombre" class="form-label"></label>
+        <input asp-for="nombre" class="form-control" maxlength="40" required />
+        <span asp-validation-for="nombre" class="text-danger small"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="descripcion" class="form-label"></label>
+        <textarea asp-for="descripcion" class="form-control" rows="2" maxlength="150"></textarea>
+        <div class="form-text">Se muestra al cliente debajo del método al pagar.</div>
+        <span asp-validation-for="descripcion" class="text-danger small"></span>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-action="MetodosPago">Cancelar</a>
+    </div>
+</form>

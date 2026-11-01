@@ -1,0 +1,42 @@
+@* GET/POST /Admin/SA/Ubicaciones/Alta y /Ubicaciones/{id}/Editar. Una misma ciudad no se repite en un estado. *@
+@model UbicacionFormViewModel
+@{
+    ViewData["Title"] = Model.EsAlta ? "Agregar ubicación" : "Editar ubicación";
+}
+
+<h1 class="h3 mb-3">@ViewData["Title"]</h1>
+
+<form asp-action="@(Model.EsAlta ? "GuardarUbicacion" : "GuardarCambiosUbicacion")" asp-route-id="@(Model.EsAlta ? null : Model.id.ToString())"
+      method="post" class="card card-body" style="max-width: 640px" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="municipio_ciudad" class="form-label"></label>
+            <input asp-for="municipio_ciudad" class="form-control" maxlength="100" required />
+            <span asp-validation-for="municipio_ciudad" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="estado" class="form-label"></label>
+            <input asp-for="estado" class="form-control" maxlength="60" required />
+            <span asp-validation-for="estado" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="pais" class="form-label"></label>
+            <input asp-for="pais" class="form-control" maxlength="60" required />
+            <span asp-validation-for="pais" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="codigo_postal" class="form-label"></label>
+            <input asp-for="codigo_postal" class="form-control" maxlength="10" required />
+            <span asp-validation-for="codigo_postal" class="text-danger small"></span>
+        </div>
+    </div>
+    @if (!Model.EsAlta)
+    {
+        <div class="form-text mt-2">El cambio se ve en todos los proveedores y servicios que usan esta ubicación.</div>
+    }
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">@(Model.EsAlta ? "Agregar" : "Guardar cambios")</button>
+        <a class="btn btn-outline-secondary" asp-action="Ubicaciones">Cancelar</a>
+    </div>
+</form>

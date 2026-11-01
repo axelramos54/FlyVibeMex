@@ -2,7 +2,7 @@
    FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
    Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
-       - las 28 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - las 29 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
        - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
          estados de pago y métodos de pago;
        - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
@@ -501,6 +501,20 @@ CREATE INDEX ix_bitacora_fecha   ON dbo.bitacora(fecha);
 CREATE INDEX ix_bitacora_entidad ON dbo.bitacora(entidad, id_entidad);
 GO
 
+/* ---------- Contenido del sitio que edita el SA sin tocar código (T4 fase D) ----------
+   Una fila por CLAVE (p. ej. 'inicio.bienvenida.titulo', 'politicas.privacidad'); la lista de claves válidas y su
+   texto por defecto están en Models/ContenidoSitioClaves.cs. Si una clave no tiene fila, el sitio muestra el texto
+   por defecto. texto = texto plano (se respetan los saltos de línea; nunca se interpreta como HTML). */
+CREATE TABLE dbo.contenido_sitio(
+    clave          VARCHAR(60)    NOT NULL CONSTRAINT pk_contenido_sitio PRIMARY KEY,
+    texto          NVARCHAR(4000) NULL,
+    imagen_ruta    NVARCHAR(260)  NULL,  -- ruta pública: /uploads/contenido/<guid>.jpg|png|webp
+    actualizado_en DATETIME       NOT NULL CONSTRAINT df_contenido_actualizado_en DEFAULT(CURRENT_TIMESTAMP),
+    id_usuario     BIGINT         NULL     CONSTRAINT fk_contenido_usuarios REFERENCES dbo.usuarios(id),
+    CONSTRAINT ck_contenido_algo CHECK (texto IS NOT NULL OR imagen_ruta IS NOT NULL)
+);
+GO
+
 /* =====================================================================================
    Catálogos que la aplicación necesita (los busca por NOMBRE, nunca por id)
    ===================================================================================== */
@@ -537,8 +551,8 @@ VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
         'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 GO
 
-/* ---------- Verificación: deben salir 28 tablas y los catálogos ---------- */
-SELECT COUNT(*) AS tablas_creadas   -- 28
+/* ---------- Verificación: deben salir 29 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 29
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -546,7 +560,7 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'detalle_reservacion', N'historial_estado_reservacion', N'metodos_pago',
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
-               N'mensajes_soporte', N'bitacora');
+               N'mensajes_soporte', N'bitacora', N'contenido_sitio');
 
 SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
 SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5

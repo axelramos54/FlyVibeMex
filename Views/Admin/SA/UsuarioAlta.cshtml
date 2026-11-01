@@ -1,0 +1,55 @@
+@* GET/POST /Admin/SA/Usuarios/Alta (SAController.AltaUsuario / GuardarUsuario): cuenta INTERNA con contraseña
+   temporal generada por el sistema (se muestra una vez en la pantalla siguiente). *@
+@model UsuarioAltaViewModel
+@{
+    ViewData["Title"] = "Nueva cuenta interna";
+    var roles = ViewData["Roles"] as List<SelectListItem> ?? new List<SelectListItem>();
+}
+
+<h1 class="h3 mb-1">Nueva cuenta interna</h1>
+<p class="text-muted">
+    Para personal de FlyVibeMex (SOPORTE, AGENTE, ADMINISTRADOR o SA). Los clientes se registran solos en el sitio.
+    La contraseña la genera el sistema y se muestra <strong>una sola vez</strong>.
+</p>
+
+<form asp-action="GuardarUsuario" method="post" class="card card-body" style="max-width: 760px" novalidate autocomplete="off">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="nombre" class="form-label"></label>
+            <input asp-for="nombre" class="form-control" maxlength="80" required />
+            <span asp-validation-for="nombre" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="apellido_paterno" class="form-label"></label>
+            <input asp-for="apellido_paterno" class="form-control" maxlength="60" required />
+            <span asp-validation-for="apellido_paterno" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="apellido_materno" class="form-label"></label>
+            <input asp-for="apellido_materno" class="form-control" maxlength="60" required />
+            <span asp-validation-for="apellido_materno" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="correo" class="form-label"></label>
+            <input asp-for="correo" type="email" class="form-control" maxlength="150" required />
+            <div class="form-text">Es su usuario para iniciar sesión; después no se puede cambiar.</div>
+            <span asp-validation-for="correo" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="telefono" class="form-label"></label>
+            <input asp-for="telefono" class="form-control" maxlength="20" required />
+            <span asp-validation-for="telefono" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="rol" class="form-label"></label>
+            <select asp-for="rol" asp-items="roles" class="form-select" required></select>
+            <div class="form-text">SOPORTE = tickets · AGENTE = reservaciones y reembolsos · ADMINISTRADOR = + Gestor de ventas · SA = todo.</div>
+            <span asp-validation-for="rol" class="text-danger small"></span>
+        </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Crear cuenta</button>
+        <a class="btn btn-outline-secondary" asp-action="Usuarios">Cancelar</a>
+    </div>
+</form>

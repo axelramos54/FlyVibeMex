@@ -6,7 +6,7 @@ namespace FlyVibeMex.Data;
 
 /// <summary>
 /// Contexto de Entity Framework Core de FlyVibe Mex (SQL Server).
-/// Mapea las 28 clases de <c>Models/</c> a las tablas de <c>sql/01_crear_base_datos.sql</c>:
+/// Mapea las 29 clases de <c>Models/</c> a las tablas de <c>sql/01_crear_base_datos.sql</c>:
 /// <b>cada propiedad se llama igual que su columna</b> (snake_case, con los nombres
 /// nuevos de los modelos: <c>id_usuarioglobal</c>, <c>id_usuariog</c>, <c>fecha_inicio</c>…), por eso no se usa
 /// <c>HasColumnName</c>. Incluye conversores globales para los tipos sin signo que SQL Server no tiene.
@@ -73,8 +73,9 @@ public class FlyVibeMexDbContext : DbContext
     public DbSet<SolicitudesSoporte> SolicitudesSoporte => Set<SolicitudesSoporte>();
     public DbSet<MensajesSoporte> MensajesSoporte => Set<MensajesSoporte>();
 
-    // Bitácora del panel
+    // Bitácora del panel y contenido editable del sitio (panel SA)
     public DbSet<Bitacora> Bitacora => Set<Bitacora>();
+    public DbSet<ContenidoSitio> ContenidoSitio => Set<ContenidoSitio>();
 
     /// <summary>
     /// Convenciones globales aplicadas a TODAS las entidades antes de construir el modelo.
@@ -529,6 +530,18 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.detalle).HasMaxLength(500).IsRequired(false);
             e.HasIndex(x => x.fecha);
             e.HasIndex(x => new { x.entidad, x.id_entidad });
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ContenidoSitio>(e =>
+        {
+            // Textos e imágenes del sitio que edita el SA (T4 fase D). La llave es la clave del texto.
+            e.ToTable("contenido_sitio");
+            e.HasKey(x => x.clave);
+            e.Property(x => x.clave).HasMaxLength(60).IsUnicode(false).ValueGeneratedNever();
+            e.Property(x => x.texto).HasMaxLength(4000).IsRequired(false);
+            e.Property(x => x.imagen_ruta).HasMaxLength(260).IsRequired(false);
 
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
