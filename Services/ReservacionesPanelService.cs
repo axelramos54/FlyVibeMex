@@ -130,11 +130,11 @@ public sealed class ReservacionesPanelService : IReservacionesPanelService
     public async Task<ResumenReservacionViewModel?> ResumenAsync(ulong idReservacion, CancellationToken cancellationToken = default)
     {
         var cabecera = await (
-                from r in _db.Reservaciones.AsNoTracking()
-                join u in _db.Usuarios.AsNoTracking() on r.id_usuarioglobal equals u.id
-                join e in _db.EstadosReservacion.AsNoTracking() on r.id_estado_reservacion equals e.id
-                where r.id == idReservacion
-                select new { r, cliente = u.nombre + " " + u.apellido_paterno, u.correo, u.telefono, estado = e.nombre })
+                from rv in _db.Reservaciones.AsNoTracking()
+                join u in _db.Usuarios.AsNoTracking() on rv.id_usuarioglobal equals u.id
+                join e in _db.EstadosReservacion.AsNoTracking() on rv.id_estado_reservacion equals e.id
+                where rv.id == idReservacion
+                select new { r = rv, cliente = u.nombre + " " + u.apellido_paterno, u.correo, u.telefono, estado = e.nombre })
             .FirstOrDefaultAsync(cancellationToken);
         if (cabecera is null) return null;
 
