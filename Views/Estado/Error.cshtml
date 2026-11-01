@@ -1,0 +1,33 @@
+@* 500 (EstadoController, UseExceptionHandler fuera de Development): mensaje amable y SOLO una referencia;
+   el detalle técnico queda en el log del servidor (buscar la referencia). *@
+@model EstadoViewModel
+@{
+    Layout = Model.Layout;
+    ViewData["Title"] = "Error";
+}
+
+<div class="container py-5" style="max-width: 640px">
+    <div class="card shadow-sm border-danger">
+        <div class="card-body text-center p-4">
+            <div class="display-4 text-danger mb-2">500</div>
+            <h1 class="h3 mb-3">Algo salió mal</h1>
+            <p>Tuvimos un problema al procesar tu solicitud. Intenta de nuevo en unos minutos.</p>
+            @if (!string.IsNullOrEmpty(Model.Referencia))
+            {
+                <p class="small text-muted mb-1">Si el problema sigue, comparte esta referencia con soporte:</p>
+                <p><code class="user-select-all">@Model.Referencia</code></p>
+            }
+            <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+                @if (Model.EsPanel)
+                {
+                    <a class="btn btn-primary" asp-controller="Admin" asp-action="Index">Ir al panel</a>
+                }
+                else
+                {
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+                    <a class="btn btn-outline-primary" asp-controller="Solicitar" asp-action="Index">Pedir ayuda</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

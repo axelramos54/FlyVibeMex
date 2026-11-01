@@ -125,21 +125,29 @@ public sealed class ContenidoSitioService : IContenidoSitioService
         if (texto == definicion.Defecto) return await RestaurarAsync(clave, idSA, cancellationToken);
 
         var textoFinal = texto;
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            var fila = await _db.ContenidoSitio.FirstOrDefaultAsync(c => c.clave == definicion.Clave, cancellationToken);
-            if (fila is null)
+            await GestorBd.EnTransaccionAsync(_db, async () =>
             {
-                fila = new ContenidoSitio { clave = definicion.Clave };
-                _db.ContenidoSitio.Add(fila);
-            }
-            fila.texto = textoFinal;
-            fila.actualizado_en = DateTime.Now;
-            fila.id_usuario = idSA;
-            _db.RegistrarBitacora(idSA, "ACTUALIZAR", "contenido_sitio", null,
-                $"{definicion.Clave}: {(textoFinal.Length > 300 ? textoFinal[..300] + "…" : textoFinal)}");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+                var fila = await _db.ContenidoSitio.FirstOrDefaultAsync(c => c.clave == definicion.Clave, cancellationToken);
+                if (fila is null)
+                {
+                    fila = new ContenidoSitio { clave = definicion.Clave };
+                    _db.ContenidoSitio.Add(fila);
+                }
+                fila.texto = textoFinal;
+                fila.actualizado_en = DateTime.Now;
+                fila.id_usuario = idSA;
+                _db.RegistrarBitacora(idSA, "ACTUALIZAR", "contenido_sitio", null,
+                    $"{definicion.Clave}: {(textoFinal.Length > 300 ? textoFinal[..300] + "…" : textoFinal)}");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo guardar el contenido {Clave}.", definicion.Clave);
+            return ResultadoOperacion.Falla("No se pudo guardar el texto. Intenta de nuevo.");
+        }
 
         _cache.Remove(LlaveCache);
         return ResultadoOperacion.Ok($"Se guardó \"{definicion.Etiqueta}\". Ya se ve en el sitio.");
@@ -193,16 +201,24 @@ public sealed class ContenidoSitioService : IContenidoSitioService
 
         string? imagen = null;
         var habia = false;
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            var fila = await _db.ContenidoSitio.AsNoTracking().FirstOrDefaultAsync(c => c.clave == definicion.Clave, cancellationToken);
-            habia = fila is not null;
-            if (fila is null) return;
-            imagen = fila.imagen_ruta;
-            await _db.ContenidoSitio.Where(c => c.clave == definicion.Clave).ExecuteDeleteAsync(cancellationToken);
-            _db.RegistrarBitacora(idSA, "RESTAURAR", "contenido_sitio", null, $"{definicion.Clave}: vuelve el contenido original.");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                var fila = await _db.ContenidoSitio.AsNoTracking().FirstOrDefaultAsync(c => c.clave == definicion.Clave, cancellationToken);
+                habia = fila is not null;
+                if (fila is null) return;
+                imagen = fila.imagen_ruta;
+                await _db.ContenidoSitio.Where(c => c.clave == definicion.Clave).ExecuteDeleteAsync(cancellationToken);
+                _db.RegistrarBitacora(idSA, "RESTAURAR", "contenido_sitio", null, $"{definicion.Clave}: vuelve el contenido original.");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo restaurar el contenido {Clave}.", definicion.Clave);
+            return ResultadoOperacion.Falla("No se pudo restaurar el contenido. Intenta de nuevo.");
+        }
 
         _imagenes.Eliminar(imagen);
         _cache.Remove(LlaveCache);

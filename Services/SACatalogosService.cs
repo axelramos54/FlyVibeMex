@@ -164,16 +164,24 @@ public sealed class SACatalogosService : ISACatalogosService
         var usos = await UsosAsync(cancellationToken);
         var afectados = usos.TryGetValue(id, out var uso) ? uso.servicios + uso.paquetes : 0;
 
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            var ahora = DateTime.Now;
-            await _db.Ubicaciones.Where(x => x.id == id && x.activo != activo)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.activo, activo).SetProperty(x => x.actualizado_en, ahora), cancellationToken);
-            _db.RegistrarBitacora(idSA, activo ? "REACTIVAR" : "BAJA", "ubicaciones", id,
-                $"{u.municipio_ciudad}, {u.estado} {(activo ? "activada" : "desactivada")}" +
-                (activo ? "." : $": {afectados} servicio(s) o paquete(s) dejan de aparecer en el catálogo."));
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                var ahora = DateTime.Now;
+                await _db.Ubicaciones.Where(x => x.id == id && x.activo != activo)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.activo, activo).SetProperty(x => x.actualizado_en, ahora), cancellationToken);
+                _db.RegistrarBitacora(idSA, activo ? "REACTIVAR" : "BAJA", "ubicaciones", id,
+                    $"{u.municipio_ciudad}, {u.estado} {(activo ? "activada" : "desactivada")}" +
+                    (activo ? "." : $": {afectados} servicio(s) o paquete(s) dejan de aparecer en el catálogo."));
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el estado de la ubicación {IdUbicacion}.", id);
+            return ResultadoOperacion.Falla("No se pudo cambiar el estado de la ubicación. Intenta de nuevo.");
+        }
 
         return ResultadoOperacion.Ok(activo
             ? $"{u.municipio_ciudad} activada: sus servicios vuelven a aparecer en el catálogo."
@@ -285,13 +293,21 @@ public sealed class SACatalogosService : ISACatalogosService
         if (await _db.MetodosPago.AsNoTracking().AnyAsync(m => m.nombre == nombre && m.id != id, cancellationToken))
             return new ResultadoOperacion(false, "Revisa los datos marcados.", new() { (nameof(datos.nombre), "Ya existe un método con ese nombre.") });
 
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            await _db.MetodosPago.Where(m => m.id == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(m => m.nombre, nombre).SetProperty(m => m.descripcion, descripcion), cancellationToken);
-            _db.RegistrarBitacora(idSA, "ACTUALIZAR", "metodos_pago", id, $"Método de pago \"{nombre}\": {descripcion}");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                await _db.MetodosPago.Where(m => m.id == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.nombre, nombre).SetProperty(m => m.descripcion, descripcion), cancellationToken);
+                _db.RegistrarBitacora(idSA, "ACTUALIZAR", "metodos_pago", id, $"Método de pago \"{nombre}\": {descripcion}");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo guardar el método de pago {IdMetodo}.", id);
+            return ResultadoOperacion.Falla("No se pudo guardar el método de pago. Revisa que el nombre no esté repetido.");
+        }
         return ResultadoOperacion.Ok($"Se guardó \"{nombre}\".");
     }
 
@@ -425,14 +441,22 @@ public sealed class SACatalogosService : ISACatalogosService
         if (b is null) return ResultadoOperacion.Falla("El banco no existe.");
         if (b.activo == activo) return ResultadoOperacion.Falla(activo ? "Ya está activo." : "Ya está inactivo.");
 
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            await _db.InstitucionesFinancieras.Where(x => x.id == id && x.activo != activo)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.activo, activo), cancellationToken);
-            _db.RegistrarBitacora(idSA, activo ? "REACTIVAR" : "BAJA", "instituciones_financieras", id,
-                $"Banco \"{b.nombre}\" {(activo ? "activado" : "desactivado")}.");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                await _db.InstitucionesFinancieras.Where(x => x.id == id && x.activo != activo)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.activo, activo), cancellationToken);
+                _db.RegistrarBitacora(idSA, activo ? "REACTIVAR" : "BAJA", "instituciones_financieras", id,
+                    $"Banco \"{b.nombre}\" {(activo ? "activado" : "desactivado")}.");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el estado del banco {IdBanco}.", id);
+            return ResultadoOperacion.Falla("No se pudo cambiar el estado del banco. Intenta de nuevo.");
+        }
 
         return ResultadoOperacion.Ok(activo
             ? $"\"{b.nombre}\" activado: ya se puede elegir al guardar una tarjeta."

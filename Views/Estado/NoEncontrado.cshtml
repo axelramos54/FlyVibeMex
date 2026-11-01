@@ -1,0 +1,27 @@
+@* 404 (EstadoController): la dirección no existe o el registro no es de quien lo pide. *@
+@model EstadoViewModel
+@{
+    Layout = Model.Layout;
+    ViewData["Title"] = "Página no encontrada";
+}
+
+<div class="container py-5" style="max-width: 640px">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-4">
+            <div class="display-4 text-muted mb-2">404</div>
+            <h1 class="h3 mb-3">No encontramos esta página</h1>
+            <p class="text-muted">La dirección no existe, se movió o no tienes acceso a ese registro.</p>
+            <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+                @if (Model.EsPanel)
+                {
+                    <a class="btn btn-primary" asp-controller="Admin" asp-action="Index">Ir al panel</a>
+                }
+                else
+                {
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+                    <a class="btn btn-outline-primary" asp-controller="Solicitar" asp-action="Index">Pedir ayuda</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

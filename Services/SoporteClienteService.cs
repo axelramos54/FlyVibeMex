@@ -90,8 +90,16 @@ public sealed class SoporteClienteService : ISoporteClienteService
             creada_en = ahora,
             actualizada_en = ahora
         };
-        _db.SolicitudesSoporte.Add(ticket);
-        await _db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            _db.SolicitudesSoporte.Add(ticket);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo crear el ticket del cliente {IdUsuario}.", idUsuario);
+            return ResultadoOperacion.Falla("No pudimos registrar tu solicitud. Intenta de nuevo más tarde.");
+        }
 
         _logger.LogInformation("Ticket {IdTicket} creado por el cliente {IdUsuario}.", ticket.id, idUsuario);
         return ResultadoOperacion.Ok($"Recibimos tu solicitud (ticket #{ticket.id}). Un agente la atenderá pronto.");

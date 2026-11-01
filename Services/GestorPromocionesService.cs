@@ -233,14 +233,22 @@ public sealed class GestorPromocionesService : IGestorPromocionesService
         if (promo.activo == activo)
             return ResultadoOperacion.Ok($"{promo.codigo} ya estaba {(activo ? "activa" : "inactiva")}.");
 
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            await _db.Promociones.Where(p => p.id == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(p => p.activo, activo), cancellationToken);
-            _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "promociones", id,
-                $"Promoción {promo.codigo} {(activo ? "activada" : "desactivada")}.");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                await _db.Promociones.Where(p => p.id == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.activo, activo), cancellationToken);
+                _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "promociones", id,
+                    $"Promoción {promo.codigo} {(activo ? "activada" : "desactivada")}.");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el estado de la promoción {IdPromocion}.", id);
+            return ResultadoOperacion.Falla("No se pudo cambiar el estado de la promoción. Intenta de nuevo.");
+        }
 
         return ResultadoOperacion.Ok(activo
             ? $"{promo.codigo} se activó."

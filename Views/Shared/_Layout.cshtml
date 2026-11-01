@@ -2,8 +2,9 @@
  ============================================================================================
  Views/Shared/_Layout.cshtml — plantilla COMÚN del sitio público.
  La usan todas las vistas que no declaran Layout (ver Views/_ViewStart.cshtml): Home, Miusuario, Solicitar, Otros
- y las páginas nuevas del catálogo. Las pantallas de acceso (IniciarSesion, Crearusuario, AccesoDenegado) siguen
+ y las páginas nuevas del catálogo. Las pantallas de acceso (IniciarSesion, Crearusuario) siguen
  siendo páginas independientes (Layout = null) y el panel interno usa Views/Admin/_AdminLayout.cshtml.
+ Las páginas de error (Views/Estado/*) eligen este layout o el del panel según la zona (EstadoViewModel.Layout).
 
  Cada vista puede agregar:
    @section Styles  { <link rel="stylesheet" href="~/assets/css/style_X.css"> }   → dentro de <head>
@@ -56,6 +57,17 @@
     </header>
 
     <main id="contenido_main">
+        @* Aviso general (p. ej. el que deja ErroresBaseDatosFilter cuando la BD falla al guardar). Los avisos propios
+           de cada pantalla (Exito / Error de Mi cuenta, cancelaciones) los muestran sus vistas. *@
+        @if (TempData["Aviso"] is string avisoGeneral)
+        {
+            <div class="container mt-3">
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    @avisoGeneral
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            </div>
+        }
         @RenderBody()
     </main>
 
@@ -69,6 +81,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
             crossorigin="anonymous"></script>
+    @* Validación en el navegador + "Procesando…" en los botones (T6.1). *@
+    <partial name="_ValidationScriptsPartial" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,0 +1,29 @@
+@* 400 (EstadoController): token antiforgery inválido (la página estuvo abierta mucho tiempo, se cerró la sesión o
+   se abrió en otra pestaña) o datos que no se pudieron leer. No se guardó nada. *@
+@model EstadoViewModel
+@{
+    Layout = Model.Layout;
+    ViewData["Title"] = "No se pudo procesar";
+}
+
+<div class="container py-5" style="max-width: 640px">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-4">
+            <div class="display-4 text-muted mb-2">400</div>
+            <h1 class="h3 mb-3">El formulario venció o la solicitud no es válida</h1>
+            <p>No se guardó nada. Esto pasa cuando la página estuvo abierta mucho tiempo o cuando se cerró la sesión.</p>
+            <p class="text-muted small">Vuelve a cargar la página e intenta de nuevo.</p>
+            <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+                <button type="button" class="btn btn-primary" onclick="history.back()">Regresar</button>
+                @if (Model.EsPanel)
+                {
+                    <a class="btn btn-outline-primary" asp-controller="Admin" asp-action="Index">Ir al panel</a>
+                }
+                else
+                {
+                    <a class="btn btn-outline-primary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

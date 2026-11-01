@@ -38,10 +38,9 @@ public class HomeController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    public IActionResult AccesoDenegado()
-    {
-        return View();
-    }
+    // Enlace anterior a la página 403: ahora la muestra EstadoController (T6.2).
+    public IActionResult AccesoDenegado(string? returnUrl) =>
+        RedirectToAction("Index", "Estado", new { codigo = 403, returnUrl });
 
     /// <summary>
     /// GET <c>/Home/Hoteles</c>. Devuelve la <b>página</b> <c>Hoteles.cshtml</c>
@@ -399,15 +398,11 @@ public class HomeController : Controller
     };
 
     /// <summary>
-    /// GET <c>/Home/Error</c>. Devuelve <c>Views/Shared/Error.cshtml</c> (documento completo con <c>_Layout</c>)
-    /// con el identificador de la petición. Program.cs la usa como manejador de excepciones fuera de Development
-    /// (<c>UseExceptionHandler("/Home/Error")</c>). No se guarda en caché.
+    /// GET <c>/Home/Error</c>: enlace anterior a la página de error. Desde T6.2 el manejador de excepciones es
+    /// <c>/Estado/500</c> (EstadoController); esta acción solo redirige ahí.
     /// </summary>
     /// NOTA: falta la acción Privacy(). Existe Views/Home/Privacy.cshtml y _Layout.cshtml la enlaza,
     // pero /Home/Privacy responde 404 porque este controlador no la define.
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-    }
+    public IActionResult Error() => RedirectToAction("Index", "Estado", new { codigo = 500 });
 }

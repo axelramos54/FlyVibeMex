@@ -1,7 +1,17 @@
-﻿@*
- _ValidationScriptsPartial.cshtml — parcial de la PLANTILLA para validación en cliente (jquery-validation).
- No la usa ninguna vista. NOTA: wwwroot/lib/jquery-validation* solo contienen archivos LICENSE (faltan los dist/).
- Será útil cuando existan formularios con DataAnnotations (login, registro, reserva).
+@*
+ _ValidationScriptsPartial.cshtml — validación en el navegador (T6.1). La incluyen los layouts (_Layout y
+ _AdminLayout) y las páginas sin layout que tienen formularios (IniciarSesion, Crearusuario), DESPUÉS de Bootstrap.
+   - jQuery + jquery-validation + jquery-validation-unobtrusive leen los atributos data-val-* que generan los tag
+     helpers (asp-for) a partir de las DataAnnotations: mismas reglas y mensajes que el servidor.
+   - script_validacion.js: mensajes en español, estilos de Bootstrap (is-invalid), foco en el primer error y
+     botón "Procesando…" para no enviar dos veces.
+ La validación del navegador es solo comodidad: el servidor SIEMPRE vuelve a validar (ModelState.IsValid).
+ Si el CDN no carga, los formularios siguen funcionando con la validación del servidor.
+ TODO (SRI): jQuery lleva integrity; para jquery-validation y unobtrusive falta calcular su hash
+ (ver docs/07, T6.1) y agregar integrity="sha384-..." a esas dos etiquetas.
 *@
-<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
-<script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/jquery.validate.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js" crossorigin="anonymous"></script>
+<script src="~/assets/js/script_validacion.js" asp-append-version="true"></script>

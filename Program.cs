@@ -9,7 +9,13 @@ using Microsoft.Extensions.FileProviders;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(opciones =>
+{
+    // T6.1: mensajes de validación en español (model binding y DataAnnotations sin ErrorMessage).
+    MensajesValidacionEspanol.Configurar(opciones);
+    // T6.3: red de seguridad: un error de BD que se escape en un POST regresa al formulario con un aviso.
+    opciones.Filters.Add<ErroresBaseDatosFilter>();
+});
 
 // Caché en memoria: el contenido del sitio que edita el SA (ContenidoSitioService) se lee de la BD cada 10 minutos.
 builder.Services.AddMemoryCache();
@@ -101,7 +107,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     .AddCookie(opciones =>
     {
         opciones.LoginPath = "/Home/IniciarSesion";
-        opciones.AccessDeniedPath = "/Home/AccesoDenegado";   
+        opciones.AccessDeniedPath = "/Estado/403";   // T6.2: página 403 propia (según la zona: sitio o panel)   
         opciones.Cookie.Name = "FlyVibeMex.Sesion";
         opciones.Cookie.HttpOnly = true;                              // JavaScript no puede leerla
         // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.
@@ -124,14 +130,20 @@ app.Logger.LogInformation(
     configuracionBd.EstaConfigurada ? "configurada" : "SIN CONFIGURAR: ver docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md");
 
 // Configure the HTTP request pipeline.
+// T6.2 · Páginas de error propias (EstadoController): 400, 403, 404 y 500 sin detalles técnicos.
+// En Development se sigue viendo la página de detalle de .NET para las excepciones.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Estado/500");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
+
+// Respuestas de error SIN contenido (404 de una dirección inexistente, 400 del antiforgery, NotFound(), Forbid()…):
+// se vuelve a ejecutar la petición en /Estado/{código}, que muestra la página propia con el mismo código HTTP.
+app.UseStatusCodePagesWithReExecute("/Estado/{0}");
 
 // Imágenes subidas mientras la app corre. MapStaticAssets() solo sirve los archivos que existían al compilar,
 // así que /uploads se sirve aparte con UseStaticFiles, limitado a esa carpeta.

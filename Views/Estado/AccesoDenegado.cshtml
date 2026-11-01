@@ -1,0 +1,38 @@
+@* 403 (EstadoController; también es el AccessDeniedPath de la cookie): hay sesión, pero el rol no tiene permiso.
+   Si no hay sesión, ASP.NET no llega aquí: manda a /Home/IniciarSesion. *@
+@model EstadoViewModel
+@{
+    Layout = Model.Layout;
+    ViewData["Title"] = "Acceso denegado";
+}
+
+<div class="container py-5" style="max-width: 640px">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-4">
+            <div class="display-4 text-muted mb-2">403</div>
+            <h1 class="h3 mb-3">Acceso denegado</h1>
+            <p class="mb-1">Tu cuenta no tiene permiso para ver esta sección.</p>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <p class="text-muted small mb-4">Sesión iniciada como <strong>@User.Identity.Name</strong>.</p>
+            }
+            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                @if (Roles.EsInterno(User))
+                {
+                    <a class="btn btn-primary" asp-controller="Admin" asp-action="Index">Ir al panel</a>
+                }
+                else
+                {
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Ir al inicio</a>
+                    <a class="btn btn-outline-primary" asp-controller="Miusuario" asp-action="Index">Mi cuenta</a>
+                }
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <form asp-controller="Home" asp-action="CerrarSesion" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary">Cerrar sesión y entrar con otra cuenta</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

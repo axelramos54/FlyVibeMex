@@ -137,17 +137,25 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         if (proveedor.activo == activo)
             return ResultadoOperacion.Ok($"\"{proveedor.nombre}\" ya estaba {(activo ? "activo" : "dado de baja")}.");
 
-        await EnTransaccionAsync(async () =>
+        try
         {
-            await _db.Proveedores.Where(p => p.id == id)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(p => p.activo, activo)
-                    .SetProperty(p => p.actualizado_en, DateTime.Now), cancellationToken);
-            _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "proveedores", id,
-                activo ? $"Proveedor \"{proveedor.nombre}\" reactivado."
-                       : $"Baja del proveedor \"{proveedor.nombre}\" (sus servicios dejan de mostrarse en el catálogo).");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await EnTransaccionAsync(async () =>
+            {
+                await _db.Proveedores.Where(p => p.id == id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.activo, activo)
+                        .SetProperty(p => p.actualizado_en, DateTime.Now), cancellationToken);
+                _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "proveedores", id,
+                    activo ? $"Proveedor \"{proveedor.nombre}\" reactivado."
+                           : $"Baja del proveedor \"{proveedor.nombre}\" (sus servicios dejan de mostrarse en el catálogo).");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el estado del proveedor {IdProveedor}.", id);
+            return ResultadoOperacion.Falla("No se pudo cambiar el estado del proveedor. Intenta de nuevo.");
+        }
 
         return ResultadoOperacion.Ok(activo
             ? $"\"{proveedor.nombre}\" se reactivó."
@@ -583,16 +591,24 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                 return ResultadoOperacion.Falla($"El proveedor de \"{servicio.nombre}\" está dado de baja. Reactívalo primero.");
         }
 
-        await EnTransaccionAsync(async () =>
+        try
         {
-            await _db.Servicios.Where(s => s.id == id)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(x => x.activo, activo)
-                    .SetProperty(x => x.actualizado_en, DateTime.Now), cancellationToken);
-            _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "servicios", id,
-                $"{(activo ? "Reactivación" : "Baja")} de \"{servicio.nombre}\".");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await EnTransaccionAsync(async () =>
+            {
+                await _db.Servicios.Where(s => s.id == id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(x => x.activo, activo)
+                        .SetProperty(x => x.actualizado_en, DateTime.Now), cancellationToken);
+                _db.RegistrarBitacora(idUsuario, activo ? "REACTIVAR" : "BAJA", "servicios", id,
+                    $"{(activo ? "Reactivación" : "Baja")} de \"{servicio.nombre}\".");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el estado del servicio {IdServicio}.", id);
+            return ResultadoOperacion.Falla("No se pudo cambiar el estado del servicio. Intenta de nuevo.");
+        }
 
         return ResultadoOperacion.Ok(activo
             ? $"\"{servicio.nombre}\" se reactivó."

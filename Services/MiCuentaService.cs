@@ -135,13 +135,22 @@ public sealed class MiCuentaService : IMiCuentaService
                 new() { (nameof(perfil.telefono), "Ese teléfono ya está registrado en otra cuenta.") });
         }
 
-        var filas = await _db.Usuarios
-            .Where(u => u.id == idUsuario && u.activo)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(u => u.nombre, perfil.nombre.Trim())
-                .SetProperty(u => u.apellido_paterno, perfil.apellido_paterno.Trim())
-                .SetProperty(u => u.apellido_materno, perfil.apellido_materno.Trim())
-                .SetProperty(u => u.telefono, telefono), cancellationToken);
+        int filas;
+        try
+        {
+            filas = await _db.Usuarios
+                .Where(u => u.id == idUsuario && u.activo)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.nombre, perfil.nombre.Trim())
+                    .SetProperty(u => u.apellido_paterno, perfil.apellido_paterno.Trim())
+                    .SetProperty(u => u.apellido_materno, perfil.apellido_materno.Trim())
+                    .SetProperty(u => u.telefono, telefono), cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo actualizar el perfil del usuario {IdUsuario}.", idUsuario);
+            return ResultadoOperacion.Falla("No se pudieron guardar tus datos. Revisa que el teléfono no esté registrado en otra cuenta.");
+        }
 
         return filas == 1
             ? ResultadoOperacion.Ok("Tus datos se guardaron.")
@@ -232,20 +241,28 @@ public sealed class MiCuentaService : IMiCuentaService
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos de la tarjeta.", errores);
 
         var digitos = PasarelaSimulada.SoloDigitos(tarjeta.numero_tarjeta);
-        _db.TarjetasUsuarios.Add(new TarjetasUsuarios
+        try
         {
-            id_usuariog = idUsuario,
-            id_institucion = tarjeta.id_institucion,
-            token_referencia = PasarelaSimulada.NuevoToken(),
-            marca = PasarelaSimulada.Marca(digitos)!,
-            ultimos4 = digitos[^4..],
-            mes_expiracion = tarjeta.mes_expiracion!.Value,
-            anio_expiracion = tarjeta.anio_expiracion!.Value,
-            alias = string.IsNullOrWhiteSpace(tarjeta.alias) ? null : tarjeta.alias.Trim(),
-            activo = true,
-            creado_en = DateTime.Now
-        });
-        await _db.SaveChangesAsync(cancellationToken);
+            _db.TarjetasUsuarios.Add(new TarjetasUsuarios
+            {
+                id_usuariog = idUsuario,
+                id_institucion = tarjeta.id_institucion,
+                token_referencia = PasarelaSimulada.NuevoToken(),
+                marca = PasarelaSimulada.Marca(digitos)!,
+                ultimos4 = digitos[^4..],
+                mes_expiracion = tarjeta.mes_expiracion!.Value,
+                anio_expiracion = tarjeta.anio_expiracion!.Value,
+                alias = string.IsNullOrWhiteSpace(tarjeta.alias) ? null : tarjeta.alias.Trim(),
+                activo = true,
+                creado_en = DateTime.Now
+            });
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo guardar la tarjeta del usuario {IdUsuario}.", idUsuario);
+            return ResultadoOperacion.Falla("No pudimos guardar la tarjeta. Intenta de nuevo más tarde.");
+        }
         return ResultadoOperacion.Ok($"Tarjeta terminada en {digitos[^4..]} agregada.");
     }
 
@@ -254,18 +271,36 @@ public sealed class MiCuentaService : IMiCuentaService
         var texto = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
         if (texto is { Length: > 40 }) return ResultadoOperacion.Falla("El alias puede tener máximo 40 caracteres.");
 
-        var filas = await _db.TarjetasUsuarios
-            .Where(t => t.id == idTarjeta && t.id_usuariog == idUsuario && t.activo)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.alias, texto), cancellationToken);
+        int filas;
+        try
+        {
+            filas = await _db.TarjetasUsuarios
+                .Where(t => t.id == idTarjeta && t.id_usuariog == idUsuario && t.activo)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.alias, texto), cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo cambiar el alias de la tarjeta {IdTarjeta}.", idTarjeta);
+            return ResultadoOperacion.Falla("No pudimos guardar el alias. Intenta de nuevo más tarde.");
+        }
 
         return filas == 1 ? ResultadoOperacion.Ok("Alias actualizado.") : ResultadoOperacion.Falla("No encontramos esa tarjeta en tu cuenta.");
     }
 
     public async Task<ResultadoOperacion> EliminarTarjetaAsync(ulong idUsuario, ulong idTarjeta, CancellationToken cancellationToken = default)
     {
-        var filas = await _db.TarjetasUsuarios
-            .Where(t => t.id == idTarjeta && t.id_usuariog == idUsuario && t.activo)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.activo, false), cancellationToken);
+        int filas;
+        try
+        {
+            filas = await _db.TarjetasUsuarios
+                .Where(t => t.id == idTarjeta && t.id_usuariog == idUsuario && t.activo)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.activo, false), cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo eliminar la tarjeta {IdTarjeta}.", idTarjeta);
+            return ResultadoOperacion.Falla("No pudimos eliminar la tarjeta. Intenta de nuevo más tarde.");
+        }
 
         return filas == 1 ? ResultadoOperacion.Ok("Tarjeta eliminada.") : ResultadoOperacion.Falla("No encontramos esa tarjeta en tu cuenta.");
     }

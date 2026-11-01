@@ -378,13 +378,21 @@ public sealed class SAUsuariosService : ISAUsuariosService
         var rol = await _db.RolesUsuarios.AsNoTracking().Where(r => r.id == idRol).Select(r => r.nombre).FirstOrDefaultAsync(cancellationToken);
         if (rol is null) return ResultadoOperacion.Falla("El rol no existe.");
 
-        await GestorBd.EnTransaccionAsync(_db, async () =>
+        try
         {
-            await _db.RolesUsuarios.Where(r => r.id == idRol)
-                .ExecuteUpdateAsync(s => s.SetProperty(r => r.descripcion, descripcion), cancellationToken);
-            _db.RegistrarBitacora(idSA, "ACTUALIZAR", "roles_usuarios", idRol, $"Descripción del rol {rol}: {descripcion ?? "(vacía)"}");
-            await _db.SaveChangesAsync(cancellationToken);
-        }, cancellationToken);
+            await GestorBd.EnTransaccionAsync(_db, async () =>
+            {
+                await _db.RolesUsuarios.Where(r => r.id == idRol)
+                    .ExecuteUpdateAsync(s => s.SetProperty(r => r.descripcion, descripcion), cancellationToken);
+                _db.RegistrarBitacora(idSA, "ACTUALIZAR", "roles_usuarios", idRol, $"Descripción del rol {rol}: {descripcion ?? "(vacía)"}");
+                await _db.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo guardar la descripción del rol {IdRol}.", idRol);
+            return ResultadoOperacion.Falla("No se pudo guardar la descripción. Intenta de nuevo.");
+        }
         return ResultadoOperacion.Ok($"Descripción del rol {rol} guardada.");
     }
 
