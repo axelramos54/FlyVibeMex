@@ -1,0 +1,81 @@
+using Telegram.Bot;
+using Telegram.Bot.Exceptions;
+using Telegram.Bot.Polling;
+using Telegram.Bot.Types;
+
+namespace FlyVibeMex.Bot;
+
+/// <summary>
+/// Recibe cada actualización de Telegram (mensaje o botón) y la pasa a <see cref="ManejadorActualizaciones"/> dentro
+/// de un <b>scope de DI nuevo</b>, igual que una petición web: así cada mensaje tiene su propio
+/// <c>FlyVibeMexDbContext</c> y sus servicios Scoped (catálogo, reservaciones, soporte).
+/// </summary>
+/// <remarks>
+/// IMPORTANTE (Telegram.Bot 22): si este método deja escapar un <see cref="OperationCanceledException"/>, el ciclo de
+/// polling termina. Por eso todo error (incluido un timeout de HTTP, que también es una cancelación) se atrapa aquí,
+/// salvo cuando de verdad se está deteniendo la app.
+/// </remarks>
+public sealed class ReceptorActualizaciones : IUpdateHandler
+{
+    private readonly IServiceScopeFactory _scopes;
+    private readonly ILogger<ReceptorActualizaciones> _logger;
+
+    public ReceptorActualizaciones(IServiceScopeFactory scopes, ILogger<ReceptorActualizaciones> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+    }
+
+    public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var scope = _scopes.CreateAsyncScope();
+            var manejador = scope.ServiceProvider.GetRequiredService<ManejadorActualizaciones>();
+            await manejador.ManejarAsync(update, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;   // la app se está deteniendo
+        }
+        catch (Exception ex)
+        {
+            // Solo metadatos: nunca el texto del mensaje (puede traer correos, teléfonos o algo peor).
+            _logger.LogError(ex, "Bot de Telegram: error al procesar el update {IdUpdate} ({Tipo}).", update.Id, update.Type);
+            await AvisarErrorAsync(botClient, update, cancellationToken);
+        }
+    }
+
+    public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source,
+        CancellationToken cancellationToken)
+    {
+        if (exception is ApiRequestException { ErrorCode: 409 })
+            _logger.LogError("Bot de Telegram: otro proceso está usando el MISMO token (409 Conflict). " +
+                             "Cada integrante debe usar su propio bot de prueba (docs/06).");
+        else
+            _logger.LogWarning(exception, "Bot de Telegram: error de {Origen}.", source);
+
+        // Sin esta pausa, un error de red haría que el ciclo de polling reintente sin parar.
+        if (source == HandleErrorSource.PollingError)
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+    }
+
+    private async Task AvisarErrorAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+    {
+        var chatId = update.Message?.Chat.Id ?? update.CallbackQuery?.Message?.Chat.Id ?? update.CallbackQuery?.From.Id;
+        if (chatId is null or <= 0) return;   // solo chats privados
+        try
+        {
+            if (update.CallbackQuery is { } boton)
+                await botClient.AnswerCallbackQuery(boton.Id, cancellationToken: cancellationToken);
+
+            await botClient.SendMessage(chatId.Value,
+                "Ups, algo salió mal de nuestro lado. Intenta de nuevo en unos minutos o escribe /menu.",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogDebug(ex, "Bot de Telegram: no se pudo avisar del error al chat.");
+        }
+    }
+}

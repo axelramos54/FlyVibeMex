@@ -8,7 +8,7 @@
 | Fecha | 23/10/2026 |
 | Base auditada | `main` en `c816f2d` ("Actualizacion del gitignore", 23/10/2026), después del PR #12 (`actualizacion-de-docs`) |
 | Documentos relacionados | [`CONTEXTO_PROYECTO_FLYVIBEMEX.md`](CONTEXTO_PROYECTO_FLYVIBEMEX.md), [01 · Visión y reglas](01_VISION_Y_REGLAS_DE_NEGOCIO.md), [03 · Modelos](03_CATALOGO_MODELOS_CSHARP.md), [05 · EF Core y seguridad](05_CONEXION_EFCORE_Y_SEGURIDAD.md) |
-| Estado | Diseño aprobable. **Paso 0 (desbloqueo) hecho el 25/10/2026** sobre `main` en `949f1ae` (PR #13); el bot aún no está implementado |
+| Estado | **Implementado el 01/11/2026** sobre `main` en `31e2e71` (ver [sección 11](#11-implementación-01112026)). Paso 0 hecho el 25/10/2026. Pendiente: `dotnet build` y la prueba en vivo de cada integrante |
 
 ## Índice
 0. [Resumen ejecutivo](#0-resumen-ejecutivo)
@@ -22,6 +22,7 @@
 8. [Cambios de esquema propuestos (fuera del MVP)](#8-cambios-de-esquema-propuestos-fuera-del-mvp)
 9. [Decisiones pendientes del equipo](#9-decisiones-pendientes-del-equipo)
 10. [Fuentes](#10-fuentes)
+11. [Implementación (01/11/2026)](#11-implementación-01112026)
 
 ---
 
@@ -804,3 +805,95 @@ Consultadas el 23/10/2026.
 - Minimal Telegram Bot — [GitHub](https://github.com/k-paul-acct/minimal-telegram-bot) · [NuGet (Localization)](https://www.nuget.org/packages/MinimalTelegramBot.Localization/) · [NuGet (StateMachine)](https://www.nuget.org/packages/MinimalTelegramBot.StateMachine)
 - RxTelegram.Bot — [GitHub](https://github.com/RxTelegram/RxTelegram.Bot) · [NuGet](https://www.nuget.org/packages/rxtelegram.bot)
 - Telegram Bot API (límites de `callback_data`, *deep linking*, webhooks) — [core.telegram.org/bots/api](https://core.telegram.org/bots/api)
+
+---
+
+## 11. Implementación (01/11/2026)
+
+> Esta sección manda sobre el diseño de las secciones 3–7 donde difieran. El código está en `Bot/` y en `Services/`;
+> se escribió sin compilador (no hay SDK de .NET en el entorno de Claude), verificando cada firma de `Telegram.Bot`
+> contra su código fuente. **Antes de usarlo: `dotnet build` y la prueba de 11.5.**
+
+### 11.1 Decisiones del equipo (01/11/2026) y cambios respecto al diseño
+| Tema | Diseño original (secciones 4–7) | Lo implementado |
+|---|---|---|
+| Identificación | Código de reserva + correo/teléfono en cada consulta | **Vincular la cuenta**: el cliente genera un código de un solo uso en **Mi cuenta › Telegram** y lo manda con `/vincular` (o con el enlace `t.me/<bot>?start=v_CODIGO`). Así el bot reutiliza tal cual *Mis reservaciones* y *Soporte* (con conversación) y no hay enumeración por correo |
+| Librería | Top 1 `Telegram.Bot` | `Telegram.Bot` **22.10.3.3** + `BackgroundService` con long polling en el mismo `Program.cs` |
+| Aviso al personal | Grupo privado de agentes | Grupo privado (`TelegramBot:ChatIdAgentes`) para **todos** los tickets nuevos (web y bot): folio, tipo, asunto, reservación y etiqueta URGENTE si es un PROBLEMA con viaje en menos de 72 h. Sin nombre, correo ni teléfono del cliente |
+| Avisos al cliente | Fase 2 | **Incluidos**: si el cliente vinculó su cuenta, le llega la respuesta del agente (con botón *Responder*) y el aviso de ticket cerrado |
+| `/promos` | Listar promociones vigentes | **No se hizo**: el equipo decidió que las promociones no se anuncian (T4 fase B). Igual que en la web, la ficha de cada servicio muestra los códigos ligados a él |
+| `/destino <ciudad>` | Texto libre | Botón **📍 Elegir destino** con las ciudades que tienen servicios de esa sección (misma lista desplegable que la web) |
+| Cancelar / pagar | Solo en la web | Igual: el bot solo lleva a la web (botón o enlace) |
+
+### 11.2 Archivos
+| Archivo | Qué hace |
+|---|---|
+| `sql/01_crear_base_datos.sql` | Tabla nueva **`telegram_vinculos`** (30 tablas en total): un vínculo activo por cuenta y por chat (índices únicos filtrados `WHERE activo = 1`) |
+| `Models/telegram_vinculos.cs`, `Data/FlyVibeMexDbContext.cs` | Modelo `TelegramVinculos` y su mapeo (FK a `usuarios`) |
+| `Services/VinculacionTelegramService.cs` | Código de un solo uso (8 caracteres de `RandomNumberGenerator`, 10 min, en `IMemoryCache`, nunca en BD ni logs), vincular / desvincular, y "¿quién escribe?" (vínculo activo + cuenta activa + rol CLIENTE en cada mensaje) |
+| `Services/EstadoBotTelegram.cs` | Si el bot está configurado y su `@usuario` (para el enlace t.me de la web) |
+| `Services/IAvisosTelegram.cs` + `Bot/AvisosTelegram.cs` | Avisos en segundo plano (cola en memoria + `BackgroundService`): un problema con Telegram nunca hace lenta ni rompe una pantalla web |
+| `Services/ConsultasTelegramService.cs` | Las únicas consultas nuevas: métodos de pago activos y datos de un ticket para los avisos |
+| `Services/SoporteClienteService.cs`, `Services/SoportePanelService.cs` | Disparan los avisos al crear, responder y cerrar un ticket. `ResultadoOperacion` ganó `IdCreado` (el bot muestra el folio) |
+| `Controllers/MiusuarioController.cs`, `Views/Miusuario/Telegram/Index.cshtml`, `_CuentaNav.cshtml` | Pestaña **Telegram** (solo clientes): estado, generar código (se muestra solo en la respuesta del POST), desvincular |
+| `Bot/TelegramBotOpciones.cs`, `Bot/ConfiguracionBotTelegram.cs` | Configuración (`TelegramBot:*`) y registro con `builder.Services.AgregarBotTelegram(...)` |
+| `Bot/TelegramBotWorker.cs`, `Bot/ReceptorActualizaciones.cs` | Conexión (GetMe, borra webhook, menú de comandos, long polling con reintentos) y un scope de DI por mensaje |
+| `Bot/ManejadorActualizaciones*.cs` | Router + Catálogo/Ayuda + Cuenta + Soporte (partial, como `GestorController`) |
+| `Bot/EstadoConversacion.cs`, `Bot/LimitadorIntentos.cs`, `Bot/FormatoBot.cs`, `Bot/Teclado.cs`, `Bot/ComandosBot.cs` | Flujos de varios pasos (10 min), límites (30 mensajes/min por chat, 5 intentos de `/vincular` cada 15 min), formato HTML seguro, botones y menú `/` |
+
+### 11.3 Puesta en marcha (cada integrante)
+1. **Base de datos:** `sql/01_crear_base_datos.sql` → `02` → `03` (la tabla nueva está en `01`). Si no quieres perder tus datos, en SSMS selecciona solo el bloque de `telegram_vinculos` de `01` (el `CREATE TABLE` y sus dos índices) y ejecútalo con F5. `/Home/TestDb` debe decir **30 tablas**.
+2. **Crear tu bot de prueba** en Telegram con **@BotFather**: `/newbot` → nombre (p. ej. *FlyVibe Mex Axel*) → usuario que termine en `bot` (p. ej. `FlyVibeMexAxelBot`). Copia el token.
+3. **Guardar el token** (en la carpeta de `FlyVibeMex.csproj`; nunca en `appsettings.json`):
+   ```powershell
+   dotnet user-secrets set "TelegramBot:Token" "123456789:AA...tu_token"
+   ```
+4. `dotnet build` (descarga `Telegram.Bot`) y `dotnet run`. En la consola: `Bot de Telegram: activo (long polling).` y `Bot de Telegram @TuBot conectado`.
+5. **Grupo de agentes (opcional):** crea un grupo privado, agrega tu bot, escribe `/idchat@TuBot` y guarda el número que responde:
+   ```powershell
+   dotnet user-secrets set "TelegramBot:ChatIdAgentes" "-1001234567890"
+   ```
+   Reinicia la app; `/idchat@TuBot` debe confirmar que es el grupo configurado.
+6. **Apagar el bot** sin borrar el token: `dotnet user-secrets set "TelegramBot:Habilitado" "false"`.
+
+Notas:
+- **Un token = un proceso.** Si dos personas corren la app con el mismo token, Telegram responde 409 y el log lo dice. Cada quien usa su bot; el "oficial" solo en la PC de la demo.
+- Con `UrlSitioWeb` en `localhost`, Telegram no acepta botones con enlace: el bot escribe la dirección en el mensaje (funciona en la misma PC). En un servidor público, `TelegramBot__UrlSitioWeb=https://...` y salen como botones.
+- El código de vinculación y los flujos a medias viven en memoria: si reinicias la app, genera otro código. Re-ejecutar `03_seed_demo.sql` no borra los vínculos (los usuarios conservan su id).
+- Si se filtra un token: @BotFather › `/revoke` y guardar el nuevo.
+
+### 11.4 Qué hace el bot
+| Comando / botón | Requiere vincular | Servicio que usa |
+|---|---|---|
+| `/start`, `/menu` | No | — |
+| `/explorar` → sección → lista paginada (5) → ficha → próximas fechas · 📍 elegir destino | No | `ICatalogoService` (`LlenarSeccionAsync`, `DetalleAsync`) |
+| `/ayuda` → cancelaciones, métodos de pago, contacto, seguridad, comandos | No | `IContenidoSitioService`, `IConsultasTelegramService` |
+| `/vincular [código]`, `/start v_CODIGO`, `/desvincular` | — | `IVinculacionTelegramService` |
+| `/reservas` → detalle (comprobante, pago sin datos de tarjeta, reembolso, política, si se puede cancelar, historial) | Sí | `IMisViajesService` |
+| `/asesoria`, `/problema` (elegir reservación) → asunto → mensaje → ✅ Enviar | Sí | `ISoporteClienteService.CrearAsync` (validación = DataAnnotations del formulario web) |
+| `/tickets` → conversación (últimos 6 mensajes) → ✍️ Responder | Sí | `ISoporteClienteService` |
+| `/cancelar` | No | sale de cualquier flujo |
+| `/idchat` (en un grupo) | — | muestra el id del grupo para `ChatIdAgentes` |
+
+### 11.5 Guion de prueba
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Correr la app **sin** token | La web funciona igual; log `Bot de Telegram: desactivado: falta TelegramBot:Token…`; Mi cuenta › Telegram dice que no está disponible |
+| 2 | Con token: `/start` al bot | Saludo + menú; "Tu cuenta aún no está vinculada" |
+| 3 | `/explorar` → Hoteles → un hotel → Próximas fechas | Mismos hoteles, precios "desde" y cupo que la web |
+| 4 | `/reservas` sin vincular | Instrucciones para vincular |
+| 5 | Web con `ana.lopez@flyvibemex.test` → Mi cuenta › **Telegram** → Generar código → `/vincular CODIGO` | "¡Listo, Ana!"; la web muestra "Vinculada" |
+| 6 | Usar el mismo código otra vez (otro chat) | "Ese código no es válido o ya venció" |
+| 7 | `/reservas` → `FV-260901` | Detalle con total, pago y política; sin datos de tarjeta |
+| 8 | Vincula ahora `cliente.prueba@…` (genera su código y mándalo: reemplaza el vínculo de Ana) → `/problema` → `FV-260902` (viaje en 2 días) | Folio; en el grupo de agentes llega el aviso con **URGENTE** |
+| 9 | Con `soporte.prueba@…` en el panel: tomar ese ticket y responder | Al cliente le llega "Te respondieron" con botón Responder; responde desde Telegram y se ve en el panel |
+| 10 | Cerrar el ticket en el panel | Al cliente le llega "Tu ticket quedó cerrado" |
+| 11 | Escribir `4242 4242 4242 4242` al bot | El bot borra el mensaje y advierte; no se guarda nada |
+| 12 | El SA desactiva la cuenta vinculada, o el cliente desvincula desde la web | En el siguiente mensaje el bot ya no muestra reservaciones ni tickets |
+| 13 | 6 códigos inválidos seguidos | "Hiciste demasiados intentos" |
+
+### 11.6 Seguridad (resumen)
+- Token solo en user-secrets / variable de entorno; el cliente HTTP de Telegram se crea sin `IHttpClientFactory` para que su log no escriba la URL con el token.
+- El bot solo atiende chats privados; cada dato de cuenta pasa por los servicios de la web, que filtran por la cuenta vinculada (sin IDOR). Un cliente desactivado o cambiado de rol pierde el acceso en el siguiente mensaje.
+- Cero SQL nuevo fuera de `Services/` (LINQ). Ningún mensaje del bot incluye tarjetas, CVV, contraseñas, correo ni teléfono; el log no guarda el texto de los mensajes.
+- Todo texto de la BD o del usuario se escapa para el HTML de Telegram (`FormatoBot.Html`); los `callback_data` solo llevan ids (máx. 64 bytes) y se revalidan en el servidor.

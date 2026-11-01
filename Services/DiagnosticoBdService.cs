@@ -14,7 +14,7 @@ public sealed record VerificacionTabla(string tabla, bool ok, int? filas, string
 /// <summary>
 /// Diagnóstico de la conexión con SQL Server para <c>GET /Home/TestDb</c> (solo Development). T8.1: antes vivía en
 /// HomeController. Devuelve el modo activo (Test / Real), si hubo conexión, una consulta LINQ de prueba y la
-/// verificación de las 29 tablas. Nunca devuelve servidor, usuario, contraseña, hashes ni datos personales.
+/// verificación de las 30 tablas. Nunca devuelve servidor, usuario, contraseña, hashes ni datos personales.
 /// </summary>
 public interface IDiagnosticoBdService
 {
@@ -106,7 +106,7 @@ public sealed class DiagnosticoBdService : IDiagnosticoBdService
                 esquemaCompleto = tablasConError == 0,
                 tablas,
                 mensaje = tablasConError == 0
-                    ? "Conexión correcta con Entity Framework Core y las 29 tablas coinciden con los modelos."
+                    ? "Conexión correcta con Entity Framework Core y las 30 tablas coinciden con los modelos."
                     : $"Conexión correcta, pero {tablasConError} tabla(s) no coinciden con los modelos. " +
                       "Vuelve a crear la base de prueba con sql/01_crear_base_datos.sql (y después 02 y 03)."
             });
@@ -167,6 +167,7 @@ public sealed class DiagnosticoBdService : IDiagnosticoBdService
             ("mensajes_soporte", Probar(db.MensajesSoporte)),
             ("bitacora", Probar(db.Bitacora)),
             ("contenido_sitio", Probar(db.ContenidoSitio)),
+            ("telegram_vinculos", Probar(db.TelegramVinculos)),
         };
 
         var resultado = new List<VerificacionTabla>(pruebas.Length);

@@ -27,6 +27,8 @@
       Se puede quitar cuando EF Core / SqlClient ya traigan una versión corregida por su cuenta.
     -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <!-- Bot de Telegram (docs/06): cliente oficial de la comunidad para la Bot API. El token va en dotnet user-secrets. -->
+    <PackageReference Include="Telegram.Bot" Version="22.10.3.3" />
   </ItemGroup>
 
 </Project>

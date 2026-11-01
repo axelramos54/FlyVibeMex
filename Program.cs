@@ -1,3 +1,4 @@
+using FlyVibeMex.Bot;
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
@@ -108,6 +109,15 @@ builder.Services.AddScoped<IGestorCatalogoService, GestorCatalogoService>();
 builder.Services.AddScoped<IGestorPaquetesService, GestorPaquetesService>();
 builder.Services.AddScoped<IGestorPromocionesService, GestorPromocionesService>();
 
+// =============================================================================================
+// Bot de Telegram (docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md)
+// ---------------------------------------------------------------------------------------------
+// Corre en ESTE mismo proceso (long polling, funciona en localhost) y usa los mismos servicios que la web.
+// El token NUNCA va en appsettings.json: dotnet user-secrets set "TelegramBot:Token" "123456:ABC..."
+// Igual que la BD: sin token (o con "TelegramBot:Habilitado": false) la web arranca normal y el bot no se inicia.
+// =============================================================================================
+var opcionesBot = builder.Services.AgregarBotTelegram(builder.Configuration);
+
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);
 // nunca la contraseña ni el hash.
@@ -138,6 +148,7 @@ app.Logger.LogInformation(
     configuracionBd.Modo,
     configuracionBd.NombreCadena,
     configuracionBd.EstaConfigurada ? "configurada" : "SIN CONFIGURAR: ver docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md");
+app.Logger.LogInformation("Bot de Telegram: {Estado}.", opcionesBot.DescripcionEstado());
 
 // Configure the HTTP request pipeline.
 // T6.2 · Páginas de error propias (EstadoController): 400, 403, 404 y 500 sin detalles técnicos.

@@ -9,7 +9,8 @@
  Uso (el parcial recibe una copia del ViewData de la página):
      @{ ViewData["Pestana"] = "reservaciones"; }
      <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
- Valores de "Pestana": perfil | reservaciones | compras | tarjetas | soporte
+ Valores de "Pestana": perfil | reservaciones | compras | tarjetas | soporte | telegram
+ La pestaña Telegram (vincular el bot, docs/06) solo la ven los clientes en su propia cuenta.
  ============================================================================================
 *@
 @model ContextoCuenta
@@ -57,4 +58,10 @@ else if (Model.EsInterno)
     <li class="nav-item">
         <a class="@Clase("soporte")" aria-current="@Actual("soporte")" asp-controller="Solicitar" asp-action="Index" asp-route-cliente="@cliente">Soporte</a>
     </li>
+    @if (!Model.EsInterno)
+    {
+        <li class="nav-item">
+            <a class="@Clase("telegram")" aria-current="@Actual("telegram")" asp-controller="Miusuario" asp-action="Telegram">Telegram</a>
+        </li>
+    }
 </ul>

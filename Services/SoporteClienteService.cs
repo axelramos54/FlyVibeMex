@@ -9,11 +9,13 @@ namespace FlyVibeMex.Services;
 public sealed class SoporteClienteService : ISoporteClienteService
 {
     private readonly FlyVibeMexDbContext _db;
+    private readonly IAvisosTelegram _avisos;
     private readonly ILogger<SoporteClienteService> _logger;
 
-    public SoporteClienteService(FlyVibeMexDbContext db, ILogger<SoporteClienteService> logger)
+    public SoporteClienteService(FlyVibeMexDbContext db, IAvisosTelegram avisos, ILogger<SoporteClienteService> logger)
     {
         _db = db;
+        _avisos = avisos;
         _logger = logger;
     }
 
@@ -102,7 +104,9 @@ public sealed class SoporteClienteService : ISoporteClienteService
         }
 
         _logger.LogInformation("Ticket {IdTicket} creado por el cliente {IdUsuario}.", ticket.id, idUsuario);
-        return ResultadoOperacion.Ok($"Recibimos tu solicitud (ticket #{ticket.id}). Un agente la atenderá pronto.");
+        // Bot de Telegram (docs/06): aviso al grupo de agentes, en segundo plano (no hace esperar al cliente).
+        _avisos.TicketCreado(ticket.id);
+        return ResultadoOperacion.Ok($"Recibimos tu solicitud (ticket #{ticket.id}). Un agente la atenderá pronto.") with { IdCreado = ticket.id };
     }
 
     public async Task<TicketClienteViewModel?> TicketAsync(ContextoCuenta contexto, ulong idTicket, CancellationToken cancellationToken = default)

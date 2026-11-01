@@ -2,7 +2,7 @@
    FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
    Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
-       - las 29 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - las 30 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
        - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
          estados de pago y métodos de pago;
        - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
@@ -515,6 +515,25 @@ CREATE TABLE dbo.contenido_sitio(
 );
 GO
 
+/* ---------- Bot de Telegram (docs/06): cuentas de CLIENTE vinculadas a un chat privado con el bot ----------
+   El cliente genera un código de un solo uso en Mi cuenta › Telegram (vive 10 minutos en la memoria de la app,
+   nunca en la BD) y lo manda al bot. Al vincular se desactivan los vínculos anteriores de esa cuenta y de ese chat:
+   los dos índices únicos filtrados garantizan UNA cuenta por chat y UN chat por cuenta (solo entre los activos).
+   chat_id = id del chat privado de Telegram (en un chat privado es igual al id del usuario de Telegram). */
+CREATE TABLE dbo.telegram_vinculos(
+    id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_telegram_vinculos PRIMARY KEY,
+    id_usuarioglobal BIGINT   NOT NULL CONSTRAINT fk_telegram_vinculos_usuarios REFERENCES dbo.usuarios(id),
+    chat_id          BIGINT   NOT NULL CONSTRAINT ck_telegram_vinculos_chat CHECK (chat_id > 0),
+    activo           BIT      NOT NULL CONSTRAINT df_telegram_vinculos_activo DEFAULT(1),
+    vinculado_en     DATETIME NOT NULL CONSTRAINT df_telegram_vinculos_vinculado_en DEFAULT(CURRENT_TIMESTAMP),
+    desvinculado_en  DATETIME NULL,
+    CONSTRAINT ck_telegram_vinculos_fechas CHECK (activo = 1 OR desvinculado_en IS NOT NULL)
+);
+GO
+CREATE UNIQUE INDEX uq_telegram_vinculos_usuario ON dbo.telegram_vinculos(id_usuarioglobal) WHERE activo = 1;
+CREATE UNIQUE INDEX uq_telegram_vinculos_chat    ON dbo.telegram_vinculos(chat_id)          WHERE activo = 1;
+GO
+
 /* =====================================================================================
    Catálogos que la aplicación necesita (los busca por NOMBRE, nunca por id)
    ===================================================================================== */
@@ -551,8 +570,8 @@ VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
         'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 GO
 
-/* ---------- Verificación: deben salir 29 tablas y los catálogos ---------- */
-SELECT COUNT(*) AS tablas_creadas   -- 29
+/* ---------- Verificación: deben salir 30 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 30
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -560,7 +579,7 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'detalle_reservacion', N'historial_estado_reservacion', N'metodos_pago',
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
-               N'mensajes_soporte', N'bitacora', N'contenido_sitio');
+               N'mensajes_soporte', N'bitacora', N'contenido_sitio', N'telegram_vinculos');
 
 SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
 SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5

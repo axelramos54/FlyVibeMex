@@ -19,12 +19,15 @@ public sealed class SoportePanelService : ISoportePanelService
 
     private readonly FlyVibeMexDbContext _db;
     private readonly IReservacionesPanelService _reservaciones;
+    private readonly IAvisosTelegram _avisos;
     private readonly ILogger<SoportePanelService> _logger;
 
-    public SoportePanelService(FlyVibeMexDbContext db, IReservacionesPanelService reservaciones, ILogger<SoportePanelService> logger)
+    public SoportePanelService(FlyVibeMexDbContext db, IReservacionesPanelService reservaciones, IAvisosTelegram avisos,
+        ILogger<SoportePanelService> logger)
     {
         _db = db;
         _reservaciones = reservaciones;
+        _avisos = avisos;
         _logger = logger;
     }
 
@@ -218,6 +221,9 @@ public sealed class SoportePanelService : ISoportePanelService
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
+            // Bot de Telegram (docs/06): si el cliente vinculó su cuenta, le llega la respuesta (en segundo plano).
+            if (guardado) _avisos.RespuestaDelPersonal(idTicket);
+
             return guardado
                 ? ResultadoOperacion.Ok("Respuesta enviada. El cliente la verá en su sección de Soporte.")
                 : ResultadoOperacion.Falla("Solo quien atiende el ticket (en proceso) puede responder. Puede que se haya cerrado o reasignado.");
@@ -248,6 +254,8 @@ public sealed class SoportePanelService : ISoportePanelService
                 _db.RegistrarBitacora(idAgente, "CERRAR", "solicitudes_soporte", idTicket, $"Ticket #{idTicket} cerrado.");
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
+
+            if (cerrado) _avisos.TicketCerrado(idTicket);   // Telegram: aviso al cliente vinculado
 
             return cerrado
                 ? ResultadoOperacion.Ok($"Ticket #{idTicket} cerrado. Lo encuentras en tu historial.")

@@ -344,6 +344,9 @@ namespace FlyVibeMex.Models
     /// <summary>Resultado simple de una acción (cancelar, guardar tarjeta…).</summary>
     public record ResultadoOperacion(bool Exitoso, string Mensaje, List<(string campo, string mensaje)>? Errores = null)
     {
+        /// <summary>Id del registro que se creó, si la operación crea uno (p. ej. el ticket; lo usa el bot de Telegram).</summary>
+        public ulong? IdCreado { get; init; }
+
         public static ResultadoOperacion Ok(string mensaje) => new(true, mensaje);
         public static ResultadoOperacion Falla(string mensaje) => new(false, mensaje);
     }

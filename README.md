@@ -98,7 +98,7 @@ El proyecto **no usa migraciones de EF Core**: el esquema vive en `sql/` y los m
 
 | Script | Qué hace |
 |---|---|
-| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` y **borra y vuelve a crear** sus 29 tablas (PK, FK, CHECK, índices) con los catálogos que la app necesita (roles, estados de reservación y pago, métodos de pago) y la cuenta inicial `sa.prueba@flyvibemex.test` |
+| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` y **borra y vuelve a crear** sus 30 tablas (PK, FK, CHECK, índices) con los catálogos que la app necesita (roles, estados de reservación y pago, métodos de pago) y la cuenta inicial `sa.prueba@flyvibemex.test` |
 | `sql/02_procedimientos_almacenados.sql` | 24 procedimientos `pa_*` con las mismas reglas que la app: altas del catálogo (proveedor, hospedaje, vehículo, tour, vuelo con "repetir"), disponibilidad, compra con pago simulado, cancelación y reembolsos, tickets, y reportes (ventas, ocupación, reembolsos pendientes, tickets, bitácora). La app **no** los usa (sigue con EF Core); al final del archivo hay ejemplos para SSMS |
 | `sql/03_seed_demo.sql` | Datos de demostración: 7 cuentas de prueba (una por rol), ubicaciones, proveedores, servicios con subtipo, 30 días de disponibilidad, promociones, reservaciones, pagos, reembolso y tickets |
 
@@ -117,6 +117,20 @@ Contraseña de todas las cuentas de prueba: `FlyVibe#Prueba2026` (solo para esta
 
 ---
 
+## 🤖 Bot de Telegram (opcional)
+
+Corre dentro de la misma app (long polling: funciona en `localhost`, sin dominio público). Sin token, la web funciona igual.
+
+1. En Telegram, con **@BotFather**: `/newbot` → crea **tu propio** bot de prueba (un token solo admite una PC a la vez).
+2. En la carpeta de `FlyVibeMex.csproj`: `dotnet user-secrets set "TelegramBot:Token" "123456789:AA...tu_token"` (**nunca** en `appsettings.json`).
+3. `dotnet run` → la consola dice `Bot de Telegram @TuBot conectado`.
+4. Para ver reservaciones y tickets en el bot: en la web, **Mi cuenta › Telegram › Generar código** y mándalo con `/vincular`.
+5. Opcional, avisos de tickets nuevos a un grupo de agentes: agrega el bot a un grupo, escribe `/idchat@TuBot` y guarda el número con `dotnet user-secrets set "TelegramBot:ChatIdAgentes" "-100…"`.
+
+Detalle, comandos y guion de prueba: [docs/06 · sección 11](docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md#11-implementación-01112026).
+
+---
+
 ## 📚 Documentación
 
 | Documento | Contenido |
@@ -126,7 +140,7 @@ Contraseña de todas las cuentas de prueba: `FlyVibe#Prueba2026` (solo para esta
 | [03 · Catálogo de modelos C#](docs/03_CATALOGO_MODELOS_CSHARP.md) | Las 24 clases de `Models/` agrupadas por dominio, con su namespace y pendientes de estandarización |
 | [04 · Estándares y hoja de ruta](docs/04_ESTANDARES_Y_HOJA_DE_RUTA_APP.md) | Convenciones de código, flujo de Git, limpieza pendiente y pantallas por construir |
 | [05 · Conexión EF Core y seguridad](docs/05_CONEXION_EFCORE_Y_SEGURIDAD.md) | Crear `FlyVibeMex_Test`, registrar tu cadena con `dotnet user-secrets`, probar `/Home/TestDb`, cambiar a la BD real, reglas anti SQL Injection y login seguro |
-| [06 · Análisis y diseño del bot de Telegram](docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md) | Evaluación de 7 librerías .NET, librería elegida, funciones del bot por módulo, flujos, reglas de seguridad y plan MVP de 3 días (Etapa 7) |
+| [06 · Análisis y diseño del bot de Telegram](docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md) | Evaluación de 7 librerías .NET, librería elegida, funciones del bot por módulo, flujos, reglas de seguridad y **cómo ponerlo en marcha** (sección 11, implementado el 01/11/2026) |
 
 
 ---

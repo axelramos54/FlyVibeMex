@@ -1,0 +1,128 @@
+@*
+ ============================================================================================
+ Vista: Views/Miusuario/Telegram/Index.cshtml   —   GET /Miusuario/Telegram  ·  POST GenerarCodigoTelegram / DesvincularTelegram
+ Mi cuenta › Telegram (docs/06): vincular la cuenta del CLIENTE con el bot @FlyVibeMex de Telegram.
+ - "Generar código": código de un solo uso (10 minutos) que se muestra SOLO en esta respuesta. El cliente lo manda al
+   bot con /vincular CODIGO, o abre el enlace t.me/<bot>?start=v_CODIGO, que se lo manda solo.
+ - Vinculada: el bot puede mostrarle sus reservaciones y tickets, y avisarle cuando un agente le responde.
+ - El bot nunca pide tarjetas, CVV ni contraseñas, y no cobra ni cancela: eso se hace solo en la web.
+ Controlador: MiusuarioController (Telegram, GenerarCodigoTelegram, DesvincularTelegram).
+ ============================================================================================
+*@
+@model TelegramCuentaViewModel
+@{
+    ViewData["Title"] = "Telegram";
+    ViewData["Pestana"] = "telegram";
+    var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+    var usuarioBot = Model.NombreUsuarioBot is null ? "el bot de FlyVibeMex" : "@" + Model.NombreUsuarioBot;
+}
+
+<div class="container mt-2">
+    <h1 class="h3 mb-3">Telegram</h1>
+
+    <partial name="~/Views/Miusuario/_CuentaNav.cshtml" model="Model.Contexto" />
+
+    @if (!Model.BotConfigurado)
+    {
+        <div class="alert alert-info" role="status">
+            El asistente de FlyVibeMex en Telegram no está disponible por ahora. Vuelve a intentarlo más tarde.
+        </div>
+    }
+    else if (!Model.BotConectado)
+    {
+        <div class="alert alert-warning" role="status">
+            El bot se está conectando con Telegram. Si generas un código ahora, podrás usarlo en cuanto responda.
+        </div>
+    }
+
+    <div class="row g-4">
+        @* ---- Estado y qué hace el bot ---- *@
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">Estado</h2>
+                    @if (Model.Vinculado)
+                    {
+                        <p class="mb-2">
+                            <span class="badge text-bg-success">Vinculada</span>
+                            desde el @(Model.VinculadoDesde!.Value.ToString("dd 'de' MMMM 'de' yyyy, HH:mm", es))
+                        </p>
+                        <p class="text-muted small">
+                            Si cambiaste de teléfono o de cuenta de Telegram, genera un código nuevo y mándalo desde el chat nuevo:
+                            el vínculo anterior se desactiva solo.
+                        </p>
+                        <form asp-action="DesvincularTelegram" method="post" class="mt-3">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Desvincular mi cuenta</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="mb-2"><span class="badge text-bg-secondary">No vinculada</span></p>
+                    }
+
+                    <h2 class="h6 mt-4">Con tu cuenta vinculada, el bot puede</h2>
+                    <ul class="small mb-3">
+                        <li>Mostrarte tus próximas reservaciones y su estado (<code>/reservas</code>).</li>
+                        <li>Abrir un ticket de asesoría o reportar un problema (<code>/asesoria</code>, <code>/problema</code>).</li>
+                        <li>Mostrarte tus tickets y dejarte responder (<code>/tickets</code>).</li>
+                        <li>Avisarte cuando un agente te responde o cierra tu ticket.</li>
+                    </ul>
+                    <p class="small text-muted mb-0">
+                        Sin vincular también puedes explorar vuelos, hoteles, vehículos, tours y paquetes (<code>/explorar</code>).
+                        <strong>El bot nunca te pedirá datos de tarjeta, CVV ni tu contraseña</strong>, y no cobra ni cancela:
+                        los pagos y las cancelaciones se hacen solo aquí, en la web.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @* ---- Código de vinculación ---- *@
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">@(Model.Vinculado ? "Vincular otro chat" : "Vincular mi cuenta")</h2>
+
+                    @if (Model.Codigo is not null)
+                    {
+                        <p class="mb-1">Tu código (sirve una sola vez):</p>
+                        <p class="display-6 fw-bold font-monospace mb-1" aria-label="Código de vinculación">@Model.Codigo.CodigoVisible</p>
+                        <p class="small text-muted">Vence a las @Model.Codigo.ExpiraEn.ToString("HH:mm", es) (en @Model.MinutosVigencia minutos).</p>
+
+                        @if (Model.EnlaceConCodigo is not null)
+                        {
+                            <a class="btn btn-primary mb-3" href="@Model.EnlaceConCodigo" target="_blank" rel="noopener noreferrer">
+                                Abrir @usuarioBot y vincular
+                            </a>
+                        }
+                        <p class="small mb-0">
+                            O abre @usuarioBot en Telegram y escribe:
+                            <code>/vincular @Model.Codigo.CodigoVisible</code>
+                        </p>
+                        <p class="small text-muted mt-2 mb-0">No compartas este código: quien lo use antes que tú vería tus reservaciones y tickets en su Telegram.</p>
+                    }
+                    else
+                    {
+                        <ol class="small">
+                            <li>Genera un código aquí.</li>
+                            <li>Ábrelo con el botón (te lleva al bot) o escribe <code>/vincular CÓDIGO</code> en el chat con @usuarioBot.</li>
+                            <li>El bot te confirma con tu nombre.</li>
+                        </ol>
+                        @if (Model.EnlaceBot is not null)
+                        {
+                            <p class="small">Bot: <a href="@Model.EnlaceBot" target="_blank" rel="noopener noreferrer">@usuarioBot</a></p>
+                        }
+                    }
+
+                    @if (Model.BotConfigurado)
+                    {
+                        <form asp-action="GenerarCodigoTelegram" method="post" class="mt-3">
+                            <button type="submit" class="btn @(Model.Codigo is null ? "btn-primary" : "btn-outline-secondary")">
+                                @(Model.Codigo is null ? "Generar código" : "Generar otro código")
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

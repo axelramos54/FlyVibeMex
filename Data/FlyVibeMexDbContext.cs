@@ -77,6 +77,9 @@ public class FlyVibeMexDbContext : DbContext
     public DbSet<Bitacora> Bitacora => Set<Bitacora>();
     public DbSet<ContenidoSitio> ContenidoSitio => Set<ContenidoSitio>();
 
+    // ===================== Bot de Telegram (docs/06) =====================
+    public DbSet<TelegramVinculos> TelegramVinculos => Set<TelegramVinculos>();
+
     /// <summary>
     /// Convenciones globales aplicadas a TODAS las entidades antes de construir el modelo.
     /// </summary>
@@ -544,6 +547,19 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.imagen_ruta).HasMaxLength(260).IsRequired(false);
 
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuario).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TelegramVinculos>(e =>
+        {
+            // Cuenta de CLIENTE vinculada a su chat privado con el bot (docs/06). Un vínculo activo por cuenta y por chat.
+            e.ToTable("telegram_vinculos");
+            e.HasKey(x => x.id);
+            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.vinculado_en).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasIndex(x => x.id_usuarioglobal).IsUnique().HasFilter("[activo] = 1");
+            e.HasIndex(x => x.chat_id).IsUnique().HasFilter("[activo] = 1");
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

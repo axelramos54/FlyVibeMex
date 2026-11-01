@@ -24,11 +24,16 @@ public class MiusuarioController : Controller
 {
     private readonly IMiCuentaService _cuenta;
     private readonly IMisViajesService _viajes;
+    private readonly IVinculacionTelegramService _telegram;
+    private readonly EstadoBotTelegram _bot;
 
-    public MiusuarioController(IMiCuentaService cuenta, IMisViajesService viajes)
+    public MiusuarioController(IMiCuentaService cuenta, IMisViajesService viajes, IVinculacionTelegramService telegram,
+        EstadoBotTelegram bot)
     {
         _cuenta = cuenta;
         _viajes = viajes;
+        _telegram = telegram;
+        _bot = bot;
     }
 
     // ============================== PERFIL ==============================
@@ -243,6 +248,67 @@ public class MiusuarioController : Controller
         TempData[resultado.Exitoso ? "Exito" : "Error"] = resultado.Mensaje;
         return RedirectToAction(nameof(Mistarjetas));
     }
+
+    // ============================== TELEGRAM (solo CLIENTE, docs/06) ==============================
+    // El cliente genera un código de un solo uso y se lo manda al bot para vincular su cuenta. El código se muestra
+    // SOLO en la respuesta del POST (no se guarda en TempData, en cookies ni en la BD) y vence a los 10 minutos.
+
+    // GET /Miusuario/Telegram
+    [HttpGet]
+    public async Task<IActionResult> Telegram(CancellationToken cancellationToken)
+    {
+        var contexto = await _cuenta.ContextoAsync(User, null, cancellationToken);
+        if (contexto is null) return Challenge();
+        if (contexto.EsInterno)
+        {
+            TempData["Aviso"] = "El bot de Telegram es para clientes: las cuentas del personal no se vinculan.";
+            return RedirectToAction(nameof(Index));
+        }
+        return View("Telegram/Index", await ModeloTelegramAsync(contexto, null, cancellationToken));
+    }
+
+    // POST /Miusuario/GenerarCodigoTelegram
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = Roles.Cliente)]
+    public async Task<IActionResult> GenerarCodigoTelegram(CancellationToken cancellationToken)
+    {
+        var contexto = await _cuenta.ContextoAsync(User, null, cancellationToken);
+        if (contexto is null) return Challenge();
+        if (!_bot.Configurado)
+        {
+            TempData["Error"] = "El bot de Telegram no está activo en este momento.";
+            return RedirectToAction(nameof(Telegram));
+        }
+
+        var codigo = _telegram.GenerarCodigo(contexto.IdUsuario);
+        return View("Telegram/Index", await ModeloTelegramAsync(contexto, codigo, cancellationToken));
+    }
+
+    // POST /Miusuario/DesvincularTelegram
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = Roles.Cliente)]
+    public async Task<IActionResult> DesvincularTelegram(CancellationToken cancellationToken)
+    {
+        if (!TryIdUsuario(out var idUsuario)) return Challenge();
+        var resultado = await _telegram.DesvincularCuentaAsync(idUsuario, cancellationToken);
+        TempData[resultado.Exitoso ? "Exito" : "Error"] = resultado.Mensaje;
+        return RedirectToAction(nameof(Telegram));
+    }
+
+    private async Task<TelegramCuentaViewModel> ModeloTelegramAsync(ContextoCuenta contexto, CodigoVinculacionTelegram? codigo,
+        CancellationToken cancellationToken) => new()
+    {
+        Contexto = contexto,
+        BotConfigurado = _bot.Configurado,
+        BotConectado = _bot.Conectado,
+        NombreUsuarioBot = _bot.NombreUsuario,
+        EnlaceBot = _bot.Enlace(),
+        VinculadoDesde = await _telegram.VinculadoDesdeAsync(contexto.IdUsuario, cancellationToken),
+        Codigo = codigo,
+        EnlaceConCodigo = codigo is null ? null : _bot.Enlace("v_" + codigo.Codigo)
+    };
 
     // ============================== AYUDANTES ==============================
 

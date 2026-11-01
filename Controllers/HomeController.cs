@@ -194,7 +194,7 @@ public class HomeController : Controller
     /// GET <c>/Home/TestDb</c>. Diagnóstico de la conexión con SQL Server mediante EF Core.
     /// <b>Solo existe en Development</b>: en cualquier otro entorno responde 404.
     /// La lógica vive en <see cref="IDiagnosticoBdService"/> (T8.1): modo activo (Test / Real), conexión, consulta de
-    /// prueba y verificación de las 29 tablas. Nunca devuelve servidor, usuario, contraseña, hashes ni datos personales.
+    /// prueba y verificación de las 30 tablas. Nunca devuelve servidor, usuario, contraseña, hashes ni datos personales.
     /// </summary>
     [HttpGet]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
