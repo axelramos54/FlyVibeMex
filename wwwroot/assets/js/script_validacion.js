@@ -8,9 +8,9 @@
  *    campos que el SERVIDOR marcó con error (clase input-validation-error al volver a mostrar el formulario).
  * 3. Al enviar con errores, el cursor va al primer campo con problema (focusInvalid de jquery-validation).
  * 4. Doble envío: en un formulario POST válido, los botones se desactivan y dicen "Procesando…".
+ *    Para excluir un formulario: <form data-sin-bloqueo>. Al volver con "Atrás" se reactivan.
  * 5. Correcciones de compatibilidad con las DataAnnotations: [RegularExpression] con \p{L} (bandera "u") y
  *    [Range(typeof(bool), "true", "true")] en casillas.
- *    Para excluir un formulario: <form data-sin-bloqueo>. Al volver con "Atrás" se reactivan.
  * Si jQuery no cargó (sin internet / CDN caído), solo funciona el punto 4 y el servidor valida todo.
  * ============================================================================================
  */
@@ -69,12 +69,14 @@
         });
 
         // Corrección (01-11-2026): [Range(typeof(bool), "true", "true")] (casilla "Acepto los términos") llega como
-        // data-val-range-min="True" y jquery-validation comparaba textos ("true" <= "True" es falso), así que la casilla
-        // marcada daba error. En una casilla, la regla significa "debe estar marcada" (o desmarcada si el rango es false).
+        // data-val-range-min="True" / data-val-range-max="True" y jquery-validation convierte los límites a número
+        // (Number("True") = NaN), así que la casilla marcada siempre daba error. En una casilla, la regla significa
+        // "debe estar marcada" (o desmarcada si el rango es false); el valor se lee del atributo original.
         var rangoOriginal = $.validator.methods.range;
         $.validator.addMethod('range', function (valor, elemento, limites) {
             if (elemento.type === 'checkbox') {
-                var debeEstarMarcada = String(limites[0]).toLowerCase() === 'true';
+                var minimo = elemento.getAttribute('data-val-range-min');
+                var debeEstarMarcada = String(minimo !== null ? minimo : limites[0]).toLowerCase() === 'true';
                 return elemento.checked === debeEstarMarcada;
             }
             return rangoOriginal.call(this, valor, elemento, limites);

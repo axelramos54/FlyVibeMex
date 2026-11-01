@@ -92,7 +92,10 @@
 
                 <div class="col-12">
                     <div class="form-check">
-                        <input asp-for="acepto_terminos" class="form-check-input" required />
+                        @* data-msg-required: con la casilla sin marcar, el navegador muestra este mensaje en lugar del genérico
+                           (unobtrusive no usa data-val-required en casillas; ver wwwroot/assets/js/script_validacion.js). *@
+                        <input asp-for="acepto_terminos" class="form-check-input" required
+                               data-msg-required="Debes aceptar los términos para crear tu cuenta." />
                         <label asp-for="acepto_terminos" class="form-check-label"></label>
                         (<a asp-controller="Otros" asp-action="Politicas" target="_blank" rel="noopener">ver políticas</a>)
                     </div>
