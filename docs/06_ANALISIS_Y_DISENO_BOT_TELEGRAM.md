@@ -7,7 +7,7 @@
 |---|---|
 | Fecha | 23/10/2026 |
 | Base auditada | `main` en `c816f2d` ("Actualizacion del gitignore", 23/10/2026), después del PR #12 (`actualizacion-de-docs`) |
-| Documentos relacionados | [`CONTEXTO_PROYECTO_FLYVIBEMEX.md`](../CONTEXTO_PROYECTO_FLYVIBEMEX.md), [01 · Visión y reglas](01_VISION_Y_REGLAS_DE_NEGOCIO.md), [03 · Modelos](03_CATALOGO_MODELOS_CSHARP.md), [05 · EF Core y seguridad](05_CONEXION_EFCORE_Y_SEGURIDAD.md) |
+| Documentos relacionados | [`CONTEXTO_PROYECTO_FLYVIBEMEX.md`](CONTEXTO_PROYECTO_FLYVIBEMEX.md), [01 · Visión y reglas](01_VISION_Y_REGLAS_DE_NEGOCIO.md), [03 · Modelos](03_CATALOGO_MODELOS_CSHARP.md), [05 · EF Core y seguridad](05_CONEXION_EFCORE_Y_SEGURIDAD.md) |
 | Estado | Diseño aprobable. **Paso 0 (desbloqueo) hecho el 25/10/2026** sobre `main` en `949f1ae` (PR #13); el bot aún no está implementado |
 
 ## Índice

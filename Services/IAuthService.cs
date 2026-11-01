@@ -23,4 +23,12 @@ public interface IAuthService
 
     /// <summary>Normaliza un correo antes de buscarlo o guardarlo (sin espacios y en minúsculas).</summary>
     string NormalizarCorreo(string correo);
+
+    /// <summary>
+    /// Crea la cuenta de un CLIENTE desde el formulario de registro (T8.1; antes vivía en CrearusuarioController).
+    /// Revisa que el correo y el teléfono no estén registrados, busca el rol de cliente (nunca viene del formulario)
+    /// y guarda solo el hash de la contraseña. Si falla, <see cref="ResultadoOperacion.Errores"/> trae el campo con
+    /// el problema (correo / telefono) o, sin errores por campo, un mensaje general. Nunca lanza errores de BD.
+    /// </summary>
+    Task<ResultadoOperacion> RegistrarClienteAsync(CrearUsuarioViewModel datos, CancellationToken cancellationToken = default);
 }

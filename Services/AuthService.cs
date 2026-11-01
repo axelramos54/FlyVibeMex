@@ -153,6 +153,79 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    /// <summary>Nombres aceptados para el rol de cliente, en orden de preferencia ("Usuario" en el script del equipo,
+    /// "CLIENTE" en sql/01_crear_base_datos.sql).</summary>
+    private static readonly string[] RolesCliente = { "Usuario", "CLIENTE", "Cliente" };
+
+    /// <inheritdoc />
+    public async Task<ResultadoOperacion> RegistrarClienteAsync(CrearUsuarioViewModel datos, CancellationToken cancellationToken = default)
+    {
+        // Normalización (igual que el login: el correo se busca en minúsculas).
+        var correo = NormalizarCorreo(datos.correo ?? string.Empty);
+        var telefono = (datos.telefono ?? string.Empty).Trim();
+        const string MensajeNoDisponible = "No es posible crear cuentas en este momento. Intenta más tarde.";
+
+        try
+        {
+            // Correo y teléfono son UNIQUE en la tabla: se revisa antes para dar un mensaje claro junto al campo.
+            var errores = new List<(string campo, string mensaje)>();
+            if (await _db.Usuarios.AsNoTracking().AnyAsync(u => u.correo == correo, cancellationToken))
+                errores.Add((nameof(CrearUsuarioViewModel.correo), "Ya existe una cuenta con ese correo. Inicia sesión."));
+            if (await _db.Usuarios.AsNoTracking().AnyAsync(u => u.telefono == telefono, cancellationToken))
+                errores.Add((nameof(CrearUsuarioViewModel.telefono), "Ese teléfono ya está registrado en otra cuenta."));
+            if (errores.Count > 0)
+                return new ResultadoOperacion(false, "Revisa los datos marcados.", errores);
+
+            var roles = await _db.RolesUsuarios
+                .AsNoTracking()
+                // Comparaciones explícitas (no Contains de una lista) para que funcione en cualquier versión de SQL Server.
+                .Where(r => r.activo && (r.nombre == "Usuario" || r.nombre == "CLIENTE" || r.nombre == "Cliente"))
+                .Select(r => new { r.id, r.nombre })
+                .ToListAsync(cancellationToken);
+
+            var rol = RolesCliente
+                .Select(nombre => roles.FirstOrDefault(r => r.nombre == nombre))
+                .FirstOrDefault(r => r is not null);
+            if (rol is null)
+            {
+                _logger.LogError("Registro: no existe un rol de cliente activo (Usuario/CLIENTE) en roles_usuarios.");
+                return ResultadoOperacion.Falla(MensajeNoDisponible);
+            }
+
+            var usuario = new UsuariosGlobales
+            {
+                id_rol = rol.id,
+                nombre = datos.nombre.Trim(),
+                apellido_paterno = datos.apellido_paterno.Trim(),
+                apellido_materno = datos.apellido_materno.Trim(),
+                correo = correo,
+                telefono = telefono,
+                password_hash = GenerarHash(datos.password),
+                activo = true,
+                creado_en = DateTime.Now,
+                imagen_ruta = null
+            };
+
+            _db.Usuarios.Add(usuario);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Registro: se creó el usuario {IdUsuario}.", usuario.id);
+            return ResultadoOperacion.Ok("¡Tu cuenta se creó correctamente! Ya puedes iniciar sesión.");
+        }
+        catch (DbUpdateException ex)
+        {
+            // Lo más común: otra persona registró el mismo correo/teléfono justo al mismo tiempo (UNIQUE).
+            _logger.LogWarning(ex, "Registro: no se pudo guardar el usuario.");
+            return ResultadoOperacion.Falla("No se pudo crear la cuenta. Revisa que el correo y el teléfono no estén ya registrados.");
+        }
+        catch (Exception ex) when (EsErrorDeBaseDeDatos(ex))
+        {
+            // El detalle técnico solo queda en el log del servidor.
+            _logger.LogError(ex, "Registro: error de base de datos.");
+            return ResultadoOperacion.Falla(MensajeNoDisponible);
+        }
+    }
+
     /// <summary>Re-hashea la contraseña con los parámetros actuales. Un fallo aquí no impide iniciar sesión.</summary>
     private async Task ActualizarHashAsync(ulong idUsuario, string password, CancellationToken cancellationToken)
     {

@@ -1,7 +1,10 @@
 ﻿@*
- _ViewImports.cshtml: usings y Tag Helpers disponibles en todas las vistas.
- Todas las clases de Models/ están en el namespace FlyVibeMex.Models.
- FlyVibeMex.Services se importa para usar Imagenes.UrlOGenerica(...) en las vistas.
+ _ViewImports.cshtml: usings y Tag Helpers disponibles en TODAS las vistas (también las de Views/Admin).
+ - FlyVibeMex.Models: entidades, ViewModels, Roles (Models/Auth/Roles.cs) y ContenidoSitioClaves.
+ - FlyVibeMex.Services: lo que las vistas usan directo, p. ej. Imagenes.UrlOGenerica(...), IContenidoSitioService
+   (@inject en _Layout y Políticas) y LogoSitio (_Marca, _Favicon).
+ - Tag Helpers de ASP.NET Core (asp-controller, asp-for, asp-append-version, <partial>…).
+ Si una vista necesita otro namespace solo para ella, ponlo con @using en esa vista, no aquí.
 *@
 @using FlyVibeMex
 @using FlyVibeMex.Models

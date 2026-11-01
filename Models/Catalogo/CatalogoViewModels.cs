@@ -48,7 +48,7 @@ namespace FlyVibeMex.Models
         {
             Vuelo => "Viajes",
             Hospedaje => "Hoteles",
-            Vehiculo => "vehiculos",
+            Vehiculo => "Vehiculos",
             Paquete => "Paquetes",
             _ => "Tours"
         };

@@ -18,6 +18,11 @@
 
 ## 0. Cambios recientes
 
+### 31/10/2026 · Este documento se mudó a `docs/` (T8.3)
+- Antes había dos copias: la de la raíz (la más nueva, en Git) y una vieja en `docs/` (del 18/10, fuera de Git). Ahora
+  solo existe `docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md`, con el contenido de la raíz, y ya **se versiona** (igual que
+  `docs/07_REVISION_Y_PLAN_DE_TRABAJO.md`). El seguimiento detallado de las tareas T1–T9 está en el doc 07.
+
 ### 25/10/2026 · Paso 0 del bot: base de datos completa con los nombres nuevos (`main` en `949f1ae`, PR #13)
 - **Esquema completo en el repositorio:** `sql/01_esquema.sql` crea las 24 tablas que faltaban (26 en total con `roles_usuarios` y `usuarios` de `00`). Cada columna se llama **igual que la propiedad del modelo** (`reservaciones.id_usuarioglobal`, `solicitudes_soporte.id_usuarioglobal`, `tarjetas_usuarios.id_usuariog`, `detalle_reservacion.fecha_inicio`, `proveedores.tipo_proveedor`, `ubicaciones.creado_en`/`actualizado_en`) y con el tipo SQL que corresponde al tipo C#. Incluye las correcciones de 4.2/4.3: subtipos con `id_servicio` PK+FK, `vuelos`, `historial_estado_reservacion`, `UNIQUE(id_servicio, fecha)`, CHECK de catálogos e importes, UNIQUE filtrados para columnas opcionales. `servicios.tipo_servicio` admite también `EVENTO` (lo usa el gestor de ventas).
 - **Datos demo:** `sql/02_seed_demo.sql` (6 ubicaciones, 5 proveedores ficticios, 9 servicios con sus subtipos, 14 días de disponibilidad, 3 promociones, 3 reservaciones `FV-260901..03` con detalle, pagos, reembolso, bitácoras y 3 tickets). Agrega `agente.prueba@` y `ana.lopez@flyvibemex.test` (contraseña de prueba `FlyVibe#Prueba2026`). Orden: **00 → 01 → 02**; `00` ahora también borra las tablas de `01` si existen.
@@ -160,7 +165,7 @@ Proyecto/                                   ← carpeta contenedora (sin .sln)
     ├── Program.cs                          ← host mínimo MVC (ver 2.3)
     ├── appsettings.json                    ← solo Logging + AllowedHosts="*"; sin ConnectionStrings
     ├── appsettings.Development.json        ← solo Logging
-    ├── CONTEXTO_PROYECTO_FLYVIBEMEX.md     ← ESTE DOCUMENTO
+    ├── CONTEXTO_PROYECTO_FLYVIBEMEX.md     ← ESTE DOCUMENTO (desde el 31/10/2026 vive en docs/)
     ├── Properties/
     │   └── launchSettings.json             ← perfiles http (5106) y https (7045), ASPNETCORE_ENVIRONMENT=Development
     ├── Controllers/

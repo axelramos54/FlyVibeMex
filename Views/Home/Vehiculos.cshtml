@@ -1,10 +1,10 @@
 @*
  ============================================================================================
- Vista: Views/Home/vehiculos.cshtml   —   GET /Home/vehiculos (HomeController.vehiculos)
+ Vista: Views/Home/Vehiculos.cshtml   —   GET /Home/Vehiculos (HomeController.Vehiculos)
  Sección del catálogo: buscador (izquierda) + tarjetas con datos reales de la BD (derecha, _ResultadosCatalogo).
  El formulario es GET a la misma acción: la búsqueda queda en la URL (se puede recargar y compartir).
  Vehículos: ciudad de retiro, fecha de retiro y de devolución (se cobra por día). Usa el CSS/JS de Tours (letra T).
- Archivos asociados (letra T): wwwroot/assets/css/style_T.css y wwwroot/assets/js/script_T.js.
+ Estilos: wwwroot/assets/css/busqueda.css (común a las 5 secciones del catálogo, T8.3).
  Validaciones: DataAnnotations + BusquedaCatalogoViewModel.Validar (fechas no pasadas, rango máximo de 30 días…).
  ============================================================================================
 *@
@@ -15,7 +15,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/assets/css/style_T.css">
+    <link rel="stylesheet" href="~/assets/css/busqueda.css" asp-append-version="true">
 }
 
 @* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
@@ -28,7 +28,7 @@
         <div class="col-12 col-lg-4 col-xl-3" id="buscador">
             <div class="search-card">
                 <h2>Buscar vehículo</h2>
-                <form asp-action="vehiculos" method="get" novalidate>
+                <form asp-action="Vehiculos" method="get" novalidate>
                     <div class="form-group mb-3">
                         <label asp-for="destino">Ciudad de retiro</label>
                         <select asp-for="destino" asp-items="Model.Destinos" class="form-select">
@@ -56,7 +56,7 @@
                         <select asp-for="orden" asp-items="Html.GetEnumSelectList<OrdenCatalogo>()" class="form-select"></select>
                     </div>
                     <button type="submit" class="btn btn-search-submit">Buscar vehículos</button>
-                    <a asp-action="vehiculos" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
+                    <a asp-action="Vehiculos" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
                 </form>
             </div>
         </div>
@@ -68,7 +68,3 @@
 
     </section>
 </div>
-
-@section Scripts {
-    <script src="~/assets/js/script_T.js"></script>
-}

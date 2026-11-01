@@ -1,10 +1,7 @@
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
-using Microsoft.AspNetCore.Identity;
+using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FlyVibeMex.Controllers;
 
@@ -13,32 +10,23 @@ namespace FlyVibeMex.Controllers;
 /// Se llega desde el enlace "Crear nueva cuenta" de <c>Views/Home/_FormSesion.cshtml</c> (página Iniciar sesión).
 /// </summary>
 /// <remarks>
-/// Reglas de seguridad:
-/// - El formulario se recibe en <see cref="CrearUsuarioViewModel"/>: nadie puede mandar id_rol, activo o password_hash.
-/// - La contraseña se convierte en hash con <see cref="IPasswordHasher{TUser}"/> (el mismo que usa AuthService para
-///   validar el login) y nunca se guarda en texto plano (regla R10).
-/// - El rol siempre es el de cliente; se busca por nombre en roles_usuarios ("Usuario" en el script del equipo,
-///   "CLIENTE" en sql/01_crear_base_datos.sql), nunca se toma del formulario.
-/// - El DbContext se pide con RequestServices (como HomeController.TestDb) para que la pantalla abra
-///   aunque SQL Server todavía no esté configurado.
+/// Controlador delgado (T8.1): valida el formulario → <see cref="IAuthService.RegistrarClienteAsync"/> → redirige.
+/// Reglas de seguridad (las aplica el servicio):
+/// - El formulario se recibe en <see cref="CrearUsuarioViewModel"/> con [Bind]: nadie puede mandar id_rol, activo o
+///   password_hash. El rol siempre es el de cliente y se busca en roles_usuarios, nunca se toma del formulario.
+/// - La contraseña se guarda solo como hash (regla R10), con el mismo PasswordHasher que valida el login.
+/// - <c>Lazy&lt;IAuthService&gt;</c> (ver Services/ServicioDiferido.cs): el servicio y la BD solo se crean al guardar,
+///   así la pantalla abre aunque SQL Server todavía no esté configurado ("modo sin BD").
 /// </remarks>
 public class CrearusuarioController : Controller
 {
-    /// <summary>Nombres aceptados para el rol de cliente, en orden de preferencia.</summary>
-    private static readonly string[] RolesCliente = { "Usuario", "CLIENTE", "Cliente" };
-
-    private readonly IPasswordHasher<UsuariosGlobales> _passwordHasher;
+    private readonly Lazy<IAuthService> _auth;
     private readonly ConfiguracionBaseDatos _configuracionBd;
-    private readonly ILogger<CrearusuarioController> _logger;
 
-    public CrearusuarioController(
-        IPasswordHasher<UsuariosGlobales> passwordHasher,
-        ConfiguracionBaseDatos configuracionBd,
-        ILogger<CrearusuarioController> logger)
+    public CrearusuarioController(Lazy<IAuthService> auth, ConfiguracionBaseDatos configuracionBd)
     {
-        _passwordHasher = passwordHasher;
+        _auth = auth;
         _configuracionBd = configuracionBd;
-        _logger = logger;
     }
 
     // GET /Crearusuario
@@ -53,10 +41,6 @@ public class CrearusuarioController : Controller
         CrearUsuarioViewModel datos,
         CancellationToken cancellationToken)
     {
-        // Normalización (igual que AuthService.NormalizarCorreo: el login busca el correo en minúsculas).
-        var correo = (datos.correo ?? string.Empty).Trim().ToLowerInvariant();
-        var telefono = (datos.telefono ?? string.Empty).Trim();
-
         if (!ModelState.IsValid)
         {
             return VistaFormulario(datos);
@@ -70,79 +54,23 @@ public class CrearusuarioController : Controller
             return RedirectToAction(nameof(Creado));
         }
 
-        try
+        var resultado = await _auth.Value.RegistrarClienteAsync(datos, cancellationToken);
+        if (!resultado.Exitoso)
         {
-            var db = HttpContext.RequestServices.GetRequiredService<FlyVibeMexDbContext>();
-
-            // Correo y teléfono son UNIQUE en la tabla: se revisa antes para dar un mensaje claro.
-            if (await db.Usuarios.AsNoTracking().AnyAsync(u => u.correo == correo, cancellationToken))
-                ModelState.AddModelError(nameof(datos.correo), "Ya existe una cuenta con ese correo. Inicia sesión.");
-
-            if (await db.Usuarios.AsNoTracking().AnyAsync(u => u.telefono == telefono, cancellationToken))
-                ModelState.AddModelError(nameof(datos.telefono), "Ese teléfono ya está registrado en otra cuenta.");
-
-            if (!ModelState.IsValid)
+            // Errores por campo (correo / teléfono ya registrados) junto a su campo; si no, arriba del formulario.
+            if (resultado.Errores is { Count: > 0 } errores)
             {
-                return VistaFormulario(datos);
+                foreach (var (campo, mensaje) in errores)
+                    ModelState.AddModelError(campo, mensaje);
             }
-
-            var roles = await db.RolesUsuarios
-                .AsNoTracking()
-                // Comparaciones explícitas (no Contains de una lista) para que funcione en cualquier versión de SQL Server.
-                .Where(r => r.activo && (r.nombre == "Usuario" || r.nombre == "CLIENTE" || r.nombre == "Cliente"))
-                .Select(r => new { r.id, r.nombre })
-                .ToListAsync(cancellationToken);
-
-            var rol = RolesCliente
-                .Select(nombre => roles.FirstOrDefault(r => r.nombre == nombre))
-                .FirstOrDefault(r => r is not null);
-
-            if (rol is null)
+            else
             {
-                _logger.LogError("Registro: no existe un rol de cliente activo (Usuario/CLIENTE) en roles_usuarios.");
-                ModelState.AddModelError(string.Empty, "No es posible crear cuentas en este momento. Intenta más tarde.");
-                return VistaFormulario(datos);
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
             }
-
-            var usuario = new UsuariosGlobales
-            {
-                id_rol = rol.id,
-                nombre = datos.nombre.Trim(),
-                apellido_paterno = datos.apellido_paterno.Trim(),
-                apellido_materno = datos.apellido_materno.Trim(),
-                correo = correo,
-                telefono = telefono,
-                password_hash = _passwordHasher.HashPassword(new UsuariosGlobales(), datos.password),
-                activo = true,
-                creado_en = DateTime.Now,
-                imagen_ruta = null
-            };
-
-            db.Usuarios.Add(usuario);
-            await db.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Registro: se creó el usuario {IdUsuario}.", usuario.id);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (DbUpdateException ex)
-        {
-            // Lo más común: otra persona registró el mismo correo/teléfono justo al mismo tiempo (UNIQUE).
-            _logger.LogWarning(ex, "Registro: no se pudo guardar el usuario.");
-            ModelState.AddModelError(string.Empty, "No se pudo crear la cuenta. Revisa que el correo y el teléfono no estén ya registrados.");
-            return VistaFormulario(datos);
-        }
-        catch (Exception ex) when (ex is SqlException or RetryLimitExceededException or InvalidOperationException or TimeoutException)
-        {
-            // El detalle técnico solo queda en el log del servidor.
-            _logger.LogError(ex, "Registro: error de base de datos.");
-            ModelState.AddModelError(string.Empty, "No es posible crear cuentas en este momento. Intenta más tarde.");
             return VistaFormulario(datos);
         }
 
-        TempData["Exito"] = "¡Tu cuenta se creó correctamente! Ya puedes iniciar sesión.";
+        TempData["Exito"] = resultado.Mensaje;
         TempData["NombreNuevo"] = datos.nombre.Trim();
         return RedirectToAction(nameof(Creado));
     }

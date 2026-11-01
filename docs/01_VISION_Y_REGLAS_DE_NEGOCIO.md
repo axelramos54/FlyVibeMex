@@ -2,7 +2,7 @@
 
 > **Para quién es este documento:** todo el equipo. Explica *qué* construimos y *qué reglas* debe respetar cualquier pantalla o funcionalidad, antes de entrar al *cómo* (eso está en [02 · Guía de arquitectura](02_GUIA_ARQUITECTURA_MVC_Y_FRONTEND.md)).
 >
-> **Fuente:** documento de avance del Proyecto Integrador (`AVANCE2_EQUIPO1.pdf`) y auditoría técnica [`CONTEXTO_PROYECTO_FLYVIBEMEX.md`](../CONTEXTO_PROYECTO_FLYVIBEMEX.md).
+> **Fuente:** documento de avance del Proyecto Integrador (`AVANCE2_EQUIPO1.pdf`) y auditoría técnica [`CONTEXTO_PROYECTO_FLYVIBEMEX.md`](CONTEXTO_PROYECTO_FLYVIBEMEX.md).
 
 ## Índice
 1. [Nombre y propósito](#1-nombre-y-propósito)

@@ -73,9 +73,9 @@ FlyVibeMex/                          ← raíz del repositorio (aquí está FlyV
 │   │   └── img/   imagen-prueba.jpg
 │   └── lib/                         ← carpetas de la plantilla (bootstrap, jquery…) con SOLO archivos LICENSE
 │
-├── docs/                            ← esta documentación
-├── README.md                        ← portada e instrucciones de ejecución
-└── CONTEXTO_PROYECTO_FLYVIBEMEX.md  ← documento maestro (auditoría técnica)
+├── docs/                            ← esta documentación (incluye CONTEXTO_PROYECTO_FLYVIBEMEX.md, el documento
+│                                       maestro de la auditoría técnica, y 07_REVISION_Y_PLAN_DE_TRABAJO.md)
+└── README.md                        ← portada e instrucciones de ejecución
 ```
 
 > En el prototipo anterior a MVC, las páginas estaban en `pages/` (`index_D.html`, `index_H.html`…) y los recursos en `assets/` en la raíz. Hoy esas páginas son las vistas de `Views/Home/` y los recursos están en `wwwroot/assets/`.

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Claims;
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
@@ -6,8 +5,6 @@ using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 
 namespace FlyVibeMex.Controllers;
 
@@ -22,6 +19,14 @@ namespace FlyVibeMex.Controllers;
 /// </remarks>
 public class HomeController : Controller
 {
+    private readonly Lazy<IAuthService> _auth;
+
+    /// <param name="auth">Diferido (Services/ServicioDiferido.cs): se crea solo al iniciar sesión.</param>
+    public HomeController(Lazy<IAuthService> auth)
+    {
+        _auth = auth;
+    }
+
     /// <summary>
     /// GET <c>/</c> y <c>/Home/Index</c>. Página de Inicio (<c>Views/Home/Index.cshtml</c>).
     /// </summary>
@@ -84,8 +89,8 @@ public class HomeController : Controller
     /// Valida con <see cref="IAuthService"/> (consulta parametrizada + hash) y crea la cookie de sesión.
     /// </summary>
     /// <remarks>
-    /// El servicio se pide con <c>RequestServices</c> (no en el constructor) por la misma razón que <c>TestDb</c>:
-    /// el resto de este controlador debe funcionar aunque el equipo aún no configure SQL Server.
+    /// <see cref="IAuthService"/> llega por constructor como <c>Lazy&lt;IAuthService&gt;</c>: el servicio (y la BD) solo
+    /// se crean aquí, al validar, así que Inicio y el formulario abren aunque SQL Server no esté configurado.
     /// </remarks>
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -106,8 +111,7 @@ public class HomeController : Controller
             return View(datos);
         }
 
-        var auth = HttpContext.RequestServices.GetRequiredService<IAuthService>();
-        var resultado = await auth.ValidarCredencialesAsync(datos.correo, datos.password, cancellationToken);
+        var resultado = await _auth.Value.ValidarCredencialesAsync(datos.correo, datos.password, cancellationToken);
 
         if (!resultado.Exitoso)
         {
@@ -124,7 +128,6 @@ public class HomeController : Controller
             new(ClaimTypes.Email, usuario.correo),
             new(ClaimTypes.Role, usuario.rol),
             new("id_rol", usuario.id_rol.ToString())
-            
         };
 
         var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -160,10 +163,11 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// GET <c>/Home/vehiculos</c>. Devuelve la <b>página</b> <c>vehiculos.cshtml</c>.
-    /// Buscador + tarjetas con datos de la BD.
+    /// GET <c>/Home/Vehiculos</c>. Devuelve la <b>página</b> <c>Vehiculos.cshtml</c>.
+    /// Buscador + tarjetas con datos de la BD. (La URL vieja /Home/vehiculos sigue funcionando: las rutas no
+    /// distinguen mayúsculas.)
     /// </summary>
-    public Task<IActionResult> vehiculos(BusquedaCatalogoViewModel busqueda,
+    public Task<IActionResult> Vehiculos(BusquedaCatalogoViewModel busqueda,
         [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
         => SeccionCatalogoAsync(TipoCatalogo.Vehiculo, busqueda, catalogo, cancellationToken);
 
@@ -171,8 +175,8 @@ public class HomeController : Controller
     /// Lógica común de las 5 secciones del catálogo: valida la búsqueda según el tipo y llena destinos y tarjetas.
     /// </summary>
     /// <remarks>
-    /// <see cref="ICatalogoService"/> se pide con [FromServices] en cada acción (no en el constructor) para que Inicio,
-    /// el login y TestDb sigan abriendo aunque un integrante aún no tenga SQL Server configurado.
+    /// <see cref="ICatalogoService"/> se pide con [FromServices] en cada acción (inyección en la acción, no en el
+    /// constructor) para que Inicio, el login y TestDb sigan abriendo aunque un integrante aún no tenga SQL Server.
     /// Si la búsqueda tiene errores, se muestran junto al campo y la sección lista lo disponible sin filtrar por fechas.
     /// </remarks>
     private async Task<IActionResult> SeccionCatalogoAsync(string tipo, BusquedaCatalogoViewModel busqueda,
@@ -189,20 +193,14 @@ public class HomeController : Controller
     /// <summary>
     /// GET <c>/Home/TestDb</c>. Diagnóstico de la conexión con SQL Server mediante EF Core.
     /// <b>Solo existe en Development</b>: en cualquier otro entorno responde 404.
-    /// Devuelve un JSON con el modo activo (<c>Test</c> o <c>Real</c>), si hubo conexión y el resultado de una consulta
-    /// LINQ de prueba (roles activos y conteo de usuarios). Nunca devuelve servidor, usuario, contraseña, hashes
-    /// ni datos personales.
+    /// La lógica vive en <see cref="IDiagnosticoBdService"/> (T8.1): modo activo (Test / Real), conexión, consulta de
+    /// prueba y verificación de las 29 tablas. Nunca devuelve servidor, usuario, contraseña, hashes ni datos personales.
     /// </summary>
-    /// <remarks>
-    /// El DbContext se pide aquí con <c>RequestServices</c> (y no en el constructor) para que el resto de las páginas
-    /// de este controlador sigan funcionando en equipos que aún no configuran SQL Server.
-    /// </remarks>
     [HttpGet]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> TestDb(
         [FromServices] IWebHostEnvironment entorno,
-        [FromServices] ConfiguracionBaseDatos configuracionBd,
-        [FromServices] ILogger<HomeController> logger,
+        [FromServices] IDiagnosticoBdService diagnostico,
         CancellationToken cancellationToken)
     {
         if (!entorno.IsDevelopment())
@@ -210,168 +208,9 @@ public class HomeController : Controller
             return NotFound();
         }
 
-        var modo = configuracionBd.Modo;
-        var cadena = configuracionBd.NombreCadena;
-        var baseDeDatos = configuracionBd.NombreBaseDeDatos();
-
-        if (!configuracionBd.EstaConfigurada)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                modo,
-                cadena,
-                configurada = false,
-                conectado = false,
-                mensaje = configuracionBd.MensajeSinConfigurar()
-            });
-        }
-
-        var cronometro = Stopwatch.StartNew();
-        try
-        {
-            var db = HttpContext.RequestServices.GetRequiredService<FlyVibeMexDbContext>();
-
-            if (!await db.Database.CanConnectAsync(cancellationToken))
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-                {
-                    modo,
-                    cadena,
-                    baseDeDatos,
-                    configurada = true,
-                    conectado = false,
-                    mensaje = $"No se pudo abrir la conexión. Revisa que SQL Server esté iniciado, el nombre del servidor " +
-                              $"en tu user-secret y que exista la base \"{baseDeDatos}\" (sql/01_crear_base_datos.sql)."
-                });
-            }
-
-            // Consulta LINQ de prueba (parametrizada, sin seguimiento de cambios, sin columnas sensibles).
-            var rolesActivos = await db.RolesUsuarios
-                .AsNoTracking()
-                .Where(r => r.activo)
-                .OrderBy(r => r.id)
-                .Select(r => r.nombre)
-                .ToListAsync(cancellationToken);
-
-            var usuariosActivos = await db.Usuarios.AsNoTracking().CountAsync(u => u.activo, cancellationToken);
-            var usuariosInactivos = await db.Usuarios.AsNoTracking().CountAsync(u => !u.activo, cancellationToken);
-
-            // Verificación del esquema completo: lee 1 fila de cada tabla con TODAS sus columnas.
-            // Si un nombre o tipo de columna no coincide con el modelo, aquí aparece la tabla y el motivo.
-            var tablas = await VerificarTablasAsync(db, cancellationToken);
-            var tablasConError = tablas.Count(t => !t.ok);
-
-            cronometro.Stop();
-            return Json(new
-            {
-                modo,
-                cadena,
-                baseDeDatos,
-                configurada = true,
-                conectado = true,
-                tiempoMs = cronometro.ElapsedMilliseconds,
-                consultaPrueba = new { rolesActivos, usuariosActivos, usuariosInactivos },
-                esquemaCompleto = tablasConError == 0,
-                tablas,
-                mensaje = tablasConError == 0
-                    ? "Conexión correcta con Entity Framework Core y las 29 tablas coinciden con los modelos."
-                    : $"Conexión correcta, pero {tablasConError} tabla(s) no coinciden con los modelos. " +
-                      "Vuelve a crear la base de prueba con sql/01_crear_base_datos.sql (y después 02 y 03)."
-            });
-        }
-        catch (Exception ex) when (ex is SqlException || ex.InnerException is SqlException)
-        {
-            var errorSql = ex as SqlException ?? (SqlException)ex.InnerException!;
-            logger.LogError(ex, "TestDb: error de SQL Server (número {NumeroSql}).", errorSql.Number);
-
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                modo,
-                cadena,
-                baseDeDatos,
-                configurada = true,
-                conectado = false,
-                codigoSql = errorSql.Number,
-                mensaje = SugerenciaPorCodigoSql(errorSql.Number)
-            });
-        }
+        var resultado = await diagnostico.DiagnosticarAsync(cancellationToken);
+        return StatusCode(resultado.CodigoHttp, resultado.Cuerpo);
     }
-
-    /// <summary>Resultado de la verificación de una tabla en <see cref="TestDb"/>.</summary>
-    private sealed record VerificacionTabla(string tabla, bool ok, int? filas, string? error);
-
-    /// <summary>
-    /// Lee una fila (todas las columnas) y cuenta las filas de cada tabla mapeada en <see cref="FlyVibeMexDbContext"/>.
-    /// Solo se usa en Development desde <see cref="TestDb"/>; no devuelve contenido de las filas, solo el conteo
-    /// y, si falla, el mensaje de SQL Server/EF (p. ej. <c>Invalid column name 'tipo_proveedor'</c>).
-    /// </summary>
-    private static async Task<List<VerificacionTabla>> VerificarTablasAsync(FlyVibeMexDbContext db, CancellationToken ct)
-    {
-        var pruebas = new (string Tabla, Func<Task<int>> Prueba)[]
-        {
-            ("roles_usuarios", Probar(db.RolesUsuarios)),
-            ("usuarios", Probar(db.Usuarios)),
-            ("ubicaciones", Probar(db.Ubicaciones)),
-            ("proveedores", Probar(db.Proveedores)),
-            ("servicios", Probar(db.Servicios)),
-            ("vuelos", Probar(db.Vuelos)),
-            ("hospedajes", Probar(db.Hospedajes)),
-            ("vehiculos", Probar(db.Vehiculos)),
-            ("paquete", Probar(db.Paquetes)),
-            ("paquete_servicio", Probar(db.PaquetesServicios)),
-            ("disponibilidad_servicio", Probar(db.DisponibilidadServicios)),
-            ("promociones", Probar(db.Promociones)),
-            ("promocion_servicio", Probar(db.PromocionesServicios)),
-            ("estados_reservacion", Probar(db.EstadosReservacion)),
-            ("reservaciones", Probar(db.Reservaciones)),
-            ("detalle_reservacion", Probar(db.DetallesReservacion)),
-            ("historial_estado_reservacion", Probar(db.HistorialEstadosReservacion)),
-            ("metodos_pago", Probar(db.MetodosPago)),
-            ("instituciones_financieras", Probar(db.InstitucionesFinancieras)),
-            ("tarjetas_usuarios", Probar(db.TarjetasUsuarios)),
-            ("estados_pago", Probar(db.EstadosPago)),
-            ("pagos", Probar(db.Pagos)),
-            ("historial_estado_pago", Probar(db.HistorialEstadosPago)),
-            ("reembolsos", Probar(db.Reembolsos)),
-            ("historial_estado_reembolso", Probar(db.HistorialEstadosReembolso)),
-            ("solicitudes_soporte", Probar(db.SolicitudesSoporte)),
-            ("mensajes_soporte", Probar(db.MensajesSoporte)),
-            ("bitacora", Probar(db.Bitacora)),
-            ("contenido_sitio", Probar(db.ContenidoSitio)),
-        };
-
-        var resultado = new List<VerificacionTabla>(pruebas.Length);
-        foreach (var (tabla, probar) in pruebas)
-        {
-            try
-            {
-                resultado.Add(new VerificacionTabla(tabla, true, await probar(), null));
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                Exception causa = ex.InnerException is SqlException interna ? interna : ex;
-                resultado.Add(new VerificacionTabla(tabla, false, null, $"{causa.GetType().Name}: {causa.Message}"));
-            }
-        }
-        return resultado;
-
-        // Materializa una fila (así EF lee y convierte cada columna) y después cuenta.
-        Func<Task<int>> Probar<T>(DbSet<T> conjunto) where T : class => async () =>
-        {
-            await conjunto.AsNoTracking().Take(1).ToListAsync(ct);
-            return await conjunto.CountAsync(ct);
-        };
-    }
-
-    /// <summary>Traduce los códigos de error de SQL Server más comunes a una sugerencia (sin datos sensibles).</summary>
-    private static string SugerenciaPorCodigoSql(int numero) => numero switch
-    {
-        4060 => "La base de datos no existe o tu usuario no tiene acceso. Ejecuta sql/01_crear_base_datos.sql en SSMS.",
-        18456 => "SQL Server rechazó el inicio de sesión. Revisa usuario/contraseña o usa Trusted_Connection=True.",
-        208 => "Faltan tablas en la base de datos. Ejecuta en SSMS sql/01_crear_base_datos.sql.",
-        2 or 53 or -1 or -2 => "No se encontró el servidor o tardó demasiado. Revisa el nombre (localhost, .\\SQLEXPRESS o (localdb)\\MSSQLLocalDB) y que el servicio de SQL Server esté iniciado.",
-        _ => "Error de SQL Server. Revisa la consola de la aplicación para ver el detalle."
-    };
 
     /// <summary>
     /// GET <c>/Home/Error</c>: enlace anterior a la página de error. Desde T6.2 el manejador de excepciones es

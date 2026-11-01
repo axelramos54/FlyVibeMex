@@ -1,14 +1,14 @@
 /* ============================================================================================
- * style_V.css — Sección V: Viajes / Vuelos (buscador de vuelos)
- * Vista que estiliza: Views/Home/Viajes.cshtml
- * Carga: su vista la enlaza con <link> (página completa desde el 26-10-2026). Sus reglas globales (*, body)
- * afectan a toda esa página, incluida la barra de navegación.
+ * busqueda.css — Hoja COMÚN de las 5 secciones del catálogo (T8.3, 31-10-2026).
+ * Vistas que la enlazan (@section Styles): Views/Home/Viajes.cshtml, Hoteles.cshtml, Vehiculos.cshtml,
+ * Tours.cshtml y Paquetes.cshtml (buscador a la izquierda + tarjetas de resultados a la derecha).
+ * Sustituye a style_V.css, style_H.css, style_T.css y style_P.css, que eran idénticas (los originales están en
+ * _respaldo_claude/t8_obsoletos/). Si una sección necesita algo propio, agrégalo aquí con un selector de su vista.
+ * Sus reglas globales (*, body) afectan a toda la página, incluida la barra de navegación.
  * Regla del equipo: los atributos `class` se reservan para utilidades de Bootstrap; los componentes
  * propios se estilizan con selectores #id (p. ej. #mapas_preferidos, #buscador, #tarjetas).
  * NOTA: esta hoja también usa selectores de clase propios (p. ej. .mi-tarjeta, .btn-card-action);
  *       mantenerlos o migrarlos a #id es una decisión pendiente del equipo.
- * NOTA (consolidación): style_H.css, style_T.css y style_V.css son idénticos y style_P.css solo difiere por
- *       una línea en blanco. Candidatos a unificarse en una sola hoja común para los buscadores.
  * ============================================================================================ */
 /* ---- Reset ---- */
 * {

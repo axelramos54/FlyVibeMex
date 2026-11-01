@@ -5,7 +5,7 @@
  El formulario es GET a la misma acción: la búsqueda queda en la URL (se puede recargar y compartir).
  Paquetes: fecha de inicio y personas (entre el mínimo y el máximo del paquete). El destino es el que indicó el
  gestor (paquete.id_ubicacion_destino) o, si no hay, la ciudad de su hospedaje / el destino de su vuelo.
- Archivos asociados (letra P): wwwroot/assets/css/style_P.css y wwwroot/assets/js/script_P.js.
+ Estilos: wwwroot/assets/css/busqueda.css (común a las 5 secciones del catálogo, T8.3).
  Validaciones: DataAnnotations + BusquedaCatalogoViewModel.Validar (fechas no pasadas, rango máximo de 30 días…).
  ============================================================================================
 *@
@@ -16,7 +16,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/assets/css/style_P.css">
+    <link rel="stylesheet" href="~/assets/css/busqueda.css" asp-append-version="true">
 }
 
 @* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
@@ -64,7 +64,3 @@
 
     </section>
 </div>
-
-@section Scripts {
-    <script src="~/assets/js/script_P.js"></script>
-}

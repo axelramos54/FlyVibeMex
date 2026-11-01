@@ -18,7 +18,6 @@ namespace FlyVibeMex.Controllers;
 ///   cuenta de un cliente para comprobar que lo que añadieron / modificaron / eliminaron ya aparece. Todas las
 ///   acciones de cliente (cancelar, tarjetas) llevan además [Authorize(Roles = CLIENTE)]: aunque alguien arme el
 ///   POST a mano, el servidor responde "Acceso denegado". Su propio perfil y contraseña sí los pueden cambiar.
-/// - NOTA: el archivo se llama Miusuariocontroller.cs pero la clase es MiusuarioController (la ruta es /Miusuario).
 /// </remarks>
 [Authorize]
 public class MiusuarioController : Controller
@@ -120,7 +119,7 @@ public class MiusuarioController : Controller
     {
         var contexto = await _cuenta.ContextoAsync(User, cliente, cancellationToken);
         if (contexto is null) return Challenge();
-        return View("Misreservaciones/index", await _viajes.ReservacionesAsync(contexto, cancellationToken));
+        return View("Misreservaciones/Index", await _viajes.ReservacionesAsync(contexto, cancellationToken));
     }
 
     // GET /Miusuario/Reservacion/FV-261028-AB3K
@@ -132,7 +131,7 @@ public class MiusuarioController : Controller
 
         var vm = await _viajes.DetalleAsync(contexto, id, cancellationToken);
         if (vm is null) return NotFound();   // no existe o es de otra cuenta
-        return View("Reservacion/index", vm);
+        return View("Reservacion/Index", vm);
     }
 
     // GET /Miusuario/Miscompras
@@ -141,7 +140,7 @@ public class MiusuarioController : Controller
     {
         var contexto = await _cuenta.ContextoAsync(User, cliente, cancellationToken);
         if (contexto is null) return Challenge();
-        return View("Miscompras/index", await _viajes.ComprasAsync(contexto, cancellationToken));
+        return View("Miscompras/Index", await _viajes.ComprasAsync(contexto, cancellationToken));
     }
 
     // ============================== CANCELAR / REEMBOLSAR (solo CLIENTE) ==============================
@@ -184,7 +183,7 @@ public class MiusuarioController : Controller
     {
         var contexto = await _cuenta.ContextoAsync(User, cliente, cancellationToken);
         if (contexto is null) return Challenge();
-        return View("Mistarjetas/index", await _cuenta.TarjetasAsync(contexto, cancellationToken));
+        return View("Mistarjetas/Index", await _cuenta.TarjetasAsync(contexto, cancellationToken));
     }
 
     // POST /Miusuario/AgregarTarjeta
@@ -218,7 +217,7 @@ public class MiusuarioController : Controller
         };
         vm.Bancos.ForEach(b => b.Selected = b.Value == nueva.id_institucion?.ToString());
         ViewData["AbrirFormulario"] = true;
-        return View("Mistarjetas/index", vm);
+        return View("Mistarjetas/Index", vm);
     }
 
     // POST /Miusuario/CambiarAlias

@@ -41,6 +41,8 @@ Desktop.ini
 !.env.example
 appsettings.*.local.json
 appsettings.local.json
+# Configuración de producción (cadena de Somee, etc.): solo vive en el servidor, NUNCA en Git.
+appsettings.Production.json
 secrets.json
 *.secrets.json
 *.pfx
@@ -77,11 +79,7 @@ obj/
 # ==============================
 publish/
 
-# ==============================
-# Contexto del proyecto
-# ==============================
-docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md
-docs/07_REVISION_Y_PLAN_DE_TRABAJO.md
+# (T8.3) docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md y docs/07_REVISION_Y_PLAN_DE_TRABAJO.md ya SÍ se versionan.
 
 # ==============================
 # Imágenes subidas desde la app 

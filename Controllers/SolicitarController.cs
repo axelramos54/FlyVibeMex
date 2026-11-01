@@ -7,7 +7,7 @@ namespace FlyVibeMex.Controllers;
 
 /// <summary>
 /// Soporte del cliente: <c>/Solicitar</c>. Formulario para abrir un ticket (asesoría o problema, opcionalmente ligado
-/// a una de sus reservaciones) y lista de sus tickets con estado y agente. Vista: <c>Views/Solicitar/index.cshtml</c>.
+/// a una de sus reservaciones) y lista de sus tickets con estado y agente. Vista: <c>Views/Solicitar/Index.cshtml</c>.
 /// <c>/Solicitar/Ticket/{id}</c>: la conversación del ticket; el cliente responde mientras no esté cerrado
 /// (vista <c>Views/Solicitar/Ticket.cshtml</c>).
 /// </summary>

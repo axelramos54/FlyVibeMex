@@ -70,6 +70,14 @@ builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
 builder.Services.AddSingleton<IPasswordHasher<UsuariosGlobales>, PasswordHasher<UsuariosGlobales>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// T8.1: cualquier servicio se puede pedir como Lazy<T> en un constructor; se crea al leer .Value (no antes).
+// Lo usan HomeController y CrearusuarioController (Lazy<IAuthService>) y DiagnosticoBdService (Lazy<DbContext>)
+// para que Inicio, Iniciar sesión, Crear cuenta y TestDb abran aunque falte la cadena de conexión ("modo sin BD").
+builder.Services.AddTransient(typeof(Lazy<>), typeof(ServicioDiferido<>));
+
+// Diagnóstico de la conexión para GET /Home/TestDb (solo Development).
+builder.Services.AddScoped<IDiagnosticoBdService, DiagnosticoBdService>();
+
 // Imágenes subidas: se guardan en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
 builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 
@@ -107,7 +115,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     .AddCookie(opciones =>
     {
         opciones.LoginPath = "/Home/IniciarSesion";
-        opciones.AccessDeniedPath = "/Estado/403";   // T6.2: página 403 propia (según la zona: sitio o panel)   
+        opciones.AccessDeniedPath = "/Estado/403";   // T6.2: página 403 propia (según la zona: sitio o panel)
         opciones.Cookie.Name = "FlyVibeMex.Sesion";
         opciones.Cookie.HttpOnly = true;                              // JavaScript no puede leerla
         // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.
@@ -118,8 +126,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = true;
         // En cada petición: la cuenta debe seguir activa y con el mismo rol (si el SA la cambió, se cierra la sesión).
-        opciones.Events.OnValidatePrincipal = ValidacionSesion.ValidarAsync;
+        // T8.1: clase de eventos con inyección por constructor (Services/ValidacionSesion.cs), una por petición.
+        opciones.EventsType = typeof(ValidacionSesion);
     });
+builder.Services.AddScoped<ValidacionSesion>();
 
 var app = builder.Build();
 

@@ -4,7 +4,7 @@
  Sección del catálogo: buscador (izquierda) + tarjetas con datos reales de la BD (derecha, _ResultadosCatalogo).
  El formulario es GET a la misma acción: la búsqueda queda en la URL (se puede recargar y compartir).
  Vuelos: solo ida; la fecha es flexible (±3 días). El menú la llama "Vuelos" (acción Viajes, tipo VUELO).
- Archivos asociados (letra V): wwwroot/assets/css/style_V.css y wwwroot/assets/js/script_V.js.
+ Estilos: wwwroot/assets/css/busqueda.css (común a las 5 secciones del catálogo, T8.3).
  Validaciones: DataAnnotations + BusquedaCatalogoViewModel.Validar (fechas no pasadas, rango máximo de 30 días…).
  ============================================================================================
 *@
@@ -15,7 +15,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/assets/css/style_V.css">
+    <link rel="stylesheet" href="~/assets/css/busqueda.css" asp-append-version="true">
 }
 
 @* Contenedor principal de la sección. Se estiliza por id (regla del equipo: class = Bootstrap, #id = estilo propio). *@
@@ -70,7 +70,3 @@
 
     </section>
 </div>
-
-@section Scripts {
-    <script src="~/assets/js/script_V.js"></script>
-}
