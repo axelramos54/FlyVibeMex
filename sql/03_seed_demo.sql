@@ -1,5 +1,5 @@
 /* =====================================================================================
-   FlyVibe Mex · 02_seed_demo.sql
+   FlyVibe Mex · 03_seed_demo.sql                                (script 3 de 3)
    -------------------------------------------------------------------------------------
    Datos de DEMOSTRACIÓN coherentes para probar la web, el panel y el bot de Telegram:
        proveedor -> servicio -> subtipo -> disponibilidad -> promoción -> reservación
@@ -7,10 +7,12 @@
    Incluye 3 Tours (servicios EVENTO): su ciudad es la ubicación de su proveedor, porque EVENTO no tiene
    tabla de subtipo. Cada servicio trae su política de cancelación.
 
-   Requisitos: haber ejecutado sql/00_db_prueba_conexion.sql y sql/01_esquema.sql.
-   Se puede ejecutar varias veces: VACÍA las 24 tablas de 01_esquema.sql y las vuelve a llenar.
-   No borra usuarios: solo agrega 4 si no existen (agente.prueba, ana.lopez, soporte.prueba y sa.prueba).
-   También vacía la bitácora del panel (sus registros apuntan a datos que se vuelven a crear).
+   Requisitos: 01_crear_base_datos.sql (tablas y catálogos). 02_procedimientos_almacenados.sql no es necesario
+   para este script.
+   Se puede ejecutar varias veces: VACÍA los datos de demostración (catálogo, inventario, promociones,
+   reservaciones, pagos, tarjetas, bancos, tickets y bitácora) y los vuelve a llenar.
+   NO toca los catálogos del script 1 (roles, estados, métodos de pago) ni borra usuarios: solo agrega las
+   cuentas de prueba que falten. Las reservaciones y tarjetas de TODOS los usuarios se borran.
 
    Las fechas son RELATIVAS al día en que se ejecuta (disponibilidad de hoy a +29 días,
    vuelos en +3 y +7 días, viaje "urgente" en +2 días), salvo FV-260901 (12 al 15 de diciembre
@@ -19,10 +21,11 @@
    Usuarios para probar (contraseña de TODOS: FlyVibe#Prueba2026, solo para esta base):
        cliente.prueba@flyvibemex.test   CLIENTE        reservación FV-260902 (viaje en 2 días)
        ana.lopez@flyvibemex.test        CLIENTE        FV-260901 (confirmada) y FV-260903 (cancelada, reembolso)
+       inactivo.prueba@flyvibemex.test  CLIENTE        cuenta INACTIVA: el login debe rechazarla
        soporte.prueba@flyvibemex.test   SOPORTE        atiende el ticket EN_PROCESO
        agente.prueba@flyvibemex.test    AGENTE         reservaciones y reembolsos
        admin.prueba@flyvibemex.test     ADMINISTRADOR  panel + Gestor de ventas
-       sa.prueba@flyvibemex.test        SA             todo el panel
+       sa.prueba@flyvibemex.test        SA             todo el panel (la crea el script 1)
    Los nombres de proveedores y bancos son ficticios. Las tarjetas son tokens falsos: NO hay
    números de tarjeta ni CVV (regla R5).
 
@@ -43,17 +46,13 @@ BEGIN
     SET NOEXEC ON;
 END
 GO
-IF OBJECT_ID(N'dbo.solicitudes_soporte', N'U') IS NULL OR OBJECT_ID(N'dbo.vuelos', N'U') IS NULL
-BEGIN
-    RAISERROR(N'Faltan tablas. Ejecuta primero sql/00_db_prueba_conexion.sql y sql/01_esquema.sql.', 16, 1);
-    SET NOEXEC ON;
-END
-GO
-IF OBJECT_ID(N'dbo.bitacora', N'U') IS NULL
-   OR NOT EXISTS (SELECT 1 FROM dbo.roles_usuarios WHERE nombre = 'SOPORTE')
+IF OBJECT_ID(N'dbo.bitacora', N'U') IS NULL OR OBJECT_ID(N'dbo.vuelos', N'U') IS NULL
    OR NOT EXISTS (SELECT 1 FROM dbo.roles_usuarios WHERE nombre = 'SA')
+   OR NOT EXISTS (SELECT 1 FROM dbo.estados_reservacion WHERE nombre = N'CONFIRMADA')
+   OR NOT EXISTS (SELECT 1 FROM dbo.estados_pago WHERE nombre = N'APROBADO')
+   OR NOT EXISTS (SELECT 1 FROM dbo.metodos_pago WHERE nombre = N'Tarjeta de crédito')
 BEGIN
-    RAISERROR(N'Faltan los roles SOPORTE/SA o la tabla bitacora. Ejecuta primero sql/07_roles_panel_bitacora.sql.', 16, 1);
+    RAISERROR(N'Faltan tablas o catálogos. Ejecuta primero sql/01_crear_base_datos.sql.', 16, 1);
     SET NOEXEC ON;
 END
 GO
@@ -68,14 +67,11 @@ DELETE FROM dbo.historial_estado_reembolso;
 DELETE FROM dbo.reembolsos;
 DELETE FROM dbo.historial_estado_pago;
 DELETE FROM dbo.pagos;
-DELETE FROM dbo.estados_pago;
 DELETE FROM dbo.tarjetas_usuarios;
 DELETE FROM dbo.instituciones_financieras;
-DELETE FROM dbo.metodos_pago;
 DELETE FROM dbo.historial_estado_reservacion;
 DELETE FROM dbo.detalle_reservacion;
 DELETE FROM dbo.reservaciones;
-DELETE FROM dbo.estados_reservacion;
 DELETE FROM dbo.promocion_servicio;
 DELETE FROM dbo.promociones;
 DELETE FROM dbo.disponibilidad_servicio;
@@ -92,41 +88,41 @@ DECLARE @hoy   DATE     = CAST(GETDATE() AS DATE);
 DECLARE @ahora DATETIME = GETDATE();
 
 /* =====================================================================================
-   Usuarios extra (los otros 3 vienen de 00_db_prueba_conexion.sql)
-   Hashes PasswordHasher V3 (PBKDF2-HMAC-SHA512, 100 000 iteraciones, sal propia) de
-   "FlyVibe#Prueba2026".
+   Cuentas de prueba (solo se agregan las que falten). Hashes PasswordHasher V3 de "FlyVibe#Prueba2026".
    ===================================================================================== */
-IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'agente.prueba@flyvibemex.test')
-    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
-    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'AGENTE'),
-            'Agente', 'Prueba', 'FlyVibe', 'agente.prueba@flyvibemex.test', '9610000004',
-            'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
+DECLARE @cuentas TABLE (rol VARCHAR(30), nombre VARCHAR(80), paterno VARCHAR(60), materno VARCHAR(60),
+                        correo VARCHAR(150), telefono VARCHAR(20), password_hash VARCHAR(255), activo BIT);
+INSERT INTO @cuentas VALUES
+    ('ADMINISTRADOR', 'Admin',    'Prueba', 'FlyVibe', 'admin.prueba@flyvibemex.test',    '9610000001',
+     'AQAAAAIAAYagAAAAEEcduaxJK5ctZce6lsf3nV9E1mDNB37SmYZxuo0EAl0QcNcFMpA1FkIhgbiQsGzatw==', 1),
+    ('CLIENTE',       'Cliente',  'Prueba', 'FlyVibe', 'cliente.prueba@flyvibemex.test',  '9610000002',
+     'AQAAAAIAAYagAAAAEPBRFDFALgzNysnpFQjwX1a2N8JeVpY6hz8nmsLgpxI5ru+j9wTq7wljn9cmB7kkvw==', 1),
+    -- INACTIVO: sirve para comprobar que el login lo rechaza aunque la contraseña sea correcta.
+    ('CLIENTE',       'Inactivo', 'Prueba', 'FlyVibe', 'inactivo.prueba@flyvibemex.test', '9610000003',
+     'AQAAAAIAAYagAAAAEPTwt2YbGnbZ2WWeyCJVkV56vYBAnVrD5M8bmx8WvzwHQNtraVrm3FCdk25W3CLoYQ==', 0),
+    ('AGENTE',        'Agente',   'Prueba', 'FlyVibe', 'agente.prueba@flyvibemex.test',   '9610000004',
+     'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1),
+    ('CLIENTE',       'Ana',      'Lopez',  'Ruiz',    'ana.lopez@flyvibemex.test',       '9610000005',
+     'AQAAAAIAAYagAAAAEFOZtB5u1GmUdv3ypelMpxtc7Yn2ySjw42CtVd4gHq5Cmft87R75yodkMWkaCAEd4g==', 1),
+    ('SOPORTE',       'Soporte',  'Prueba', 'FlyVibe', 'soporte.prueba@flyvibemex.test',  '9610000006',
+     'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1),
+    ('SA',            'Super',    'Admin',  'FlyVibe', 'sa.prueba@flyvibemex.test',       '9610000007',
+     'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 
-IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'ana.lopez@flyvibemex.test')
-    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
-    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'CLIENTE'),
-            'Ana', 'Lopez', 'Ruiz', 'ana.lopez@flyvibemex.test', '9610000005',
-            'AQAAAAIAAYagAAAAEFOZtB5u1GmUdv3ypelMpxtc7Yn2ySjw42CtVd4gHq5Cmft87R75yodkMWkaCAEd4g==', 1);
+INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
+SELECT r.id, c.nombre, c.paterno, c.materno, c.correo, c.telefono, c.password_hash, c.activo
+FROM @cuentas AS c
+JOIN dbo.roles_usuarios AS r ON r.nombre = c.rol
+WHERE NOT EXISTS (SELECT 1 FROM dbo.usuarios AS u WHERE u.correo = c.correo)
+  AND NOT EXISTS (SELECT 1 FROM dbo.usuarios AS u WHERE u.telefono = c.telefono);
 
 DECLARE @uCliente BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'cliente.prueba@flyvibemex.test');
 DECLARE @uAna     BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'ana.lopez@flyvibemex.test');
-IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'soporte.prueba@flyvibemex.test')
-    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
-    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SOPORTE'),
-            'Soporte', 'Prueba', 'FlyVibe', 'soporte.prueba@flyvibemex.test', '9610000006',
-            'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
-
-IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = 'sa.prueba@flyvibemex.test')
-    INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
-    VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
-            'Super', 'Admin', 'FlyVibe', 'sa.prueba@flyvibemex.test', '9610000007',
-            'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
-
 DECLARE @uAgente  BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'agente.prueba@flyvibemex.test');
 DECLARE @uSoporte BIGINT = (SELECT id FROM dbo.usuarios WHERE correo = 'soporte.prueba@flyvibemex.test');
 
 IF @uCliente IS NULL OR @uAna IS NULL OR @uAgente IS NULL OR @uSoporte IS NULL
-    THROW 50001, N'No se encontraron los usuarios de prueba. Ejecuta de nuevo sql/00_db_prueba_conexion.sql.', 1;
+    THROW 50001, N'No se pudieron crear las cuentas de prueba (¿correo o teléfono ya usado por otra cuenta?).', 1;
 
 /* =====================================================================================
    Ubicaciones
@@ -219,9 +215,9 @@ VALUES
     (@sAutoCun, @lCun, N'Compacto', N'Chevrolet', N'Aveo',    5),
     (@sSuvTgz,  @lTgz, N'SUV',      N'Kia',       N'Sorento', 7);
 
--- La política de cancelación ya no está en paquete: es común a todos los servicios (columnas de servicios, T3).
+-- La política de cancelación es común a todos los servicios (columnas de servicios).
 -- id_ubicacion_destino: Cancún se deduce de su hotel; Chiapas mezcla San Cristóbal, Tuxtla y un vuelo a CDMX,
--- así que su destino se indica explícitamente (T3).
+-- así que su destino se indica explícitamente.
 INSERT INTO dbo.paquete (id_servicio, duracion_dias, min_personas, max_personas, id_ubicacion_destino)
 VALUES
     (@sPaqCun,  4, 2, 4, NULL),
@@ -353,23 +349,11 @@ VALUES (@prBienvenida, @sHotelCun), (@prBienvenida, @sHotelScl), (@prBienvenida,
        (@prVerano, @sPaqCun);
 
 /* =====================================================================================
-   Catálogos de estados y pagos
+   Catálogos de estados y pagos: los crea 01_crear_base_datos.sql; aquí solo se buscan por nombre.
    ===================================================================================== */
-INSERT INTO dbo.estados_reservacion (nombre, descripcion, es_final)
-VALUES (N'PENDIENTE',  N'Creada, en espera de pago', 0),
-       (N'CONFIRMADA', N'Pagada y confirmada', 0),
-       (N'EN_CURSO',   N'El viaje ya comenzó', 0),
-       (N'COMPLETADA', N'El viaje terminó', 1),
-       (N'CANCELADA',  N'Cancelada por el cliente o por la agencia', 1);
-
 DECLARE @erPendiente SMALLINT  = (SELECT id FROM dbo.estados_reservacion WHERE nombre = N'PENDIENTE');
 DECLARE @erConfirmada SMALLINT = (SELECT id FROM dbo.estados_reservacion WHERE nombre = N'CONFIRMADA');
 DECLARE @erCancelada SMALLINT  = (SELECT id FROM dbo.estados_reservacion WHERE nombre = N'CANCELADA');
-
-INSERT INTO dbo.metodos_pago (nombre, descripcion, activo)
-VALUES (N'Tarjeta de crédito', N'Visa, Mastercard o American Express. El cobro se hace solo en la web.', 1),
-       (N'Tarjeta de débito',  N'Tarjetas de débito de bancos mexicanos. El cobro se hace solo en la web.', 1),
-       (N'Transferencia SPEI', N'Próximamente.', 0);
 
 DECLARE @mpCredito SMALLINT = (SELECT id FROM dbo.metodos_pago WHERE nombre = N'Tarjeta de crédito');
 DECLARE @mpDebito  SMALLINT = (SELECT id FROM dbo.metodos_pago WHERE nombre = N'Tarjeta de débito');
@@ -383,12 +367,6 @@ VALUES (N'Banco Demo Nacional', N'902', NULL, NULL);
 SET @ifNacional = SCOPE_IDENTITY();
 INSERT INTO dbo.instituciones_financieras (nombre, clave_institucion, codigo_internacional, telefono)
 VALUES (N'Emisor internacional (demo)', NULL, NULL, NULL);   -- prueba de los índices únicos filtrados
-
-INSERT INTO dbo.estados_pago (nombre, descripcion, es_final)
-VALUES (N'PENDIENTE',   N'En espera de respuesta del gateway', 0),
-       (N'APROBADO',    N'Cobro autorizado', 0),
-       (N'RECHAZADO',   N'Cobro rechazado', 1),
-       (N'REEMBOLSADO', N'Cobro devuelto al cliente', 1);
 
 DECLARE @epPendiente SMALLINT = (SELECT id FROM dbo.estados_pago WHERE nombre = N'PENDIENTE');
 DECLARE @epAprobado  SMALLINT = (SELECT id FROM dbo.estados_pago WHERE nombre = N'APROBADO');
@@ -502,6 +480,12 @@ COMMIT TRANSACTION;
 GO
 
 /* ---------- Verificación rápida ---------- */
+SELECT r.nombre AS rol, COUNT(u.id) AS usuarios
+FROM dbo.roles_usuarios AS r
+LEFT JOIN dbo.usuarios AS u ON u.id_rol = r.id
+GROUP BY r.nombre
+ORDER BY r.nombre;
+
 SELECT 'ubicaciones' AS tabla, COUNT(*) AS filas FROM dbo.ubicaciones UNION ALL
 SELECT 'proveedores', COUNT(*) FROM dbo.proveedores UNION ALL
 SELECT 'servicios', COUNT(*) FROM dbo.servicios UNION ALL

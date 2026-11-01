@@ -1,86 +1,114 @@
 /* =====================================================================================
-   FlyVibe Mex · 01_esquema.sql
+   FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
-   Crea las 25 tablas restantes del modelo (las otras 2, roles_usuarios y usuarios, las
-   crea sql/00_db_prueba_conexion.sql). Total: 27 tablas = 27 clases de Models/ (incluye bitacora).
+   Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
+       - las 27 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
+         estados de pago y métodos de pago;
+       - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
+   Los datos de demostración (ubicaciones, proveedores, servicios, reservaciones…) están en 03_seed_demo.sql.
 
-   Regla de nombres: CADA COLUMNA SE LLAMA IGUAL QUE LA PROPIEDAD DEL MODELO C#
-   (nombres nuevos del 21-10-2026): reservaciones.id_usuarioglobal,
-   solicitudes_soporte.id_usuarioglobal, tarjetas_usuarios.id_usuariog,
-   detalle_reservacion.fecha_inicio, proveedores.tipo_proveedor, ubicaciones.creado_en…
-   Así FlyVibeMexDbContext no necesita HasColumnName.
-
-   Tipos: también coinciden con C# (si no, EF Core falla al leer):
-       ulong -> BIGINT · ushort -> SMALLINT · int -> INT · byte -> TINYINT · bool -> BIT
-       decimal -> DECIMAL(12,2) (cantidad: 8,2) · DateTime -> DATETIME · DateOnly -> DATE
-       TimeOnly -> TIME · string -> NVARCHAR (imagen_ruta: ruta del archivo en wwwroot, no los bytes)
-   Una columna es NULL solo si la propiedad es nullable (ulong?, string?, DateTime?) o si el
-   DbContext la marca IsRequired(false).
-
-   Correcciones de diseño incluidas (CONTEXTO_PROYECTO_FLYVIBEMEX.md, secciones 4.2 y 4.3):
-       - Subtipos vuelos / hospedajes / vehiculos / paquete con id_servicio como PK y FK (R1).
-       - Tabla vuelos (no existía) e historial_estado_reservacion (no existía).
-       - paquete_servicio con PK (id_servicio, id_servicio_incluido).
-       - disponibilidad_servicio con UNIQUE(id_servicio, fecha) y rangos válidos (R3).
-       - CHECK de catálogos de texto (tipos y estados), de importes y de fechas.
-       - UNIQUE de columnas opcionales como índice filtrado (WHERE col IS NOT NULL), porque
-         en SQL Server un UNIQUE normal solo admite UNA fila con NULL.
-       - FK obligatorias como NOT NULL.
-
-   Cómo ejecutarlo (SSMS):
-       1) sql/00_db_prueba_conexion.sql   (crea FlyVibeMex_Test, roles_usuarios y usuarios)
-       2) este archivo                    (F5)
-       3) sql/02_seed_demo.sql            (datos de demostración)
+   Orden de instalación (SSMS, F5 en cada archivo):
+       1) 01_crear_base_datos.sql           (este archivo)
+       2) 02_procedimientos_almacenados.sql
+       3) 03_seed_demo.sql                  (opcional, pero recomendado para probar)
        4) Ejecutar la app y abrir /Home/TestDb: "esquemaCompleto" debe ser true.
 
-   ATENCIÓN: borra y vuelve a crear estas 25 tablas (y sus datos) en FlyVibeMex_Test.
-   No toca roles_usuarios ni usuarios. No se puede ejecutar sobre la base real.
-   Requiere SQL Server 2016 o posterior (DROP TABLE IF EXISTS).
+   ATENCIÓN: BORRA Y VUELVE A CREAR TODAS LAS TABLAS de FlyVibeMex_Test (y sus datos).
+   Nunca se ejecuta sobre la base real (FlyVibeMex): el candado de abajo lo impide.
+   Requiere SQL Server 2016 SP1 o posterior.
+
+   Regla de nombres: CADA COLUMNA SE LLAMA IGUAL QUE LA PROPIEDAD DEL MODELO C#
+   (reservaciones.id_usuarioglobal, tarjetas_usuarios.id_usuariog, proveedores.tipo_proveedor…),
+   así FlyVibeMexDbContext no necesita HasColumnName.
+   Tipos: ulong -> BIGINT · ushort -> SMALLINT · int -> INT · byte -> TINYINT · bool -> BIT ·
+          decimal -> DECIMAL(12,2) (cantidad: 8,2) · DateTime -> DATETIME · DateOnly -> DATE ·
+          TimeOnly -> TIME · string -> NVARCHAR/VARCHAR (imagen_ruta: ruta del archivo en wwwroot, no los bytes).
+   Una columna es NULL solo si la propiedad es nullable (ulong?, string?, DateTime?).
+
+   Diseño (docs/01 y CONTEXTO_PROYECTO_FLYVIBEMEX.md):
+       R1 subtipos vuelos / hospedajes / vehiculos / paquete con id_servicio como PK y FK.
+       R2 paquete_servicio con PK (id_servicio, id_servicio_incluido).
+       R3 disponibilidad_servicio con UNIQUE(id_servicio, fecha) y cupo 0 <= disponible <= total.
+       R4 detalle_reservacion guarda el snapshot de precio, fechas, descripción y política de cancelación.
+       R5 tarjetas_usuarios: solo token + marca + últimos 4 (nunca número completo ni CVV).
+       R6 bitácoras de estado de reservación, pago y reembolso; bitacora del panel.
+       R10 usuarios.password_hash: solo el hash de ASP.NET Core Identity (nunca la contraseña).
+       UNIQUE de columnas opcionales como índice filtrado (WHERE col IS NOT NULL).
+
+   Contraseña de la cuenta inicial (y de todas las del seed): FlyVibe#Prueba2026
+   (SOLO para esta base de prueba). password_hash = PasswordHasher<UsuariosGlobales> formato V3
+   (PBKDF2-HMAC-SHA512, 100 000 iteraciones, sal propia).
    ===================================================================================== */
+
+USE master;
+GO
+
+IF DB_ID(N'FlyVibeMex_Test') IS NULL
+    CREATE DATABASE FlyVibeMex_Test;
+GO
 
 USE FlyVibeMex_Test;
 GO
 
-/* Candados de seguridad: solo la base de prueba y solo si ya se ejecutó el script 00. */
+/* Candado de seguridad: si por error el USE anterior no se aplicó, no se ejecuta nada más. */
 IF DB_NAME() <> N'FlyVibeMex_Test'
 BEGIN
     RAISERROR(N'Este script solo debe ejecutarse sobre FlyVibeMex_Test. Ejecución detenida.', 16, 1);
     SET NOEXEC ON;
 END
 GO
-IF OBJECT_ID(N'dbo.usuarios', N'U') IS NULL OR OBJECT_ID(N'dbo.roles_usuarios', N'U') IS NULL
-BEGIN
-    RAISERROR(N'Faltan roles_usuarios/usuarios. Ejecuta primero sql/00_db_prueba_conexion.sql.', 16, 1);
-    SET NOEXEC ON;
-END
+
+/* =====================================================================================
+   Limpieza: quita TODAS las llaves foráneas y TODAS las tablas del esquema dbo
+   (también las de scripts viejos con otros nombres, p. ej. UsuariosGlobales).
+   Los procedimientos almacenados no se borran: 02_procedimientos_almacenados.sql usa CREATE OR ALTER.
+   ===================================================================================== */
+DECLARE @sql NVARCHAR(MAX) = N'';
+
+SELECT @sql = @sql + N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(t.schema_id)) + N'.' + QUOTENAME(t.name)
+            + N' DROP CONSTRAINT ' + QUOTENAME(fk.name) + N';' + NCHAR(10)
+FROM sys.foreign_keys AS fk
+JOIN sys.tables AS t ON t.object_id = fk.parent_object_id
+WHERE t.schema_id = SCHEMA_ID(N'dbo');
+EXEC sys.sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql + N'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N';' + NCHAR(10)
+FROM sys.tables
+WHERE schema_id = SCHEMA_ID(N'dbo');
+EXEC sys.sp_executesql @sql;
 GO
 
-/* ---------- Limpieza: de las tablas hijas a las padres ---------- */
-DROP TABLE IF EXISTS dbo.bitacora;
-DROP TABLE IF EXISTS dbo.solicitudes_soporte;
-DROP TABLE IF EXISTS dbo.historial_estado_reembolso;
-DROP TABLE IF EXISTS dbo.reembolsos;
-DROP TABLE IF EXISTS dbo.historial_estado_pago;
-DROP TABLE IF EXISTS dbo.pagos;
-DROP TABLE IF EXISTS dbo.estados_pago;
-DROP TABLE IF EXISTS dbo.tarjetas_usuarios;
-DROP TABLE IF EXISTS dbo.instituciones_financieras;
-DROP TABLE IF EXISTS dbo.metodos_pago;
-DROP TABLE IF EXISTS dbo.historial_estado_reservacion;
-DROP TABLE IF EXISTS dbo.detalle_reservacion;
-DROP TABLE IF EXISTS dbo.reservaciones;
-DROP TABLE IF EXISTS dbo.estados_reservacion;
-DROP TABLE IF EXISTS dbo.promocion_servicio;
-DROP TABLE IF EXISTS dbo.promociones;
-DROP TABLE IF EXISTS dbo.disponibilidad_servicio;
-DROP TABLE IF EXISTS dbo.paquete_servicio;
-DROP TABLE IF EXISTS dbo.paquete;
-DROP TABLE IF EXISTS dbo.vehiculos;
-DROP TABLE IF EXISTS dbo.hospedajes;
-DROP TABLE IF EXISTS dbo.vuelos;
-DROP TABLE IF EXISTS dbo.servicios;
-DROP TABLE IF EXISTS dbo.proveedores;
-DROP TABLE IF EXISTS dbo.ubicaciones;
+/* =====================================================================================
+   Usuarios y roles
+   ===================================================================================== */
+CREATE TABLE dbo.roles_usuarios(
+    id          BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_roles_usuarios PRIMARY KEY,
+    nombre      VARCHAR(30)  NOT NULL CONSTRAINT uq_roles_usuarios_nombre UNIQUE,
+    descripcion VARCHAR(150) NULL,
+    activo      BIT          NOT NULL CONSTRAINT df_roles_usuarios_activo DEFAULT(1)
+);
+GO
+
+CREATE TABLE dbo.usuarios(
+    id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_usuarios PRIMARY KEY,
+    id_rol           BIGINT        NOT NULL CONSTRAINT fk_usuarios_roles REFERENCES dbo.roles_usuarios(id),
+    nombre           VARCHAR(80)   NOT NULL,
+    apellido_paterno VARCHAR(60)   NOT NULL,
+    apellido_materno VARCHAR(60)   NOT NULL,
+    correo           VARCHAR(150)  NOT NULL CONSTRAINT uq_usuarios_correo UNIQUE,
+    telefono         VARCHAR(20)   NOT NULL CONSTRAINT uq_usuarios_telefono UNIQUE,
+    password_hash    VARCHAR(255)  NOT NULL,
+    activo           BIT           NOT NULL CONSTRAINT df_usuarios_activo DEFAULT(1),
+    creado_en        DATETIME      NOT NULL CONSTRAINT df_usuarios_creado_en DEFAULT(CURRENT_TIMESTAMP),
+    imagen_ruta      NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
+
+    -- El correo se guarda normalizado (sin espacios y en minúsculas) para que el login sea consistente.
+    CONSTRAINT ck_usuarios_correo_formato CHECK (correo LIKE '%_@_%._%' AND correo NOT LIKE '% %'),
+    -- Un hash de PasswordHasher V3 mide 84 caracteres: impide guardar contraseñas en texto plano por error.
+    CONSTRAINT ck_usuarios_password_hash CHECK (LEN(password_hash) >= 60)
+);
 GO
 
 /* =====================================================================================
@@ -458,8 +486,44 @@ CREATE INDEX ix_bitacora_fecha   ON dbo.bitacora(fecha);
 CREATE INDEX ix_bitacora_entidad ON dbo.bitacora(entidad, id_entidad);
 GO
 
-/* ---------- Verificación: deben salir 27 tablas ---------- */
-SELECT COUNT(*) AS tablas_creadas
+/* =====================================================================================
+   Catálogos que la aplicación necesita (los busca por NOMBRE, nunca por id)
+   ===================================================================================== */
+INSERT INTO dbo.roles_usuarios (nombre, descripcion, activo)
+VALUES
+    ('CLIENTE',       'Viajero que busca, reserva y paga servicios',                              1),
+    ('SOPORTE',       'Atiende los tickets de soporte de los clientes',                           1),
+    ('AGENTE',        'Gestiona reservaciones y reembolsos de los clientes',                      1),
+    ('ADMINISTRADOR', 'Panel interno y Gestor de ventas (catalogo)',                              1),
+    ('SA',            'Super administrador: todo el panel, usuarios, catalogos base y bitacora', 1);
+
+INSERT INTO dbo.estados_reservacion (nombre, descripcion, es_final)
+VALUES (N'PENDIENTE',  N'Creada, en espera de pago', 0),
+       (N'CONFIRMADA', N'Pagada y confirmada', 0),
+       (N'EN_CURSO',   N'El viaje ya comenzó', 0),
+       (N'COMPLETADA', N'El viaje terminó', 1),
+       (N'CANCELADA',  N'Cancelada por el cliente o por la agencia', 1);
+
+INSERT INTO dbo.estados_pago (nombre, descripcion, es_final)
+VALUES (N'PENDIENTE',   N'En espera de respuesta del gateway', 0),
+       (N'APROBADO',    N'Cobro autorizado', 0),
+       (N'RECHAZADO',   N'Cobro rechazado', 1),
+       (N'REEMBOLSADO', N'Cobro devuelto al cliente', 1);
+
+INSERT INTO dbo.metodos_pago (nombre, descripcion, activo)
+VALUES (N'Tarjeta de crédito', N'Visa, Mastercard o American Express. El cobro se hace solo en la web.', 1),
+       (N'Tarjeta de débito',  N'Tarjetas de débito de bancos mexicanos. El cobro se hace solo en la web.', 1),
+       (N'Transferencia SPEI', N'Próximamente.', 0);
+
+/* Cuenta inicial SA: permite entrar al panel aunque no se cargue el seed. */
+INSERT INTO dbo.usuarios (id_rol, nombre, apellido_paterno, apellido_materno, correo, telefono, password_hash, activo)
+VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
+        'Super', 'Admin', 'FlyVibe', 'sa.prueba@flyvibemex.test', '9610000007',
+        'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
+GO
+
+/* ---------- Verificación: deben salir 27 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 27
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -468,6 +532,12 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
                N'bitacora');
+
+SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
+SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5
+SELECT 'estados_pago', COUNT(*) FROM dbo.estados_pago UNION ALL                            -- 4
+SELECT 'metodos_pago', COUNT(*) FROM dbo.metodos_pago UNION ALL                            -- 3
+SELECT 'usuarios', COUNT(*) FROM dbo.usuarios;                                             -- 1 (sa.prueba)
 GO
 
 SET NOEXEC OFF;

@@ -6,8 +6,8 @@ namespace FlyVibeMex.Data;
 
 /// <summary>
 /// Contexto de Entity Framework Core de FlyVibe Mex (SQL Server).
-/// Mapea las 26 clases de <c>Models/</c> a las tablas de <c>sql/00_db_prueba_conexion.sql</c> +
-/// <c>sql/01_esquema.sql</c>: <b>cada propiedad se llama igual que su columna</b> (snake_case, con los nombres
+/// Mapea las 27 clases de <c>Models/</c> a las tablas de <c>sql/01_crear_base_datos.sql</c>:
+/// <b>cada propiedad se llama igual que su columna</b> (snake_case, con los nombres
 /// nuevos de los modelos: <c>id_usuarioglobal</c>, <c>id_usuariog</c>, <c>fecha_inicio</c>…), por eso no se usa
 /// <c>HasColumnName</c>. Incluye conversores globales para los tipos sin signo que SQL Server no tiene.
 /// </summary>
@@ -26,7 +26,7 @@ namespace FlyVibeMex.Data;
 /// joins LINQ por llave foránea (<c>id_rol</c>, <c>id_usuarioglobal</c>, <c>id_servicio</c>…). Aun así, todas las FK
 /// del script están declaradas abajo con <c>HasOne&lt;T&gt;().WithMany()</c>.</para>
 /// <para>Si una base de datos se creó con un script anterior (tabla <c>UsuariosGlobales</c>, columnas
-/// <c>tipo_prooverdor</c>, <c>creado</c>, <c>id_usuario</c>…), ejecutar <c>sql/03_alinear_nombres_legado.sql</c>.</para>
+/// <c>tipo_prooverdor</c>, <c>creado</c>, <c>id_usuario</c>…), volver a crearla con <c>sql/01_crear_base_datos.sql</c>.</para>
 /// </remarks>
 public class FlyVibeMexDbContext : DbContext
 {
@@ -505,7 +505,7 @@ public class FlyVibeMexDbContext : DbContext
 
         modelBuilder.Entity<Bitacora>(e =>
         {
-            // Quién cambió qué y cuándo en el panel (sql/07_roles_panel_bitacora.sql).
+            // Quién cambió qué y cuándo en el panel (sql/01_crear_base_datos.sql).
             e.ToTable("bitacora");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();

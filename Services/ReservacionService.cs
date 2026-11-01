@@ -203,7 +203,7 @@ public sealed class ReservacionService : IReservacionService
         await using var transaccion = await _db.Database.BeginTransactionAsync(cancellationToken);
         var ahora = DateTime.Now;
 
-        // Catálogos de estados (los crea sql/02_seed_demo.sql).
+        // Catálogos de estados (los crea sql/01_crear_base_datos.sql).
         var idPendiente = await IdEstadoReservacionAsync(EstadoReservacionPendiente, cancellationToken);
         var idConfirmada = await IdEstadoReservacionAsync(EstadoReservacionConfirmada, cancellationToken);
         var idPagoPendiente = await IdEstadoPagoAsync(EstadoPagoPendiente, cancellationToken);
@@ -472,7 +472,7 @@ public sealed class ReservacionService : IReservacionService
             .ToListAsync(cancellationToken);
         return ids.Count > 0
             ? ids[0]
-            : throw new InvalidOperationException($"Falta el estado de reservación '{nombre}'. Ejecuta sql/02_seed_demo.sql.");
+            : throw new InvalidOperationException($"Falta el estado de reservación '{nombre}'. Ejecuta sql/01_crear_base_datos.sql.");
     }
 
     private async Task<ushort> IdEstadoPagoAsync(string nombre, CancellationToken cancellationToken)
@@ -484,7 +484,7 @@ public sealed class ReservacionService : IReservacionService
             .ToListAsync(cancellationToken);
         return ids.Count > 0
             ? ids[0]
-            : throw new InvalidOperationException($"Falta el estado de pago '{nombre}'. Ejecuta sql/02_seed_demo.sql.");
+            : throw new InvalidOperationException($"Falta el estado de pago '{nombre}'. Ejecuta sql/01_crear_base_datos.sql.");
     }
 
     /// <summary>Código legible y único: FV-AAMMDD-XXXX (sin letras que se confunden: O, I, 0, 1).</summary>

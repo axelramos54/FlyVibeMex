@@ -1,0 +1,53 @@
+@* Barra de filtros de la lista de servicios con casillas (la usan PaqueteForm y PromocionForm).
+   Model = los candidatos (para armar la lista de proveedores). ViewData["BotonesMarcar"] = true muestra
+   "Marcar visibles" / "Quitar visibles". El filtrado lo hace wwwroot/assets/js/script_seleccion_servicios.js. *@
+@model List<CandidatoServicio>
+@{
+    var tipos = Model.Select(c => c.tipo_servicio).Distinct().OrderBy(t => t).ToList();
+    var proveedores = Model.GroupBy(c => c.id_proveedor)
+        .Select(g => new { id = g.Key, nombre = g.First().proveedor })
+        .OrderBy(p => p.nombre)
+        .ToList();
+    var botones = ViewData["BotonesMarcar"] is true;
+}
+
+<div class="row g-2 align-items-end mb-2">
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="filtro_tipo">Tipo</label>
+        <select id="filtro_tipo" class="form-select form-select-sm" data-filtro="tipo">
+            <option value="">Todos</option>
+            @foreach (var t in tipos)
+            {
+                <option value="@t">@ServicioFormViewModel.NombreTipo(t)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="filtro_proveedor">Proveedor</label>
+        <select id="filtro_proveedor" class="form-select form-select-sm" data-filtro="proveedor">
+            <option value="">Todos</option>
+            @foreach (var p in proveedores)
+            {
+                <option value="@p.id">@p.nombre</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1" for="filtro_texto">Buscar</label>
+        <input id="filtro_texto" class="form-control form-control-sm" data-filtro="texto" placeholder="Nombre, ciudad, código…" />
+    </div>
+    <div class="col-md-3">
+        <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" id="filtro_marcados" data-filtro="marcados" />
+            <label class="form-check-label small" for="filtro_marcados">Solo los marcados</label>
+        </div>
+    </div>
+</div>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    @if (botones)
+    {
+        <button type="button" class="btn btn-sm btn-outline-primary" data-accion="marcar-visibles">Marcar los visibles</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-accion="quitar-visibles">Quitar los visibles</button>
+    }
+    <span class="small text-muted ms-auto" data-contador></span>
+</div>

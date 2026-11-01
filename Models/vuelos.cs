@@ -7,7 +7,7 @@ namespace FlyVibeMex.Models
     /// </summary>
     /// <remarks>
     /// Reglas: <c>id_origen</c> distinto de <c>id_destino</c> y <c>fecha_llegada</c> posterior a <c>fecha_salida</c>
-    /// (ambas validadas con CHECK en <c>sql/01_esquema.sql</c>). Nombre, proveedor y precio base viven en <c>Servicios</c>.
+    /// (ambas validadas con CHECK en <c>sql/01_crear_base_datos.sql</c>). Nombre, proveedor y precio base viven en <c>Servicios</c>.
     /// </remarks>
     // Completada el 25-10-2026 (Paso 0 del doc 06): antes la clase estaba vacía y no se podía mapear.
     public class Vuelos

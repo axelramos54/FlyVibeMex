@@ -18,7 +18,7 @@ namespace FlyVibeMex.Controllers;
 /// - La contraseña se convierte en hash con <see cref="IPasswordHasher{TUser}"/> (el mismo que usa AuthService para
 ///   validar el login) y nunca se guarda en texto plano (regla R10).
 /// - El rol siempre es el de cliente; se busca por nombre en roles_usuarios ("Usuario" en el script del equipo,
-///   "CLIENTE" en sql/00_db_prueba_conexion.sql), nunca se toma del formulario.
+///   "CLIENTE" en sql/01_crear_base_datos.sql), nunca se toma del formulario.
 /// - El DbContext se pide con RequestServices (como HomeController.TestDb) para que la pantalla abra
 ///   aunque SQL Server todavía no esté configurado.
 /// </remarks>

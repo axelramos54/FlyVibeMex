@@ -102,6 +102,7 @@ namespace FlyVibeMex.Models
             "hospedaje" => "Hospedaje",
             "vehiculo" => "Vehículo",
             "evento" => "Tour / evento",
+            "paquete" => "Paquete",
             _ => slug
         };
 

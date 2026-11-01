@@ -478,7 +478,7 @@ public sealed class MisViajesService : IMisViajesService
             .ToListAsync(cancellationToken);
         return ids.Count > 0
             ? ids[0]
-            : throw new InvalidOperationException($"Falta el estado de reservación '{nombre}'. Ejecuta sql/02_seed_demo.sql.");
+            : throw new InvalidOperationException($"Falta el estado de reservación '{nombre}'. Ejecuta sql/01_crear_base_datos.sql.");
     }
 
     /// <summary>La reservación ya no está como cuando se calculó (otra petición la canceló o cambió de estado).</summary>

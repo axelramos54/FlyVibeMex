@@ -25,15 +25,14 @@
 | `appsettings.json` | `"DatabaseMode": "Test"` y dos cadenas **de ejemplo** (`FlyVibeMex_Test`, `FlyVibeMex_Real`) con el marcador `__SERVIDOR__`. **No contienen servidores ni contraseñas reales.** |
 | `appsettings.Development.json` | Solo niveles de log (EF Core en `Warning`). No lleva cadenas de conexión. |
 | `Data/ConfiguracionBaseDatos.cs` | Lee `DatabaseMode` y elige la cadena correcta. Detecta si la cadena sigue siendo el marcador. |
-| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 26 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y fechas de control con `CURRENT_TIMESTAMP` por defecto. |
+| `Data/FlyVibeMexDbContext.cs` | `DbContext` con las 27 tablas, conversores `ulong↔bigint` / `ushort↔smallint` y fechas de control con `CURRENT_TIMESTAMP` por defecto. |
 | `Services/IAuthService.cs`, `Services/AuthService.cs` | Servicio de autenticación seguro (LINQ parametrizado + `PasswordHasher<UsuariosGlobales>`). |
 | `Models/Auth/UsuarioSesion.cs` | DTO `UsuarioSesion` (id, nombre, correo, id_rol) y `ResultadoAutenticacion`. **Sin** `password_hash`. |
 | `Controllers/HomeController.cs` | Nueva acción `GET /Home/TestDb` (solo en Development). |
 | `Program.cs` | Registro del `DbContext` (Test/Real, `EnableRetryOnFailure`, `EnableSensitiveDataLogging(false)`) y de los servicios. |
-| `sql/00_db_prueba_conexion.sql` | Crea `FlyVibeMex_Test` con `roles_usuarios` y `usuarios` + datos semilla. |
-| `sql/01_esquema.sql` (25/10/2026) | Crea las otras 24 tablas con los **nombres nuevos de los modelos** (`id_usuarioglobal`, `id_usuariog`, `fecha_inicio`, `tipo_proveedor`…), subtipos con `id_servicio` como PK/FK, `vuelos` e `historial_estado_reservacion`. |
-| `sql/02_seed_demo.sql` (25/10/2026) | Datos de demostración coherentes (catálogo, disponibilidad, promociones, 3 reservaciones, pagos, reembolso y tickets). |
-| `sql/03_alinear_nombres_legado.sql` (25/10/2026) | Solo para bases creadas con un script anterior: renombra `UsuariosGlobales`, `tipo_prooverdor`, `creado`, `id_usuario`… a los nombres actuales. No borra nada. |
+| `sql/01_crear_base_datos.sql` | Crea `FlyVibeMex_Test` con sus 27 tablas (nombres de columna = nombres de propiedad), los catálogos que la app necesita y la cuenta inicial SA. |
+| `sql/02_procedimientos_almacenados.sql` | Procedimientos almacenados `pa_*` (mismas reglas que la app; la app no los usa). |
+| `sql/03_seed_demo.sql` | Datos de demostración coherentes (cuentas de prueba, catálogo, disponibilidad, promociones, reservaciones, pagos, reembolso y tickets). |
 | `.gitignore` | Ahora ignora `bin/`, `obj/`, `.vs/`, `*.user`, `*.suo`, `appsettings.*.local.json`, `.env`, `secrets.json`. |
 
 > La app **sigue funcionando sin base de datos**: si no has configurado tu cadena, todas las vistas cargan igual; solo fallará lo que use el `DbContext` (con un mensaje que te dice qué comando ejecutar).
@@ -49,15 +48,14 @@ Requisitos: SQL Server (Developer, Express o LocalDB) y SQL Server Management St
    - SQL Server Express: `.\SQLEXPRESS`
    - LocalDB (viene con Visual Studio): `(localdb)\MSSQLLocalDB`
    - Autenticación: **Windows Authentication**.
-2. `Archivo › Abrir › Archivo…` y selecciona `sql/00_db_prueba_conexion.sql`.
-3. Presiona **F5** (Ejecutar).
-4. Al final debe aparecer una tabla con 3 roles: `ADMINISTRADOR` (1 usuario), `AGENTE` (0) y `CLIENTE` (2).
-5. Abre y ejecuta (F5) `sql/01_esquema.sql`. Al final debe decir `tablas_creadas = 26`.
-6. Abre y ejecuta (F5) `sql/02_seed_demo.sql`. Al final verás el conteo por tabla y las promociones vigentes (`BIENVENIDA10`, `CARIBE500`).
+2. `Archivo › Abrir › Archivo…` y selecciona `sql/01_crear_base_datos.sql`.
+3. Presiona **F5** (Ejecutar). Al final debe decir `tablas_creadas = 27` y el conteo de catálogos (5 roles, 5 estados de reservación, 4 estados de pago, 3 métodos de pago y 1 usuario).
+4. Abre y ejecuta (F5) `sql/02_procedimientos_almacenados.sql`. Al final verás la lista de procedimientos `pa_*`.
+5. Abre y ejecuta (F5) `sql/03_seed_demo.sql`. Al final verás los usuarios por rol, el conteo por tabla y las promociones vigentes (`BIENVENIDA10`, `CARIBE500`).
 
-Orden obligatorio: **00 → 01 → 02**. Si vuelves a ejecutar `00`, también borra las tablas de `01` (dependen de `usuarios`): repite `01` y `02` después.
+Orden obligatorio: **01 → 02 → 03**. Volver a ejecutar `01` borra TODO (tablas y datos) y deja solo los catálogos: después repite `03` (los procedimientos de `02` se conservan, pero no estorba volver a correrlo).
 
-El script se puede ejecutar las veces que quieras: borra y vuelve a crear **solo** las tablas de `FlyVibeMex_Test` (tiene un candado que detiene la ejecución si no está en esa base). **No toca la base real.**
+Los scripts tienen un candado que detiene la ejecución si no están en `FlyVibeMex_Test`. **No tocan la base real.**
 
 **Usuarios de prueba** (contraseña de prueba para los tres: `FlyVibe#Prueba2026`; existe solo en esta base de prueba):
 
@@ -166,9 +164,9 @@ Si algo falla, la respuesta trae `"conectado": false` y un `mensaje` con la suge
 | Situación | Qué hacer |
 |---|---|
 | `"configurada": false` | No registraste tu cadena: paso 3. |
-| `codigoSql` 4060 | La base no existe: ejecuta `sql/00_db_prueba_conexion.sql` (paso 2). |
-| `codigoSql` 208 | La base existe pero faltan tablas: ejecuta los scripts `00`, `01` y `02`. |
-| `"esquemaCompleto": false` | Conecta, pero alguna tabla no coincide con los modelos: revisa `tablas[].error`. En la base de prueba vuelve a ejecutar `01` y `02`; en una base creada con un script anterior ejecuta `sql/03_alinear_nombres_legado.sql`. |
+| `codigoSql` 4060 | La base no existe: ejecuta `sql/01_crear_base_datos.sql` (paso 2). |
+| `codigoSql` 208 | La base existe pero faltan tablas: ejecuta los scripts `01`, `02` y `03`. |
+| `"esquemaCompleto": false` | Conecta, pero alguna tabla no coincide con los modelos: revisa `tablas[].error`. En la base de prueba vuelve a ejecutar `01`, `02` y `03`. |
 | `codigoSql` 18456 | SQL Server rechazó el usuario: revisa usuario/contraseña o usa `Trusted_Connection=True`. |
 | `codigoSql` 2, 53, -1 o -2 | No encontró el servidor: revisa el nombre (`localhost`, `.\SQLEXPRESS`, `(localdb)\MSSQLLocalDB`) y que el servicio de SQL Server esté iniciado. |
 
@@ -180,7 +178,7 @@ Seguridad de este endpoint: **solo existe en Development** (en cualquier otro en
 
 Cuando el esquema final esté listo:
 
-1. Crear la base real `FlyVibeMex` con el script definitivo del equipo (en SSMS). Si ya existe y se creó con un script anterior, respaldarla y ejecutar `sql/03_alinear_nombres_legado.sql`; después revisar `/Home/TestDb`.
+1. Crear la base real `FlyVibeMex` con el script definitivo del equipo (en SSMS). Se toma como base `sql/01_crear_base_datos.sql` (cambiando el nombre de la base y quitando el candado de prueba) y `02` para los procedimientos; el seed de demostración NO se ejecuta en la real. Después revisar `/Home/TestDb`.
 2. Registrar la cadena real en tu PC:
    ```powershell
    dotnet user-secrets set "ConnectionStrings:FlyVibeMex_Real" "Server=localhost;Database=FlyVibeMex;Trusted_Connection=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=15;Application Name=FlyVibeMex"
@@ -326,7 +324,7 @@ Pendiente para cuando se implemente la sesión completa: `AddAuthentication().Ad
 
 ## 10. Compatibilidad de los modelos actuales con EF Core
 
-Actualizado el 25/10/2026 (Paso 0 de `docs/06`). Desde los cambios de Yamil del 21–24/10, los modelos usan los nombres definitivos y **`sql/01_esquema.sql` nombra cada columna igual que su propiedad**, así que el `DbContext` ya no necesita parches de nombres.
+Actualizado el 25/10/2026 (Paso 0 de `docs/06`). Desde los cambios de Yamil del 21–24/10, los modelos usan los nombres definitivos y **`sql/01_crear_base_datos.sql` nombra cada columna igual que su propiedad**, así que el `DbContext` ya no necesita parches de nombres.
 
 | Situación en el código | Cómo se resuelve |
 |---|---|

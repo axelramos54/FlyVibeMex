@@ -7,7 +7,7 @@ namespace FlyVibeMex.Models;
 /// y en <c>User.IsInRole(...)</c>. Escribirlos SIEMPRE con estas constantes (sin "strings mágicos").
 /// </summary>
 /// <remarks>
-/// Quién hace qué (sql/00_db_prueba_conexion.sql y sql/07_roles_panel_bitacora.sql):
+/// Quién hace qué (catálogo de roles en sql/01_crear_base_datos.sql):
 /// <list type="bullet">
 /// <item>CLIENTE: busca, reserva, paga, cancela y abre tickets en el sitio público.</item>
 /// <item>SOPORTE: solo atiende tickets (/Admin/Soporte).</item>

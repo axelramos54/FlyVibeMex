@@ -72,6 +72,10 @@ TestResults/
 # ==============================
 obj/
 
+#  ==============================
+# Publicaciones de la app
+# ==============================
+publish/
 
 # ==============================
 # Contexto del proyecto
@@ -83,3 +87,4 @@ docs/07_REVISION_Y_PLAN_DE_TRABAJO.md
 # Imágenes subidas desde la app 
 # ==============================
 wwwroot/uploads/
+

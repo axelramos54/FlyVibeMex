@@ -1,0 +1,158 @@
+@*
+ GET/POST /Admin/GestorVentas/Promociones/Crear            (GestorController.Promociones / GuardarPromocion)
+ GET/POST /Admin/GestorVentas/Promociones/{id}/Actualizar  (GestorController.ActualizarPromocion / GuardarCambiosPromocion)
+ Promoción = promociones + promocion_servicio (servicios a los que aplica). El código no cambia al editar.
+*@
+@model PromocionFormViewModel
+@{
+    ViewData["Title"] = Model.EsAlta ? "Nueva promoción" : "Actualizar promoción";
+    ViewData["BotonesMarcar"] = true;
+}
+
+<h1 class="h3 mb-1">@ViewData["Title"]</h1>
+<p class="text-muted">
+    El descuento se aplica a cada servicio marcado cuando el cliente escribe el código en el resumen de compra.
+</p>
+
+@if (!Model.EsAlta && Model.usos > 0)
+{
+    <div class="alert alert-warning" style="max-width: 1000px">
+        Esta promoción ya se usó en <strong>@Model.usos</strong> reservación(es). Los cambios solo afectan compras nuevas;
+        las ya hechas conservan su descuento.
+    </div>
+}
+
+<form asp-action="@(Model.EsAlta ? "GuardarPromocion" : "GuardarCambiosPromocion")" asp-route-id="@(Model.EsAlta ? null : Model.id.ToString())"
+      method="post" class="card card-body" style="max-width: 1000px" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="codigo" class="form-label"></label>
+            @if (Model.EsAlta)
+            {
+                <input asp-for="codigo" class="form-control text-uppercase font-monospace" maxlength="30" required
+                       pattern="[A-Za-z0-9]{4,30}" placeholder="VERANO26" />
+                <div class="form-text">De 4 a 30 letras o números, sin espacios. Se guarda en mayúsculas.</div>
+            }
+            else
+            {
+                <input asp-for="codigo" class="form-control font-monospace" readonly />
+                <div class="form-text">El código no se puede cambiar.</div>
+            }
+            <span asp-validation-for="codigo" class="text-danger small"></span>
+        </div>
+        <div class="col-md-8">
+            <label asp-for="nombre" class="form-label"></label>
+            <input asp-for="nombre" class="form-control" maxlength="120" placeholder="Para identificarla aquí (el cliente no lo ve)" />
+            <span asp-validation-for="nombre" class="text-danger small"></span>
+        </div>
+        <div class="col-12">
+            <label asp-for="descripcion" class="form-label"></label>
+            <textarea asp-for="descripcion" class="form-control" rows="2" maxlength="500"></textarea>
+            <span asp-validation-for="descripcion" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="tipo_descuento" class="form-label"></label>
+            <select asp-for="tipo_descuento" asp-items="PromocionFormViewModel.OpcionesTipo()" class="form-select"></select>
+            <span asp-validation-for="tipo_descuento" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="valor" class="form-label"></label>
+            <input asp-for="valor" type="number" step="0.01" min="0.01" class="form-control" required />
+            <div class="form-text">Porcentaje (máx. 100) o monto en pesos, según el tipo.</div>
+            <span asp-validation-for="valor" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="minimo_compra" class="form-label"></label>
+            <input asp-for="minimo_compra" type="number" step="0.01" min="0" class="form-control" />
+            <div class="form-text">0 = sin mínimo.</div>
+            <span asp-validation-for="minimo_compra" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="fecha_inicio" class="form-label"></label>
+            <input asp-for="fecha_inicio" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+            <span asp-validation-for="fecha_inicio" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="fecha_fin" class="form-label"></label>
+            <input asp-for="fecha_fin" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+            <span asp-validation-for="fecha_fin" class="text-danger small"></span>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check mb-2">
+                <input asp-for="activo" class="form-check-input" />
+                <label asp-for="activo" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+
+    @* ---- Servicios a los que aplica ---- *@
+    <hr class="my-4" />
+    <h3 class="h6">Servicios a los que aplica</h3>
+    <p class="small text-muted mb-2">
+        Filtra por tipo o proveedor y usa "Marcar los visibles" para elegir muchos a la vez. Solo aparecen servicios activos
+        (y los que ya tenía).
+    </p>
+    <span asp-validation-for="servicios" class="text-danger small d-block mb-2"></span>
+
+    <div data-seleccion>
+        @if (Model.Candidatos.Count == 0)
+        {
+            <div class="alert alert-warning mb-0">No hay servicios activos.</div>
+        }
+        else
+        {
+            <partial name="~/Views/Admin/GestorVentas/_FiltrosSeleccion.cshtml" model="Model.Candidatos" />
+            <div class="table-responsive border rounded" style="max-height: 420px; overflow-y: auto">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light position-sticky top-0">
+                        <tr>
+                            <th style="width: 40px"></th>
+                            <th>Servicio</th>
+                            <th>Tipo</th>
+                            <th>Proveedor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Candidatos)
+                        {
+                            var texto = $"{c.nombre} {c.detalle} {c.proveedor}".ToLowerInvariant();
+                            var idCasilla = $"srv_{c.id}";
+                            <tr data-tipo="@c.tipo_servicio" data-proveedor="@c.id_proveedor" data-texto="@texto">
+                                <td>
+                                    <input type="checkbox" class="form-check-input" id="@idCasilla" name="servicios" value="@c.id"
+                                           checked="@Model.servicios.Contains(c.id)" data-marca />
+                                </td>
+                                <td>
+                                    <label for="@idCasilla" class="fw-semibold mb-0">@c.nombre</label>
+                                    @if (!string.IsNullOrEmpty(c.detalle))
+                                    {
+                                        <div class="small text-muted">@c.detalle</div>
+                                    }
+                                    @if (!c.activo)
+                                    {
+                                        <span class="badge text-bg-secondary">Inactivo</span>
+                                    }
+                                </td>
+                                <td class="small">@ServicioFormViewModel.NombreTipo(c.tipo_servicio)</td>
+                                <td class="small">@c.proveedor</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">@(Model.EsAlta ? "Crear promoción" : "Guardar cambios")</button>
+        <a class="btn btn-outline-secondary" asp-action="GestionarPromociones">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/assets/js/script_seleccion_servicios.js"></script>
+}

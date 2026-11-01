@@ -77,6 +77,8 @@ builder.Services.AddScoped<ISoporteClienteService, SoporteClienteService>();
 
 // Panel: Gestor de ventas (proveedores, servicios con su subtipo y disponibilidad). Escribe en la bitácora.
 builder.Services.AddScoped<IGestorCatalogoService, GestorCatalogoService>();
+builder.Services.AddScoped<IGestorPaquetesService, GestorPaquetesService>();
+builder.Services.AddScoped<IGestorPromocionesService, GestorPromocionesService>();
 
 // Sesión de usuario con cookie (la crea HomeController.IniciarSesion y la borra HomeController.CerrarSesion).
 // La cookie solo guarda id, nombre, correo, id_rol y el nombre del rol (ClaimTypes.Role, para [Authorize(Roles = ...)]);

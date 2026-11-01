@@ -262,14 +262,12 @@ public partial class GestorController
         return Vista(datos.EsAlta ? "AltaServicio" : "ActualizarServicio", vm);
     }
 
-    /// <summary>Respuesta cuando un servicio no tiene formulario: no existe (404) o es un paquete (otra pantalla).</summary>
+    /// <summary>Respuesta cuando un servicio no tiene formulario: no existe (404) o es un paquete (tiene su propia pantalla).</summary>
     private async Task<IActionResult> SinFormularioAsync(ulong id, CancellationToken cancellationToken)
     {
         var servicio = await _gestor.ServicioAsync(id, cancellationToken);
         if (servicio is null) return NotFound();
-
-        TempData["Aviso"] = $"\"{servicio.nombre}\" es un paquete: se edita en Gestionar paquetes.";
-        return RedirectToAction(nameof(ListaServicios), new { tipo = servicio.tipo_servicio });
+        return RedirectToAction(nameof(ActualizarPaquete), new { id });
     }
 
     private static void CopiarImagenActual(ServicioFormBase origen, ServicioFormBase destino)

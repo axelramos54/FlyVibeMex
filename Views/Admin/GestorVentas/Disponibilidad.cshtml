@@ -17,6 +17,7 @@
         "HOSPEDAJE" => "habitaciones por noche",
         "VEHICULO" => "vehículos por día",
         "VUELO" => "asientos",
+        "PAQUETE" => "personas por día de inicio",
         _ => "lugares por fecha"
     };
     var anterior = Model.Desde.AddDays(-DisponibilidadViewModel.DiasPorPagina);
@@ -36,7 +37,14 @@
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" asp-action="ActualizarServicio" asp-route-id="@s.id">Datos del servicio</a>
-        <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@s.id_proveedor">Volver a servicios</a>
+        @if (s.tipo_servicio == "PAQUETE")
+        {
+            <a class="btn btn-outline-secondary" asp-action="GestionarPaquetes">Volver a paquetes</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" asp-action="ListaServicios" asp-route-idProveedor="@s.id_proveedor">Volver a servicios</a>
+        }
     </div>
 </div>
 

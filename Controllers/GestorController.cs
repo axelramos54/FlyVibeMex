@@ -22,18 +22,23 @@ namespace FlyVibeMex.Controllers;
 [Route("Admin/GestorVentas")]
 [AutoValidateAntiforgeryToken]
 [Authorize(Roles = Roles.PanelGestor)]   // el atributo aplica también a GestorController.ProveedoresServicios.cs
-// NOTA: es "partial" porque el listado de proveedores, los servicios y la disponibilidad están en
-//       Controllers/GestorController.ProveedoresServicios.cs (misma clase, otro archivo).
+// NOTA: es "partial": el listado de proveedores, los servicios y la disponibilidad están en
+//       GestorController.ProveedoresServicios.cs; los paquetes en GestorController.Paquetes.cs y las promociones en
+//       GestorController.Promociones.cs (misma clase, otros archivos).
 public partial class GestorController : Controller
 {
     private const string Carpeta = "~/Views/Admin/GestorVentas/";
 
     private readonly IGestorCatalogoService _gestor;
+    private readonly IGestorPaquetesService _paquetes;
+    private readonly IGestorPromocionesService _promociones;
 
-    // NOTA: el constructor va SOLO en este archivo (la otra parte de la clase "partial" no debe declarar otro).
-    public GestorController(IGestorCatalogoService gestor)
+    // NOTA: el constructor va SOLO en este archivo (las otras partes de la clase "partial" no deben declarar otro).
+    public GestorController(IGestorCatalogoService gestor, IGestorPaquetesService paquetes, IGestorPromocionesService promociones)
     {
         _gestor = gestor;
+        _paquetes = paquetes;
+        _promociones = promociones;
     }
 
     private IActionResult Vista(string nombre, object? modelo = null) => View(Carpeta + nombre + ".cshtml", modelo);
@@ -176,28 +181,7 @@ public partial class GestorController : Controller
     public IActionResult Asociar(ulong id, string? tipo) =>
         RedirectToAction(nameof(AltaServicio), new { tipo = TiposGestor.Normalizar(tipo), idProveedor = id });
 
-    // ============================== PAQUETES Y PROMOCIONES ==============================
-    // Pantallas pendientes: por ahora muestran un aviso de "en construcción".
-
-    [HttpGet("Paquetes/Crear")]
-    public IActionResult CrearPaquete() => EnConstruccion("Crear paquete");
-
-    [HttpGet("Paquetes")]
-    public IActionResult GestionarPaquetes() => EnConstruccion("Gestionar paquetes");
-
-    [HttpGet("Promociones/Crear")]
-    public IActionResult Promociones() => EnConstruccion("Promociones");
-
-    [HttpGet("Promociones")]
-    public IActionResult GestionarPromociones() => EnConstruccion("Gestionar promociones");
-
     // ============================== AYUDANTES ==============================
-
-    private IActionResult EnConstruccion(string titulo)
-    {
-        ViewData["Title"] = titulo;
-        return Vista("EnConstruccion");
-    }
 
     /// <summary>Id del usuario de la cookie (para la bitácora). [Authorize] garantiza que existe.</summary>
     private ulong IdUsuario() => ulong.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

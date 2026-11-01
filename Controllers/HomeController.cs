@@ -266,7 +266,7 @@ public class HomeController : Controller
                     configurada = true,
                     conectado = false,
                     mensaje = $"No se pudo abrir la conexión. Revisa que SQL Server esté iniciado, el nombre del servidor " +
-                              $"en tu user-secret y que exista la base \"{baseDeDatos}\" (sql/00_db_prueba_conexion.sql)."
+                              $"en tu user-secret y que exista la base \"{baseDeDatos}\" (sql/01_crear_base_datos.sql)."
                 });
             }
 
@@ -299,9 +299,9 @@ public class HomeController : Controller
                 esquemaCompleto = tablasConError == 0,
                 tablas,
                 mensaje = tablasConError == 0
-                    ? "Conexión correcta con Entity Framework Core y las 26 tablas coinciden con los modelos."
+                    ? "Conexión correcta con Entity Framework Core y las 27 tablas coinciden con los modelos."
                     : $"Conexión correcta, pero {tablasConError} tabla(s) no coinciden con los modelos. " +
-                      "Ejecuta sql/01_esquema.sql (base de prueba) o sql/03_alinear_nombres_legado.sql (base creada con un script anterior)."
+                      "Vuelve a crear la base de prueba con sql/01_crear_base_datos.sql (y después 02 y 03)."
             });
         }
         catch (Exception ex) when (ex is SqlException || ex.InnerException is SqlException)
@@ -389,9 +389,9 @@ public class HomeController : Controller
     /// <summary>Traduce los códigos de error de SQL Server más comunes a una sugerencia (sin datos sensibles).</summary>
     private static string SugerenciaPorCodigoSql(int numero) => numero switch
     {
-        4060 => "La base de datos no existe o tu usuario no tiene acceso. Ejecuta sql/00_db_prueba_conexion.sql en SSMS.",
+        4060 => "La base de datos no existe o tu usuario no tiene acceso. Ejecuta sql/01_crear_base_datos.sql en SSMS.",
         18456 => "SQL Server rechazó el inicio de sesión. Revisa usuario/contraseña o usa Trusted_Connection=True.",
-        208 => "Faltan tablas en la base de datos. Ejecuta en SSMS sql/00_db_prueba_conexion.sql y después sql/01_esquema.sql.",
+        208 => "Faltan tablas en la base de datos. Ejecuta en SSMS sql/01_crear_base_datos.sql.",
         2 or 53 or -1 or -2 => "No se encontró el servidor o tardó demasiado. Revisa el nombre (localhost, .\\SQLEXPRESS o (localdb)\\MSSQLLocalDB) y que el servicio de SQL Server esté iniciado.",
         _ => "Error de SQL Server. Revisa la consola de la aplicación para ver el detalle."
     };
