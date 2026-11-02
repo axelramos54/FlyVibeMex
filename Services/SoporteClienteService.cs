@@ -32,7 +32,7 @@ public sealed class SoporteClienteService : ISoporteClienteService
         var tickets = await _db.SolicitudesSoporte.AsNoTracking()
             .Where(t => t.id_usuarioglobal == contexto.IdCuenta)
             .OrderByDescending(t => t.creada_en)
-            .Select(t => new { t.id, t.tipo, t.asunto, t.mensaje, t.estado, t.id_agente_asignado, t.id_reservacion, t.creada_en, t.actualizada_en })
+            .Select(t => new { t.id, t.tipo, t.asunto, t.mensaje, t.estado, t.id_agente_asignado, t.id_reservacion, t.creada_en, t.actualizada_en, t.calificacion })
             .ToListAsync(cancellationToken);
 
         var conversacion = await ConversacionSoporte.ResumenAsync(_db, cancellationToken);
@@ -64,7 +64,8 @@ public sealed class SoporteClienteService : ISoporteClienteService
                 actualizada_en = t.actualizada_en,
                 mensajes = conversacion.GetValueOrDefault(t.id).mensajes,
                 // Le toca al cliente: la última respuesta es del personal y el ticket sigue abierto.
-                respuesta_nueva = t.estado != "CERRADA" && conversacion.TryGetValue(t.id, out var c) && c.ultimoEsPersonal
+                respuesta_nueva = t.estado != "CERRADA" && conversacion.TryGetValue(t.id, out var c) && c.ultimoEsPersonal,
+                calificacion = t.calificacion
             }).ToList(),
             Reservaciones = reservaciones.Select(r => new SelectListItem(r.codigo_reserva, r.id.ToString())).ToList()
         };
@@ -167,6 +168,37 @@ public sealed class SoporteClienteService : ISoporteClienteService
         {
             _logger.LogError(ex, "No se pudo responder el ticket {IdTicket} del cliente {IdUsuario}.", idTicket, idUsuario);
             return ResultadoOperacion.Falla("No pudimos enviar tu mensaje. Intenta de nuevo más tarde.");
+        }
+    }
+
+    public async Task<ResultadoCalificacion> CalificarAsync(ulong idUsuario, ulong idTicket, int estrellas, CancellationToken cancellationToken = default)
+    {
+        if (estrellas is < 1 or > 5) return ResultadoCalificacion.NoDisponible;
+
+        try
+        {
+            // UPDATE condicional: solo el dueño, solo un ticket CERRADO y solo una vez (calificacion IS NULL).
+            var ahora = DateTime.Now;
+            var calificacion = (byte)estrellas;
+            var filas = await _db.SolicitudesSoporte
+                .Where(t => t.id == idTicket && t.id_usuarioglobal == idUsuario && t.estado == "CERRADA" && t.calificacion == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.calificacion, (byte?)calificacion)
+                    .SetProperty(t => t.calificada_en, (DateTime?)ahora), cancellationToken);
+            if (filas == 1)
+            {
+                _logger.LogInformation("El cliente {IdUsuario} calificó el ticket {IdTicket} con {Estrellas} estrellas.", idUsuario, idTicket, estrellas);
+                return ResultadoCalificacion.Guardada;
+            }
+
+            var yaCalificado = await _db.SolicitudesSoporte.AsNoTracking()
+                .AnyAsync(t => t.id == idTicket && t.id_usuarioglobal == idUsuario && t.calificacion != null, cancellationToken);
+            return yaCalificado ? ResultadoCalificacion.YaCalificado : ResultadoCalificacion.NoDisponible;
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogError(ex, "No se pudo calificar el ticket {IdTicket} del cliente {IdUsuario}.", idTicket, idUsuario);
+            return ResultadoCalificacion.ErrorBd;
         }
     }
 }

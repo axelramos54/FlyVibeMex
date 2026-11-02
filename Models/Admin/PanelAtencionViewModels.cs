@@ -53,6 +53,10 @@ namespace FlyVibeMex.Models
         /// <summary>El ticket sigue abierto y el último mensaje es del cliente: le toca responder al personal.</summary>
         public bool espera_respuesta { get; set; }
 
+        /// <summary>Calificación de la atención (1 a 5) que dio el cliente desde el bot al cerrarse el ticket; null si no calificó.</summary>
+        public byte? calificacion { get; set; }
+        public DateTime? calificada_en { get; set; }
+
         public string TipoTexto => tipo == "PROBLEMA" ? "Problema" : "Asesoría";
     }
 

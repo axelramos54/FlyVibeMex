@@ -24,5 +24,18 @@ namespace FlyVibeMex.Models
         public DateTime vinculado_en {get; set;}
 
         public DateTime? desvinculado_en {get; set;}
+
+        // Avisos que el cliente quiere recibir (👤 Mi cuenta › 🔔 Avisos en el bot). Empiezan encendidos; al volver a
+        // vincular se copian del vínculo anterior. OJO: no usar HasDefaultValue en el DbContext para un bool (EF
+        // tomaría false como "sin valor" y nunca guardaría un aviso apagado).
+
+        /// <summary>Confirmación de compra, cancelación y cambios del reembolso.</summary>
+        public bool avisos_reservaciones {get; set;} = true;
+
+        /// <summary>Recordatorios 72 h y 24 h antes del viaje.</summary>
+        public bool avisos_recordatorios {get; set;} = true;
+
+        /// <summary>Respuesta y cierre de sus tickets.</summary>
+        public bool avisos_soporte {get; set;} = true;
     }
 }

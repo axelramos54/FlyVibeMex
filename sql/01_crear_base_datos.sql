@@ -2,7 +2,7 @@
    FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
    Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
-       - las 30 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - las 31 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
        - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
          estados de pago y métodos de pago;
        - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
@@ -464,8 +464,13 @@ CREATE TABLE dbo.solicitudes_soporte(
                        CONSTRAINT ck_solicitudes_estado CHECK (estado IN (N'ABIERTA', N'EN_PROCESO', N'CERRADA')),
     creada_en          DATETIME       NOT NULL CONSTRAINT df_solicitudes_creada_en DEFAULT(CURRENT_TIMESTAMP),
     actualizada_en     DATETIME       NOT NULL CONSTRAINT df_solicitudes_actualizada_en DEFAULT(CURRENT_TIMESTAMP),
+    -- Calificación de la atención (1 a 5 estrellas) que da el cliente desde el bot cuando el ticket ya está cerrado.
+    calificacion       TINYINT        NULL     CONSTRAINT ck_solicitudes_calificacion CHECK (calificacion BETWEEN 1 AND 5),
+    calificada_en      DATETIME       NULL,
     -- Escalado a humano: EN_PROCESO siempre tiene un agente asignado.
-    CONSTRAINT ck_solicitudes_en_proceso CHECK (estado <> N'EN_PROCESO' OR id_agente_asignado IS NOT NULL)
+    CONSTRAINT ck_solicitudes_en_proceso CHECK (estado <> N'EN_PROCESO' OR id_agente_asignado IS NOT NULL),
+    CONSTRAINT ck_solicitudes_calificada CHECK ((calificacion IS NULL AND calificada_en IS NULL)
+                                                OR (calificacion IS NOT NULL AND calificada_en IS NOT NULL AND estado = N'CERRADA'))
 );
 GO
 CREATE INDEX ix_solicitudes_estado ON dbo.solicitudes_soporte(estado, creada_en);
@@ -527,11 +532,31 @@ CREATE TABLE dbo.telegram_vinculos(
     activo           BIT      NOT NULL CONSTRAINT df_telegram_vinculos_activo DEFAULT(1),
     vinculado_en     DATETIME NOT NULL CONSTRAINT df_telegram_vinculos_vinculado_en DEFAULT(CURRENT_TIMESTAMP),
     desvinculado_en  DATETIME NULL,
+    -- Avisos que el cliente quiere recibir (👤 Mi cuenta › 🔔 Avisos en el bot). Al volver a vincular se copian del vínculo anterior.
+    avisos_reservaciones BIT NOT NULL CONSTRAINT df_telegram_vinculos_av_reservaciones DEFAULT(1),
+    avisos_recordatorios BIT NOT NULL CONSTRAINT df_telegram_vinculos_av_recordatorios DEFAULT(1),
+    avisos_soporte       BIT NOT NULL CONSTRAINT df_telegram_vinculos_av_soporte       DEFAULT(1),
     CONSTRAINT ck_telegram_vinculos_fechas CHECK (activo = 1 OR desvinculado_en IS NOT NULL)
 );
 GO
 CREATE UNIQUE INDEX uq_telegram_vinculos_usuario ON dbo.telegram_vinculos(id_usuarioglobal) WHERE activo = 1;
 CREATE UNIQUE INDEX uq_telegram_vinculos_chat    ON dbo.telegram_vinculos(chat_id)          WHERE activo = 1;
+GO
+
+/* Avisos automáticos que el bot YA mandó (confirmación, cancelación, reembolso, recordatorios 72 h / 24 h).
+   El índice único (tipo, id_referencia) impide mandar el mismo aviso dos veces, aunque la app se reinicie.
+   id_referencia: historial_estado_reservacion.id (RESERVACION), historial_estado_reembolso.id (REEMBOLSO)
+   o reservaciones.id (RECORDATORIO_72 / RECORDATORIO_24). Solo metadatos: nunca el texto del mensaje. */
+CREATE TABLE dbo.telegram_avisos(
+    id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_telegram_avisos PRIMARY KEY,
+    id_usuarioglobal BIGINT       NOT NULL CONSTRAINT fk_telegram_avisos_usuarios REFERENCES dbo.usuarios(id),
+    tipo             NVARCHAR(20) NOT NULL CONSTRAINT ck_telegram_avisos_tipo
+                     CHECK (tipo IN (N'RESERVACION', N'REEMBOLSO', N'RECORDATORIO_72', N'RECORDATORIO_24')),
+    id_referencia    BIGINT       NOT NULL,
+    enviado_en       DATETIME     NOT NULL CONSTRAINT df_telegram_avisos_enviado_en DEFAULT(CURRENT_TIMESTAMP)
+);
+GO
+CREATE UNIQUE INDEX uq_telegram_avisos ON dbo.telegram_avisos(tipo, id_referencia);
 GO
 
 /* =====================================================================================
@@ -570,8 +595,8 @@ VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
         'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 GO
 
-/* ---------- Verificación: deben salir 30 tablas y los catálogos ---------- */
-SELECT COUNT(*) AS tablas_creadas   -- 30
+/* ---------- Verificación: deben salir 31 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 31
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -579,7 +604,8 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'detalle_reservacion', N'historial_estado_reservacion', N'metodos_pago',
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
-               N'mensajes_soporte', N'bitacora', N'contenido_sitio', N'telegram_vinculos');
+               N'mensajes_soporte', N'bitacora', N'contenido_sitio', N'telegram_vinculos',
+               N'telegram_avisos');
 
 SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
 SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5

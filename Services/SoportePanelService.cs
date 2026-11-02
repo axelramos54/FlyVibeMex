@@ -378,7 +378,9 @@ public sealed class SoportePanelService : ISoportePanelService
                 actualizada_en = f.t.actualizada_en,
                 mensajes = mensajes,
                 // Sin respuestas, el último mensaje es el inicial (del cliente).
-                espera_respuesta = f.t.estado != Cerrada && (mensajes == 0 || !ultimoEsPersonal)
+                espera_respuesta = f.t.estado != Cerrada && (mensajes == 0 || !ultimoEsPersonal),
+                calificacion = f.t.calificacion,
+                calificada_en = f.t.calificada_en
             };
         }).ToList();
     }

@@ -30,6 +30,13 @@ public static partial class FormatoBot
     /// </summary>
     public static string Ruta(params string[] partes) => $"<i>{string.Join(" › ", partes)}</i>";
 
+    /// <summary>Calificación con estrellas: 4 → "⭐⭐⭐⭐☆".</summary>
+    public static string Estrellas(int cuantas)
+    {
+        cuantas = Math.Clamp(cuantas, 0, 5);
+        return string.Concat(Enumerable.Repeat("⭐", cuantas)) + new string('☆', 5 - cuantas);
+    }
+
     /// <summary>"Paso 2 de 3 · Detalle" (flujos de varios pasos).</summary>
     public static string Progreso(int paso, int total, string nombre) => $"<i>Paso {paso} de {total} · {nombre}</i>";
 

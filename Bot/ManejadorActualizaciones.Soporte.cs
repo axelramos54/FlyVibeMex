@@ -180,14 +180,16 @@ public sealed partial class ManejadorActualizaciones
         await MostrarPasoAsync(ctx, Flujos.Ticket, Pasos.Mensaje, datos, sb.ToString(), teclado, ct);
     }
 
-    private async Task PasoResumenAsync(ContextoBot ctx, Dictionary<string, string> datos, CancellationToken ct)
+    /// <param name="aviso">Línea de aviso arriba del resumen (p. ej. si escribió texto en lugar de usar los botones).</param>
+    private async Task PasoResumenAsync(ContextoBot ctx, Dictionary<string, string> datos, CancellationToken ct, string? aviso = null)
     {
         var total = TotalPasos(datos);
         var sb = new StringBuilder()
             .Linea(RutaTicket(datos[DatoTipo]))
             .Linea(FormatoBot.Progreso(total, total, "Confirmar"))
-            .Linea()
-            .Linea("<b>Revisa tu solicitud</b>")
+            .Linea();
+        if (aviso is not null) sb.Linea($"⚠️ {FormatoBot.Html(aviso)}").Linea();
+        sb.Linea("<b>Revisa tu solicitud</b>")
             .Linea($"Tipo: {FormatoBot.TipoTicket(datos[DatoTipo])}");
         if (datos.TryGetValue(DatoCodigo, out var codigo)) sb.Linea($"Reservación: <code>{FormatoBot.Html(codigo)}</code>");
         sb.Linea($"Asunto: {FormatoBot.Html(datos[DatoAsunto])}")
@@ -239,7 +241,8 @@ public sealed partial class ManejadorActualizaciones
                 return;
 
             default:
-                await MostrarAsync(ctx, "Usa los botones del resumen: ✅ Enviar, ✏️ Asunto, ✏️ Detalle o ✖ Cancelar.", null, ct);
+                // Escribió en el paso Confirmar: se vuelve a mostrar el resumen (abajo, con sus botones).
+                await PasoResumenAsync(ctx, datos, ct, "Usa los botones: ✅ Enviar, ✏️ Asunto, ✏️ Detalle o ✖ Cancelar.");
                 return;
         }
     }
@@ -423,7 +426,19 @@ public sealed partial class ManejadorActualizaciones
         }
 
         var teclado = new Teclado();
-        if (t.estado != "CERRADA") teclado.Boton("✍️ Responder", $"rsp:{t.id}");
+        if (t.estado != "CERRADA")
+        {
+            teclado.Boton("✍️ Responder", $"rsp:{t.id}");
+        }
+        else if (t.calificacion is byte calificacion)
+        {
+            sb.Linea().Linea($"Tu calificación: {FormatoBot.Estrellas(calificacion)}");
+        }
+        else
+        {
+            sb.Linea().Linea("¿Cómo te atendimos? Toca de 1 a 5 estrellas.");
+            teclado.Fila(Enumerable.Range(1, 5).Select(n => ($"{n}⭐", $"cal:{t.id}:{n}")).ToArray());
+        }
         EnlaceWeb(teclado, sb, "Ver en la web", $"/Solicitar/Ticket/{t.id}");
         teclado.Navegacion("Mis tickets", "tkt");
         await MostrarAsync(ctx, sb.ToString(), teclado, ct);
@@ -484,5 +499,37 @@ public sealed partial class ManejadorActualizaciones
         var resultado = await _soporte.ResponderAsync(ctx.Cliente!.IdUsuario, idTicket, texto, ct);
         var teclado = new Teclado().Boton("🎫 Ver el ticket", $"tkt:{idTicket}").Navegacion();
         await MostrarAsync(ctx, (resultado.Exitoso ? "✅ " : "❌ ") + FormatoBot.Html(resultado.Mensaje), teclado, ct);
+    }
+
+    /// <summary>Estrellas del aviso "ticket cerrado" o del detalle del ticket. Reescribe ese mismo mensaje con el resultado.</summary>
+    private async Task CalificarTicketAsync(ContextoBot ctx, ulong idTicket, int estrellas, CancellationToken ct)
+    {
+        if (!await RequiereCuentaAsync(ctx, ct)) return;
+
+        var resultado = await _soporte.CalificarAsync(ctx.Cliente!.IdUsuario, idTicket, estrellas, ct);
+        var sb = new StringBuilder().Linea(FormatoBot.Ruta(RutaSoporte, "🎫 Mis tickets", $"#{idTicket}")).Linea();
+        switch (resultado)
+        {
+            case ResultadoCalificacion.Guardada:
+                sb.Linea($"✅ <b>Ticket #{idTicket} cerrado</b>")
+                  .Linea($"Calificaste la atención: {FormatoBot.Estrellas(estrellas)}")
+                  .Linea()
+                  .Linea("¡Gracias! Nos ayuda a atenderte mejor.");
+                break;
+            case ResultadoCalificacion.YaCalificado:
+                sb.Linea("Ya habías calificado este ticket. ¡Gracias!");
+                break;
+            case ResultadoCalificacion.ErrorBd:
+                sb.Linea("No pude guardar tu calificación en este momento. Intenta de nuevo en unos minutos.");
+                break;
+            default:
+                sb.Linea("Ese ticket no se puede calificar (solo los tickets cerrados de tu cuenta).");
+                break;
+        }
+
+        var teclado = new Teclado();
+        if (resultado == ResultadoCalificacion.ErrorBd) teclado.Boton("🔁 Reintentar", $"cal:{idTicket}:{estrellas}");
+        teclado.Fila(("🎫 Ver el ticket", $"tkt:{idTicket}"), ("💬 Soporte", "sop")).Navegacion();
+        await MostrarAsync(ctx, sb.ToString(), teclado, ct);
     }
 }

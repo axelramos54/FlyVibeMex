@@ -9,6 +9,7 @@
  ============================================================================================
 *@
 @model DetalleServicioViewModel
+@inject EstadoBotTelegram BotTelegram
 @{
     ViewData["Title"] = Model.nombre;
     var b = Model.Busqueda;
@@ -206,6 +207,14 @@
                     }
                 </div>
             </div>
+
+            @* Abre esta misma ficha en el bot de Telegram (t.me/<bot>?start=srv_ID). Solo si el bot está configurado. *@
+            @if (BotTelegram.Configurado && BotTelegram.Enlace($"srv_{Model.id}") is string enlaceBot)
+            {
+                <a href="@enlaceBot" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm w-100 mt-3">
+                    💬 Pregúntanos por Telegram
+                </a>
+            }
 
             @if (Model.ProximasFechas.Count > 0)
             {

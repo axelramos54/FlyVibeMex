@@ -83,7 +83,7 @@
 
         @* ---- Mis tickets ---- *@
         <div class="col-12 @(Model.Contexto.SoloLectura ? "" : "col-lg-7")">
-            <h2 class="h5 mb-3">@(Model.Contexto.ViendoOtroCliente ? "Tickets del cliente" : "Mis solicitudes") <span class="badge text-bg-light">@Model.Tickets.Count</span></h2>
+            <h2 class="h5 mb-3">@(Model.Contexto.ViendoOtroCliente ? "Tickets del cliente" : "Mis tickets") <span class="badge text-bg-light">@Model.Tickets.Count</span></h2>
             @if (Model.Tickets.Count == 0)
             {
                 <p class="text-muted">No hay solicitudes de soporte.</p>

@@ -52,6 +52,11 @@ public sealed class ReceptorActualizaciones : IUpdateHandler
         if (exception is ApiRequestException { ErrorCode: 409 })
             _logger.LogError("Bot de Telegram: otro proceso está usando el MISMO token (409 Conflict). " +
                              "Cada integrante debe usar su propio bot de prueba (docs/06).");
+        else if (exception is RequestException and not ApiRequestException)
+            // Sin internet, DNS caído, conexión cortada o timeout: es pasajero y el polling se recupera solo.
+            // Una sola línea (sin la pila completa) para no llenar la consola; el mensaje nunca incluye el token.
+            _logger.LogWarning("Bot de Telegram: sin conexión con Telegram ({Detalle}). Se reintenta en 5 s.",
+                exception.InnerException?.Message ?? exception.Message);
         else
             _logger.LogWarning(exception, "Bot de Telegram: error de {Origen}.", source);
 
@@ -66,12 +71,27 @@ public sealed class ReceptorActualizaciones : IUpdateHandler
         if (chatId is null or <= 0) return;   // solo chats privados
         try
         {
+            // Siempre con salida: "🔁 Reintentar" repite el MISMO botón (es seguro: "Enviar" de un ticket no lo duplica,
+            // porque el flujo se borra antes de crearlo). Un texto escrito no se puede repetir (el bot no lo guarda).
+            var teclado = new Teclado();
             if (update.CallbackQuery is { } boton)
-                await botClient.AnswerCallbackQuery(boton.Id, cancellationToken: cancellationToken);
+            {
+                // Normalmente el manejador ya contestó el botón; si se intenta otra vez Telegram responde 400, y eso
+                // no debe impedir que llegue el mensaje de error.
+                try
+                {
+                    await botClient.AnswerCallbackQuery(boton.Id, cancellationToken: cancellationToken);
+                }
+                catch (ApiRequestException)
+                {
+                }
+                if (!string.IsNullOrEmpty(boton.Data)) teclado.Boton("🔁 Reintentar", boton.Data);
+            }
+            teclado.Navegacion();
 
             await botClient.SendMessage(chatId.Value,
-                "Ups, algo salió mal de nuestro lado. Intenta de nuevo en unos minutos o escribe /menu.",
-                cancellationToken: cancellationToken);
+                "Ups, algo salió mal de nuestro lado. Intenta de nuevo en un momento.",
+                replyMarkup: teclado.Crear(), cancellationToken: cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {

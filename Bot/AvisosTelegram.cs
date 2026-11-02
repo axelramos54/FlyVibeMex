@@ -9,9 +9,11 @@ using Telegram.Bot.Types.Enums;
 
 namespace FlyVibeMex.Bot;
 
-public enum TipoAvisoTelegram { TicketCreado, RespuestaDelPersonal, TicketCerrado }
+public enum TipoAvisoTelegram { TicketCreado, RespuestaDelPersonal, TicketCerrado, CuentaDesvinculada }
 
-public sealed record AvisoTelegram(TipoAvisoTelegram Tipo, ulong IdTicket);
+/// <param name="IdTicket">Ticket del aviso (0 en <see cref="TipoAvisoTelegram.CuentaDesvinculada"/>).</param>
+/// <param name="ChatId">Chat destino, solo para <see cref="TipoAvisoTelegram.CuentaDesvinculada"/> (el vínculo ya no existe).</param>
+public sealed record AvisoTelegram(TipoAvisoTelegram Tipo, ulong IdTicket, long ChatId = 0);
 
 /// <summary>
 /// Implementación de <see cref="IAvisosTelegram"/> cuando el bot está activo: solo forma el aviso en una cola en
@@ -29,6 +31,8 @@ public sealed class ColaAvisosTelegram : IAvisosTelegram
     public void RespuestaDelPersonal(ulong idTicket) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.RespuestaDelPersonal, idTicket));
 
     public void TicketCerrado(ulong idTicket) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.TicketCerrado, idTicket));
+
+    public void CuentaDesvinculada(long chatId) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.CuentaDesvinculada, 0, chatId));
 }
 
 /// <summary>
@@ -108,6 +112,9 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
             case TipoAvisoTelegram.TicketCerrado:
                 await CerradoAsync(consultas, vinculos, aviso.IdTicket, ct);
                 break;
+            case TipoAvisoTelegram.CuentaDesvinculada:
+                await DesvinculadaAsync(aviso.ChatId, ct);
+                break;
         }
     }
 
@@ -142,7 +149,7 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
     {
         var r = await consultas.UltimaRespuestaDelPersonalAsync(idTicket, ct);
         if (r is null) return;
-        var chat = await vinculos.ChatDeClienteAsync(r.IdCliente, ct);
+        var chat = await vinculos.ChatDeClienteAsync(r.IdCliente, PreferenciaAviso.Soporte, ct);
         if (chat is null) return;   // el cliente no vinculó su cuenta
 
         var sb = new StringBuilder()
@@ -161,18 +168,34 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
     {
         var t = await consultas.TicketParaAvisoAsync(idTicket, ct);
         if (t is null) return;
-        var chat = await vinculos.ChatDeClienteAsync(t.IdCliente, ct);
+        var chat = await vinculos.ChatDeClienteAsync(t.IdCliente, PreferenciaAviso.Soporte, ct);
         if (chat is null) return;
 
         var sb = new StringBuilder()
             .Linea($"✅ <b>Tu ticket #{t.Id} quedó cerrado</b>")
             .Linea($"«{FormatoBot.HtmlRecortado(t.Asunto, 120)}»")
             .Linea()
-            .Linea("Si necesitas algo más, abre otro con /asesoria o /problema.");
+            .Linea("¿Cómo te atendimos? Toca de 1 a 5 estrellas.")
+            .Linea("Si necesitas algo más, abre otro desde Soporte.");
 
-        // Botones "de aviso": abren una pantalla nueva y el aviso se queda en el chat.
-        var teclado = new Teclado().Fila(("Ver el ticket", Teclado.DeAviso($"tkt:{t.Id}")), ("Soporte", Teclado.DeAviso("sop")));
+        // Las estrellas SÍ reescriben este aviso ("¡Gracias!…"); los demás botones son "de aviso" (pantalla nueva).
+        var teclado = new Teclado()
+            .Fila(Enumerable.Range(1, 5).Select(n => ($"{n}⭐", $"cal:{t.Id}:{n}")).ToArray())
+            .Fila(("Ver el ticket", Teclado.DeAviso($"tkt:{t.Id}")), ("Soporte", Teclado.DeAviso("sop")));
         await EnviarAsync(chat.Value, sb.ToString(), teclado, ct);
+    }
+
+    /// <summary>Aviso de seguridad: el cliente desvinculó Telegram desde la web (siempre se manda; no se puede apagar).</summary>
+    private async Task DesvinculadaAsync(long chatId, CancellationToken ct)
+    {
+        if (chatId <= 0) return;
+        var sb = new StringBuilder()
+            .Linea("🔓 <b>Tu cuenta se desvinculó desde la web</b>")
+            .Linea("Este chat ya no está vinculado a tu cuenta de FlyVibeMex: aquí ya no verás tus reservaciones ni recibirás avisos.")
+            .Linea()
+            .Linea("Si no fuiste tú, entra a la web y cambia tu contraseña.");
+        var teclado = new Teclado().Boton("🔗 Vincular de nuevo", Teclado.DeAviso("cta"));
+        await EnviarAsync(chatId, sb.ToString(), teclado, ct);
     }
 
     private Task EnviarAsync(long chatId, string html, Teclado teclado, CancellationToken ct) =>

@@ -15,6 +15,20 @@ public sealed record CodigoVinculacionTelegram(string Codigo, string CodigoVisib
 /// <summary>Cliente que escribe desde un chat vinculado (lo usa el bot en cada mensaje).</summary>
 public sealed record ClienteTelegram(ulong IdUsuario, string Nombre, long ChatId);
 
+/// <summary>Grupos de avisos que el cliente puede encender o apagar en el bot (👤 Mi cuenta › 🔔 Avisos).</summary>
+public enum PreferenciaAviso
+{
+    /// <summary>Confirmación de compra, cancelación y cambios del reembolso.</summary>
+    Reservaciones,
+    /// <summary>Recordatorios 72 h y 24 h antes del viaje.</summary>
+    Recordatorios,
+    /// <summary>Respuesta y cierre de sus tickets.</summary>
+    Soporte
+}
+
+/// <summary>Preferencias de avisos del vínculo activo. Los avisos de seguridad de la cuenta no se pueden apagar.</summary>
+public sealed record PreferenciasAvisos(bool Reservaciones, bool Recordatorios, bool Soporte);
+
 public enum ResultadoVinculacion
 {
     Vinculado,
@@ -47,9 +61,12 @@ public interface IVinculacionTelegramService
 
     /// <summary>
     /// Usa el código (una sola vez) y vincula esa cuenta con <paramref name="chatId"/>. Desactiva, en la misma
-    /// transacción, los vínculos anteriores de la cuenta y del chat. Devuelve el nombre del cliente si se vinculó.
+    /// transacción, los vínculos anteriores de la cuenta y del chat, y copia las preferencias de avisos del vínculo
+    /// anterior de la cuenta. Devuelve el nombre del cliente y, si la cuenta estaba vinculada a OTRO chat, ese chat
+    /// (para mandarle un aviso de seguridad).
     /// </summary>
-    Task<(ResultadoVinculacion Resultado, string? Nombre)> VincularAsync(string? codigo, long chatId, CancellationToken cancellationToken = default);
+    Task<(ResultadoVinculacion Resultado, string? Nombre, long? ChatAnterior)> VincularAsync(string? codigo, long chatId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cliente del chat: vínculo activo + cuenta activa + rol CLIENTE activo. <c>null</c> si falta cualquiera
@@ -57,8 +74,17 @@ public interface IVinculacionTelegramService
     /// </summary>
     Task<ClienteTelegram?> ClientePorChatAsync(long chatId, CancellationToken cancellationToken = default);
 
-    /// <summary>Chat del cliente para avisarle (respuesta de un agente, ticket cerrado); <c>null</c> si no está vinculado.</summary>
-    Task<long?> ChatDeClienteAsync(ulong idUsuario, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Chat del cliente para avisarle; <c>null</c> si no está vinculado o si apagó ese grupo de avisos
+    /// (<paramref name="preferencia"/> null = aviso que no se puede apagar).
+    /// </summary>
+    Task<long?> ChatDeClienteAsync(ulong idUsuario, PreferenciaAviso? preferencia, CancellationToken cancellationToken = default);
+
+    /// <summary>Preferencias de avisos del chat; <c>null</c> si el chat no está vinculado.</summary>
+    Task<PreferenciasAvisos?> PreferenciasAsync(long chatId, CancellationToken cancellationToken = default);
+
+    /// <summary>Enciende o apaga un grupo de avisos del chat y devuelve cómo quedaron (null si no está vinculado).</summary>
+    Task<PreferenciasAvisos?> CambiarPreferenciaAsync(long chatId, PreferenciaAviso preferencia, CancellationToken cancellationToken = default);
 
     /// <summary>Desvincula desde el bot (/desvincular). Devuelve <c>true</c> si había un vínculo activo.</summary>
     Task<bool> DesvincularChatAsync(long chatId, CancellationToken cancellationToken = default);
@@ -83,12 +109,15 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
 
     private readonly FlyVibeMexDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly IAvisosTelegram _avisos;
     private readonly ILogger<VinculacionTelegramService> _logger;
 
-    public VinculacionTelegramService(FlyVibeMexDbContext db, IMemoryCache cache, ILogger<VinculacionTelegramService> logger)
+    public VinculacionTelegramService(FlyVibeMexDbContext db, IMemoryCache cache, IAvisosTelegram avisos,
+        ILogger<VinculacionTelegramService> logger)
     {
         _db = db;
         _cache = cache;
+        _avisos = avisos;
         _logger = logger;
     }
 
@@ -122,13 +151,13 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
         return new CodigoVinculacionTelegram(codigo, $"{codigo[..4]}-{codigo[4..]}", expira);
     }
 
-    public async Task<(ResultadoVinculacion Resultado, string? Nombre)> VincularAsync(string? codigo, long chatId,
+    public async Task<(ResultadoVinculacion Resultado, string? Nombre, long? ChatAnterior)> VincularAsync(string? codigo, long chatId,
         CancellationToken cancellationToken = default)
     {
-        if (chatId <= 0) return (ResultadoVinculacion.CodigoInvalido, null);   // solo chats privados
+        if (chatId <= 0) return (ResultadoVinculacion.CodigoInvalido, null, null);   // solo chats privados
 
         var idUsuario = Consumir(codigo);
-        if (idUsuario is null) return (ResultadoVinculacion.CodigoInvalido, null);
+        if (idUsuario is null) return (ResultadoVinculacion.CodigoInvalido, null, null);
 
         var nombre = await (
                 from u in _db.Usuarios.AsNoTracking()
@@ -136,14 +165,25 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
                 where u.id == idUsuario && u.activo && r.activo && r.nombre == Roles.Cliente
                 select u.nombre)
             .FirstOrDefaultAsync(cancellationToken);
-        if (nombre is null) return (ResultadoVinculacion.CuentaNoValida, null);
+        if (nombre is null) return (ResultadoVinculacion.CuentaNoValida, null, null);
 
         var id = idUsuario.Value;
+        long? chatAnterior = null;
         try
         {
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
                 var ahora = DateTime.Now;
+
+                // Vínculo más reciente de la cuenta (activo o no): de ahí salen las preferencias de avisos y, si
+                // sigue activo en otro chat, ese chat recibe un aviso de seguridad.
+                var anterior = await _db.TelegramVinculos.AsNoTracking()
+                    .Where(v => v.id_usuarioglobal == id)
+                    .OrderByDescending(v => v.vinculado_en).ThenByDescending(v => v.id)
+                    .Select(v => new { v.chat_id, v.activo, v.avisos_reservaciones, v.avisos_recordatorios, v.avisos_soporte })
+                    .FirstOrDefaultAsync(cancellationToken);
+                chatAnterior = anterior is { activo: true } && anterior.chat_id != chatId ? anterior.chat_id : null;
+
                 // Una cuenta = un chat, y un chat = una cuenta: se desactiva lo anterior de los dos lados.
                 await _db.TelegramVinculos
                     .Where(v => v.activo && (v.id_usuarioglobal == id || v.chat_id == chatId))
@@ -156,7 +196,10 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
                     id_usuarioglobal = id,
                     chat_id = chatId,
                     activo = true,
-                    vinculado_en = ahora
+                    vinculado_en = ahora,
+                    avisos_reservaciones = anterior?.avisos_reservaciones ?? true,
+                    avisos_recordatorios = anterior?.avisos_recordatorios ?? true,
+                    avisos_soporte = anterior?.avisos_soporte ?? true
                 });
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
@@ -164,11 +207,12 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
         catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
         {
             _logger.LogError(ex, "Telegram: no se pudo vincular la cuenta {IdUsuario}.", id);
-            return (ResultadoVinculacion.ErrorBd, null);
+            return (ResultadoVinculacion.ErrorBd, null, null);
         }
 
-        _logger.LogInformation("Telegram: la cuenta {IdUsuario} quedó vinculada a un chat.", id);
-        return (ResultadoVinculacion.Vinculado, nombre);
+        _logger.LogInformation("Telegram: la cuenta {IdUsuario} quedó vinculada a un chat{Anterior}.", id,
+            chatAnterior is null ? "" : " (estaba vinculada en otro chat)");
+        return (ResultadoVinculacion.Vinculado, nombre, chatAnterior);
     }
 
     public async Task<ClienteTelegram?> ClientePorChatAsync(long chatId, CancellationToken cancellationToken = default)
@@ -186,14 +230,44 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
         return fila is null ? null : new ClienteTelegram(fila.id, fila.nombre, chatId);
     }
 
-    public async Task<long?> ChatDeClienteAsync(ulong idUsuario, CancellationToken cancellationToken = default)
+    public async Task<long?> ChatDeClienteAsync(ulong idUsuario, PreferenciaAviso? preferencia, CancellationToken cancellationToken = default)
     {
-        var chats = await _db.TelegramVinculos.AsNoTracking()
-            .Where(v => v.id_usuarioglobal == idUsuario && v.activo)
-            .Select(v => v.chat_id)
-            .Take(1)
-            .ToListAsync(cancellationToken);
+        var vinculos = _db.TelegramVinculos.AsNoTracking().Where(v => v.id_usuarioglobal == idUsuario && v.activo);
+        vinculos = preferencia switch
+        {
+            PreferenciaAviso.Reservaciones => vinculos.Where(v => v.avisos_reservaciones),
+            PreferenciaAviso.Recordatorios => vinculos.Where(v => v.avisos_recordatorios),
+            PreferenciaAviso.Soporte => vinculos.Where(v => v.avisos_soporte),
+            _ => vinculos
+        };
+        var chats = await vinculos.Select(v => v.chat_id).Take(1).ToListAsync(cancellationToken);
         return chats.Count == 0 ? null : chats[0];
+    }
+
+    public async Task<PreferenciasAvisos?> PreferenciasAsync(long chatId, CancellationToken cancellationToken = default)
+    {
+        var fila = await _db.TelegramVinculos.AsNoTracking()
+            .Where(v => v.chat_id == chatId && v.activo)
+            .Select(v => new { v.avisos_reservaciones, v.avisos_recordatorios, v.avisos_soporte })
+            .FirstOrDefaultAsync(cancellationToken);
+        return fila is null ? null : new PreferenciasAvisos(fila.avisos_reservaciones, fila.avisos_recordatorios, fila.avisos_soporte);
+    }
+
+    public async Task<PreferenciasAvisos?> CambiarPreferenciaAsync(long chatId, PreferenciaAviso preferencia,
+        CancellationToken cancellationToken = default)
+    {
+        // UPDATE de una sola columna que la invierte en la BD (dos toques seguidos no se pisan).
+        var vinculo = _db.TelegramVinculos.Where(v => v.chat_id == chatId && v.activo);
+        _ = preferencia switch
+        {
+            PreferenciaAviso.Reservaciones => await vinculo.ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.avisos_reservaciones, v => !v.avisos_reservaciones), cancellationToken),
+            PreferenciaAviso.Recordatorios => await vinculo.ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.avisos_recordatorios, v => !v.avisos_recordatorios), cancellationToken),
+            _ => await vinculo.ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.avisos_soporte, v => !v.avisos_soporte), cancellationToken)
+        };
+        return await PreferenciasAsync(chatId, cancellationToken);
     }
 
     public async Task<bool> DesvincularChatAsync(long chatId, CancellationToken cancellationToken = default)
@@ -213,12 +287,15 @@ public sealed class VinculacionTelegramService : IVinculacionTelegramService
         try
         {
             var ahora = DateTime.Now;
+            var chat = await ChatDeClienteAsync(idUsuario, preferencia: null, cancellationToken);
             var filas = await _db.TelegramVinculos
                 .Where(v => v.id_usuarioglobal == idUsuario && v.activo)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(v => v.activo, false)
                     .SetProperty(v => v.desvinculado_en, (DateTime?)ahora), cancellationToken);
 
+            // Aviso de seguridad a ese chat (si el bot está apagado, no hace nada).
+            if (filas > 0 && chat is long chatDesvinculado) _avisos.CuentaDesvinculada(chatDesvinculado);
             _logger.LogInformation("Telegram: el cliente {IdUsuario} desvinculó su cuenta desde la web.", idUsuario);
             return filas > 0
                 ? ResultadoOperacion.Ok("Listo: tu cuenta ya no está vinculada con Telegram. El bot ya no podrá ver tus reservaciones ni tus tickets.")

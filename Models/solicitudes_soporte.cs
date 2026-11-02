@@ -40,5 +40,11 @@ namespace FlyVibeMex.Models
         
         /// <summary>Fecha y hora de la última actualización (campo de control).</summary>
         public DateTime actualizada_en {get; set;}
+
+        /// <summary>Calificación de la atención, 1 a 5 estrellas (la da el cliente desde el bot con el ticket CERRADO).</summary>
+        public byte? calificacion {get; set;}
+
+        /// <summary>Cuándo calificó (NULL si no ha calificado).</summary>
+        public DateTime? calificada_en {get; set;}
     }
 }

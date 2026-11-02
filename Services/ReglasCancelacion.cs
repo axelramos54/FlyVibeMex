@@ -49,7 +49,9 @@ public static class ReglasCancelacion
         }
 
         var horasAntes = (inicio - ahora).TotalHours;
-        opciones.porcentaje = horasAntes >= horasReembolsoTotal ? 100m : Math.Clamp(porcentajeTardio, 0m, 100m);
+        opciones.porcentaje_tardio = Math.Clamp(porcentajeTardio, 0m, 100m);
+        opciones.porcentaje = horasAntes >= horasReembolsoTotal ? 100m : opciones.porcentaje_tardio;
+        opciones.limite_reembolso_total = inicio.AddHours(-horasReembolsoTotal);   // para el simulador: "100 % hasta…"
 
         if (montoPagado is not decimal monto || monto <= 0)
         {
@@ -58,6 +60,7 @@ public static class ReglasCancelacion
         }
 
         opciones.monto_reembolso = Math.Round(monto * opciones.porcentaje / 100m, 2, MidpointRounding.AwayFromZero);
+        opciones.monto_reembolso_tardio = Math.Round(monto * opciones.porcentaje_tardio / 100m, 2, MidpointRounding.AwayFromZero);
         opciones.puede_reembolsar = opciones.monto_reembolso > 0;
         if (!opciones.puede_reembolsar)
             opciones.motivo_no_reembolsar = "Según la política de tu compra, a estas alturas ya no hay reembolso.";

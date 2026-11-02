@@ -19,6 +19,18 @@
     <div class="text-end">
         <span class="badge fs-6 @EstadosPanel.Clase(t.estado)">@EstadosPanel.TextoTicket(t.estado)</span>
         <div class="small text-muted mt-1">@(t.agente is null ? "Sin agente asignado" : $"Atiende: {t.agente}")</div>
+        @* Calificación que da el cliente desde el bot de Telegram cuando el ticket se cierra. *@
+        @if (t.calificacion is byte calificacion)
+        {
+            <div class="small mt-1" title="Calificación de la atención (1 a 5)@(t.calificada_en is DateTime f ? $" · {f.ToString("dd/MM/yyyy HH:mm", es)}" : "")">
+                <span class="text-warning" aria-hidden="true">@(new string('★', calificacion))@(new string('☆', 5 - calificacion))</span>
+                <span>@calificacion/5 del cliente</span>
+            </div>
+        }
+        else if (t.estado == "CERRADA")
+        {
+            <div class="small text-muted mt-1">Sin calificación del cliente</div>
+        }
     </div>
 </div>
 

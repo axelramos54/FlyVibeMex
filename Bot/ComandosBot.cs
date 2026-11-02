@@ -4,20 +4,27 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace FlyVibeMex.Bot;
 
 /// <summary>Menú de comandos que Telegram muestra al escribir "/" (se registra al arrancar con SetMyCommands).</summary>
+/// <remarks>
+/// Solo se MUESTRAN 5; el resto sigue funcionando aunque no aparezca en la lista (mensajes viejos, la página
+/// Mi cuenta › Telegram y la costumbre de quien ya usaba el bot): /cuenta, /tickets, /asesoria, /problema,
+/// /vincular, /desvincular y /cancelar.
+/// </remarks>
 public static class ComandosBot
 {
+    /// <summary>Chats privados.</summary>
     public static readonly BotCommand[] Menu =
     {
         new() { Command = "menu", Description = "Menú principal" },
         new() { Command = "explorar", Description = "Vuelos, hoteles, vehículos, tours y paquetes" },
-        new() { Command = "reservas", Description = "Mis próximas reservaciones (cuenta vinculada)" },
-        new() { Command = "tickets", Description = "Mis tickets de soporte (cuenta vinculada)" },
-        new() { Command = "asesoria", Description = "Pedir ayuda a un asesor" },
-        new() { Command = "problema", Description = "Reportar un problema con una reservación" },
+        new() { Command = "reservas", Description = "Mis reservaciones (cuenta vinculada)" },
+        new() { Command = "soporte", Description = "Asesoría, reportar un problema y mis tickets" },
         new() { Command = "ayuda", Description = "Políticas, métodos de pago y contacto" },
-        new() { Command = "vincular", Description = "Vincular mi cuenta de FlyVibeMex" },
-        new() { Command = "desvincular", Description = "Desvincular mi cuenta" },
-        new() { Command = "cancelar", Description = "Cancelar lo que estoy haciendo" },
+    };
+
+    /// <summary>Grupos: ahí el bot solo responde /idchat (para configurar el grupo de agentes).</summary>
+    public static readonly BotCommand[] Grupo =
+    {
+        new() { Command = "idchat", Description = "Id de este chat (configurar el grupo de agentes)" },
     };
 
     // Teclado fijo (abajo del chat). Sus botones llegan como texto normal y se tratan como comandos.

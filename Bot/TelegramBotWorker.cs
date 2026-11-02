@@ -44,7 +44,9 @@ public sealed class TelegramBotWorker : BackgroundService
 
                 // Long polling y webhook no pueden convivir: se borra cualquier webhook anterior.
                 await _bot.DeleteWebhook(dropPendingUpdates: true, cancellationToken: detener);
-                await _bot.SetMyCommands(ComandosBot.Menu, cancellationToken: detener);
+                // Comandos por tipo de chat: los 5 del menú en privado y solo /idchat en grupos.
+                await _bot.SetMyCommands(ComandosBot.Menu, Telegram.Bot.Types.BotCommandScope.Default(), cancellationToken: detener);
+                await _bot.SetMyCommands(ComandosBot.Grupo, Telegram.Bot.Types.BotCommandScope.AllGroupChats(), cancellationToken: detener);
 
                 _estado.MarcarConectado(yo.Username);
                 _logger.LogInformation("Bot de Telegram @{Usuario} conectado (long polling).", yo.Username);

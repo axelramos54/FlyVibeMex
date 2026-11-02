@@ -79,6 +79,7 @@ public class FlyVibeMexDbContext : DbContext
 
     // ===================== Bot de Telegram (docs/06) =====================
     public DbSet<TelegramVinculos> TelegramVinculos => Set<TelegramVinculos>();
+    public DbSet<TelegramAvisos> TelegramAvisos => Set<TelegramAvisos>();
 
     /// <summary>
     /// Convenciones globales aplicadas a TODAS las entidades antes de construir el modelo.
@@ -558,6 +559,20 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.vinculado_en).HasDefaultValueSql("CURRENT_TIMESTAMP");
             e.HasIndex(x => x.id_usuarioglobal).IsUnique().HasFilter("[activo] = 1");
             e.HasIndex(x => x.chat_id).IsUnique().HasFilter("[activo] = 1");
+
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TelegramAvisos>(e =>
+        {
+            // Avisos automáticos del bot que ya se mandaron (confirmación, cancelación, reembolso, recordatorios).
+            // El índice único (tipo, id_referencia) es el que impide repetir un aviso.
+            e.ToTable("telegram_avisos");
+            e.HasKey(x => x.id);
+            e.Property(x => x.id).ValueGeneratedOnAdd();
+            e.Property(x => x.tipo).HasMaxLength(20);
+            e.Property(x => x.enviado_en).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasIndex(x => new { x.tipo, x.id_referencia }).IsUnique();
 
             e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
         });

@@ -21,4 +21,20 @@ public interface ISoporteClienteService
     /// si se cerró mientras escribía, no se guarda y se le pide abrir uno nuevo).
     /// </summary>
     Task<ResultadoOperacion> ResponderAsync(ulong idUsuario, ulong idTicket, string? mensaje, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// El cliente <paramref name="idUsuario"/> califica la atención de su ticket CERRADO con 1 a 5 estrellas
+    /// (una sola vez; UPDATE condicional). Lo usa el bot de Telegram.
+    /// </summary>
+    Task<ResultadoCalificacion> CalificarAsync(ulong idUsuario, ulong idTicket, int estrellas, CancellationToken cancellationToken = default);
+}
+
+public enum ResultadoCalificacion
+{
+    Guardada,
+    /// <summary>Ese ticket ya tenía calificación (no se cambia).</summary>
+    YaCalificado,
+    /// <summary>No existe, es de otra persona, aún no está cerrado o las estrellas no son de 1 a 5.</summary>
+    NoDisponible,
+    ErrorBd
 }

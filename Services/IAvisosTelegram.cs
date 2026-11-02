@@ -17,8 +17,14 @@ public interface IAvisosTelegram
     /// <summary>El personal respondió en el ticket: aviso al cliente (si vinculó su cuenta).</summary>
     void RespuestaDelPersonal(ulong idTicket);
 
-    /// <summary>El personal cerró el ticket: aviso al cliente (si vinculó su cuenta).</summary>
+    /// <summary>El personal cerró el ticket: aviso al cliente (si vinculó su cuenta), con estrellas para calificar.</summary>
     void TicketCerrado(ulong idTicket);
+
+    /// <summary>
+    /// El cliente desvinculó Telegram desde la web (Mi cuenta › Telegram): aviso de seguridad a ese chat.
+    /// Los avisos de reservaciones y recordatorios no pasan por aquí: los manda <c>Bot/VigilanteViajes.cs</c>.
+    /// </summary>
+    void CuentaDesvinculada(long chatId);
 }
 
 /// <summary>Bot desactivado (sin token): los avisos no hacen nada.</summary>
@@ -27,4 +33,5 @@ public sealed class AvisosTelegramDesactivados : IAvisosTelegram
     public void TicketCreado(ulong idTicket) { }
     public void RespuestaDelPersonal(ulong idTicket) { }
     public void TicketCerrado(ulong idTicket) { }
+    public void CuentaDesvinculada(long chatId) { }
 }

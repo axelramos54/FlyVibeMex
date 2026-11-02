@@ -294,7 +294,7 @@ public sealed partial class ManejadorActualizaciones
         var teclado = new Teclado()
             .Fila(("❌ Cancelaciones", "ayu:can"), ("💳 Métodos de pago", "ayu:pag"))
             .Fila(("📞 Contacto", "ayu:con"), ("🔒 Seguridad", "ayu:seg"))
-            .Boton("⌨️ Comandos", "ayu:cmd")
+            .Boton("⌨️ Cómo usarme", "ayu:cmd")
             .Navegacion();
         var sb = new StringBuilder()
             .Linea(FormatoBot.Ruta("ℹ️ Ayuda"))
@@ -318,7 +318,7 @@ public sealed partial class ManejadorActualizaciones
                   .Linea("<b>Cancelaciones y reembolsos</b>")
                   .Linea(FormatoBot.HtmlRecortado(contenido.Texto(ContenidoSitioClaves.PoliticasCancelaciones), 2500))
                   .Linea()
-                  .Linea("Cada servicio tiene su propia política: la ves en su ficha (/explorar) y queda guardada en tu compra. " +
+                  .Linea("Cada servicio tiene su propia política: la ves en su ficha (🔎 Explorar) y queda guardada en tu compra. " +
                          "Para cancelar o pedir un reembolso entra a la web › Mis reservaciones.");
                 EnlaceWeb(teclado, sb, "Ver las políticas en la web", "/Otros/Politicas");
                 break;
@@ -359,22 +359,21 @@ public sealed partial class ManejadorActualizaciones
                   .Linea("• Si pierdes tu teléfono, desvincula Telegram desde la web: Mi cuenta › Telegram.");
                 break;
             default:
-                sb.Linea(FormatoBot.Ruta("ℹ️ Ayuda", "⌨️ Comandos"))
+                sb.Linea(FormatoBot.Ruta("ℹ️ Ayuda", "⌨️ Cómo usarme"))
+                  .Linea()
+                  .Linea("<b>Cómo usarme</b>")
+                  .Linea("• Escríbeme un destino o un servicio («Cancún», «hotel playa») y lo busco.")
+                  .Linea("• Usa los accesos directos de abajo del chat o los botones de cada mensaje.")
+                  .Linea("• Para salir de algo a medias, toca ✖ Cancelar.")
                   .Linea()
                   .Linea("<b>Comandos</b>")
                   .Linea("/menu — menú principal")
                   .Linea("/explorar — vuelos, hoteles, vehículos, tours y paquetes")
-                  .Linea("/reservas — tus próximas reservaciones*")
-                  .Linea("/tickets — tus tickets de soporte*")
-                  .Linea("/asesoria — pedir ayuda a un asesor*")
-                  .Linea("/problema — reportar un problema con una reservación*")
-                  .Linea("/vincular — vincular tu cuenta · /desvincular")
-                  .Linea("/cancelar — salir de lo que estés haciendo")
+                  .Linea("/reservas — tus reservaciones*")
+                  .Linea("/soporte — asesoría, reportar un problema y tus tickets*")
+                  .Linea("/ayuda — políticas, métodos de pago y contacto")
                   .Linea()
-                  .Linea("También puedes escribirme un destino o un servicio («Cancún», «hotel playa») y lo busco, " +
-                         "o usar los accesos directos de abajo del chat.")
-                  .Linea()
-                  .Linea("<i>* Requieren tu cuenta vinculada.</i>");
+                  .Linea("<i>* Requieren tu cuenta vinculada (👤 Mi cuenta).</i>");
                 break;
         }
 

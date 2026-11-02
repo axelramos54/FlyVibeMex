@@ -187,11 +187,16 @@ public sealed partial class ManejadorActualizaciones
 
     private async Task BotonAsync(CallbackQuery boton, CancellationToken ct)
     {
+        string? avisoFlotante = null;   // texto que Telegram muestra unos segundos sobre el chat
         try
         {
             if (boton.Message is { } original && original.Chat.Type != ChatType.Private) return;
             var chatId = boton.Message?.Chat.Id ?? boton.From.Id;
-            if (!_limitador.Permitir($"msg:{chatId}", 30, TimeSpan.FromMinutes(1))) return;
+            if (!_limitador.Permitir($"msg:{chatId}", 30, TimeSpan.FromMinutes(1)))
+            {
+                avisoFlotante = "Vas muy rápido 🙂 Espera un momento y vuelve a intentarlo.";
+                return;
+            }
 
             // Los botones de un aviso abren una pantalla NUEVA: el aviso se queda en el historial del chat.
             var datos = boton.Data ?? string.Empty;
@@ -209,7 +214,7 @@ public sealed partial class ManejadorActualizaciones
             // Quita el "relojito" del botón en Telegram (hay que contestar siempre, aunque no haya nada que decir).
             try
             {
-                await _bot.AnswerCallbackQuery(boton.Id, cancellationToken: ct);
+                await _bot.AnswerCallbackQuery(boton.Id, avisoFlotante, cancellationToken: ct);
             }
             catch (ApiRequestException)
             {
@@ -263,6 +268,12 @@ public sealed partial class ManejadorActualizaciones
             case "soporte":
                 await SoporteMenuAsync(ctx, ct);
                 break;
+            case "cuenta":
+                await MiCuentaAsync(ctx, ct);
+                break;
+            case "avisos":
+                await AvisosPreferenciasAsync(ctx, ct);
+                break;
             case "tickets":
                 await TicketsAsync(ctx, ct);
                 break;
@@ -277,10 +288,11 @@ public sealed partial class ManejadorActualizaciones
                 await MostrarAsync(ctx, "Listo, cancelé lo que estábamos haciendo.", TecladoMenu(ctx), ct);
                 break;
             case "idchat":
-                await MostrarAsync(ctx, "Ese comando es para el grupo de agentes: agrégame al grupo y escribe ahí /idchat.", null, ct);
+                await MostrarAsync(ctx, "Ese comando es para el grupo de agentes: agrégame al grupo y escribe ahí /idchat.",
+                    new Teclado().Navegacion(), ct);
                 break;
             default:
-                await MostrarAsync(ctx, "No conozco ese comando. Escribe /menu para ver las opciones.", TecladoMenu(ctx), ct);
+                await MostrarAsync(ctx, "No conozco ese comando. Estas son las opciones:", TecladoMenu(ctx), ct);
                 break;
         }
     }
@@ -312,6 +324,10 @@ public sealed partial class ManejadorActualizaciones
             case "ayu": await AyudaTemaAsync(ctx, Parte(1)!, ct); break;
 
             // ---- Cuenta ----
+            case "cta": await MiCuentaAsync(ctx, ct); break;
+            case "avs" when Parte(1) is { Length: > 0 } preferencia: await CambiarAvisoAsync(ctx, preferencia, ct); break;
+            case "avs": await AvisosPreferenciasAsync(ctx, ct); break;
+            case "ics" when Parte(1) is { Length: > 0 } codigoCalendario: await CalendarioAsync(ctx, codigoCalendario, ct); break;
             case "vinc": await VincularComandoAsync(ctx, string.Empty, ct); break;
             case "dsv" when Parte(1) == "si": await DesvincularAsync(ctx, ct); break;
             case "dsv": await DesvincularPreguntarAsync(ctx, ct); break;
@@ -329,6 +345,9 @@ public sealed partial class ManejadorActualizaciones
             case "tkt" when Id(Parte(1)) is ulong idTicket: await TicketAsync(ctx, idTicket, ct); break;
             case "tkt": await TicketsAsync(ctx, ct); break;
             case "rsp" when Id(Parte(1)) is ulong idResponder: await IniciarRespuestaAsync(ctx, idResponder, ct); break;
+            case "cal" when Id(Parte(1)) is ulong idCalificar && int.TryParse(Parte(2), out var estrellas):
+                await CalificarTicketAsync(ctx, idCalificar, estrellas, ct);
+                break;
 
             // ---- Botones del flujo de un ticket (no lo interrumpen) ----
             case "ok": await ConfirmarTicketAsync(ctx, ct); break;
@@ -381,6 +400,13 @@ public sealed partial class ManejadorActualizaciones
             await AsegurarTecladoFijoAsync(ctx, ct);
             return;
         }
+        // "srv_15": botón "Pregúntanos por Telegram" de la ficha de un servicio en la web.
+        if (argumentos.StartsWith("srv_", StringComparison.OrdinalIgnoreCase) && Id(argumentos[4..]) is ulong idServicio)
+        {
+            await FichaAsync(ctx, idServicio, PestanaFicha.Resumen, null, 1, ct);
+            await AsegurarTecladoFijoAsync(ctx, ct);
+            return;
+        }
         if (argumentos.Equals("soporte", StringComparison.OrdinalIgnoreCase))
         {
             await SoporteMenuAsync(ctx, ct);
@@ -388,37 +414,77 @@ public sealed partial class ManejadorActualizaciones
             return;
         }
 
-        // Saludo (lleva el teclado fijo) y, aparte, el menú con sus botones.
+        // Saludo de 3 líneas (lleva el teclado fijo: Telegram no deja ponerlo junto con botones bajo el texto)
+        // y, aparte, el menú con sus botones y el resumen de la cuenta.
         var sb = new StringBuilder()
-            .Linea($"¡Hola, {FormatoBot.Html(ctx.Nombre)}! Soy el asistente de <b>FlyVibe Mex</b> ✈️")
-            .Linea()
-            .Linea("Te muestro vuelos, hoteles, vehículos, tours y paquetes. Si vinculas tu cuenta, también tus reservaciones y tus tickets de soporte.")
-            .Linea()
-            .Linea("🔒 Los pagos y las cancelaciones se hacen solo en la web: nunca te pediré datos de tarjeta ni tu contraseña.")
-            .Linea()
-            .Linea("⌨️ Abajo tienes accesos directos. También puedes escribirme un destino, por ejemplo «Cancún».");
+            .Linea(ctx.Vinculado
+                ? $"¡Hola de nuevo, {FormatoBot.Html(ctx.Nombre)}! Soy el asistente de <b>FlyVibe Mex</b> ✈️"
+                : $"¡Hola, {FormatoBot.Html(ctx.Nombre)}! Soy el asistente de <b>FlyVibe Mex</b> ✈️")
+            .Linea("Escríbeme un destino (por ejemplo «Cancún») o usa los botones.")
+            .Linea("🔒 Nunca te pediré tarjetas ni contraseñas: los pagos son solo en la web.");
         await EnviarConTecladoFijoAsync(ctx.ChatId, sb.ToString(), ct);
-        await MenuAsync(ctx, ct);
+        await MenuAsync(ctx, ct, conPista: false);
     }
 
-    private async Task MenuAsync(ContextoBot ctx, CancellationToken ct)
+    /// <param name="conPista">Agrega "escríbeme un destino…" (no hace falta justo después del saludo, que ya lo dice).</param>
+    private async Task MenuAsync(ContextoBot ctx, CancellationToken ct, bool conPista = true)
     {
         var sb = new StringBuilder().Linea("<b>Menú principal</b>").Linea();
-        sb.Linea(ctx.Vinculado
-            ? $"Cuenta vinculada: <b>{FormatoBot.Html(ctx.Nombre)}</b>."
-            : "Tu cuenta aún no está vinculada (puedes explorar sin vincularla).");
-        sb.Linea().Linea("💡 Escríbeme un destino o un servicio (por ejemplo «hotel Cancún») y lo busco.");
-        await MostrarAsync(ctx, sb.ToString(), TecladoMenu(ctx), ct);
+        var teclado = new Teclado();
+        if (ctx.Vinculado)
+        {
+            sb.Linea($"Cuenta vinculada: <b>{FormatoBot.Html(ctx.Nombre)}</b>");
+            await ResumenCuentaAsync(ctx, sb, teclado, ct);
+        }
+        else
+        {
+            sb.Linea("Tu cuenta aún no está vinculada: puedes explorar sin ella, y al vincularla verás aquí tus viajes y tickets.");
+        }
+        if (conPista) sb.Linea().Linea("💡 Escríbeme un destino o un servicio (por ejemplo «hotel Cancún») y lo busco.");
+        await MostrarAsync(ctx, sb.ToString(), TecladoMenu(ctx, teclado), ct);
     }
 
-    private static Teclado TecladoMenu(ContextoBot ctx)
+    /// <summary>
+    /// Resumen del menú para una cuenta vinculada: próximo viaje y tickets con respuesta nueva, con botones directos.
+    /// Usa los mismos servicios que "Mis reservaciones" y "Soporte" (filtrados por la cuenta). Si la BD falla, el menú
+    /// se muestra igual, sin resumen.
+    /// </summary>
+    private async Task ResumenCuentaAsync(ContextoBot ctx, StringBuilder sb, Teclado teclado, CancellationToken ct)
     {
-        var teclado = new Teclado()
-            .Fila(("🔎 Explorar", "exp"), ("🧳 Mis reservaciones", "res"))
-            .Fila(("💬 Soporte", "sop"), ("ℹ️ Ayuda", "ayu"));
-        if (!ctx.Vinculado) teclado.Boton("🔗 Vincular mi cuenta", "vinc");
-        return teclado;
+        try
+        {
+            var reservas = await _viajes.ReservacionesAsync(ctx.Cuenta, ct);
+            if (reservas.Proximas.FirstOrDefault() is { } proximo)
+            {
+                sb.Linea($"✈️ Próximo viaje: <code>{FormatoBot.Html(proximo.codigo_reserva)}</code> · " +
+                         $"{FormatoBot.HtmlRecortado(proximo.servicio, 40)} · {proximo.inicio.ToString("dd/MM", FormatoBot.Es)}");
+                teclado.Boton($"✈️ Ver {proximo.codigo_reserva}", $"res:{proximo.codigo_reserva}");
+            }
+
+            var conRespuesta = (await _soporte.SolicitudesAsync(ctx.Cuenta, ct)).Tickets.Where(t => t.respuesta_nueva).ToList();
+            if (conRespuesta.Count == 1)
+            {
+                sb.Linea("🔔 1 ticket con respuesta nueva");
+                teclado.Boton($"🔔 Ver el ticket #{conRespuesta[0].id}", $"tkt:{conRespuesta[0].id}");
+            }
+            else if (conRespuesta.Count > 1)
+            {
+                sb.Linea($"🔔 {conRespuesta.Count} tickets con respuesta nueva");
+                teclado.Boton("🔔 Ver mis tickets", "tkt");
+            }
+        }
+        catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
+        {
+            _logger.LogWarning("Telegram: no se pudo armar el resumen del menú (la BD no respondió); se muestra sin resumen.");
+        }
     }
+
+    /// <summary>Botones del menú principal (debajo de los botones directos del resumen, si los hay).</summary>
+    private static Teclado TecladoMenu(ContextoBot ctx, Teclado? teclado = null) =>
+        (teclado ?? new Teclado())
+            .Fila(("🔎 Explorar", "exp"), ("🧳 Mis reservaciones", "res"))
+            .Fila(("💬 Soporte", "sop"), (ctx.Vinculado ? "👤 Mi cuenta" : "🔗 Vincular cuenta", "cta"))
+            .Boton("ℹ️ Ayuda", "ayu");
 
     private static string LlaveTecladoFijo(long chatId) => $"tg:teclado:{chatId}";
 
@@ -665,7 +731,7 @@ public sealed partial class ManejadorActualizaciones
             .Linea("🔗 Para eso necesito que vincules tu cuenta de FlyVibeMex:")
             .Linea("1. Entra a la web › <b>Mi cuenta › Telegram</b> (con tu sesión iniciada).")
             .Linea("2. Toca <b>Generar código</b>.")
-            .Linea("3. Mándamelo aquí: <code>/vincular TU-CODIGO</code> (o usa el botón de la web).");
+            .Linea("3. Toca «Ya tengo mi código» y escríbelo aquí (o usa el botón de la web, que lo manda solo).");
         var teclado = new Teclado();
         EnlaceWeb(teclado, sb, "Abrir Mi cuenta › Telegram", "/Miusuario/Telegram");
         teclado.Boton("🔑 Ya tengo mi código", "vinc").Navegacion();
@@ -681,7 +747,7 @@ public sealed partial class ManejadorActualizaciones
         await MostrarAsync(ctx,
             "🔒 Por seguridad borré tu mensaje: parecía un número de tarjeta. Nunca mandes por aquí tarjetas, CVV ni contraseñas; " +
             "los pagos se hacen solo en la web. Si estabas escribiendo un ticket, vuelve a escribirlo sin ese número.",
-            null, ct);
+            _estados.Obtener(ctx.ChatId) is not null ? new Teclado().Boton("✖ Cancelar", "no") : new Teclado().Navegacion(), ct);
     }
 
     /// <summary>"/start@FlyVibeMexBot v_ABC" → ("start", "v_ABC", "FlyVibeMexBot").</summary>

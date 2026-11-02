@@ -40,6 +40,7 @@ public static class ConfiguracionBotTelegram
         services.AddSingleton<ColaAvisosTelegram>();
         services.AddSingleton<IAvisosTelegram>(sp => sp.GetRequiredService<ColaAvisosTelegram>());
         services.AddHostedService<DespachadorAvisosTelegram>();
+        services.AddHostedService<VigilanteViajes>();   // avisos de reservaciones/reembolsos y recordatorios 72 h / 24 h
 
         services.AddScoped<ManejadorActualizaciones>();   // uno por mensaje (scope nuevo, como una petición web)
         services.AddSingleton<ReceptorActualizaciones>();

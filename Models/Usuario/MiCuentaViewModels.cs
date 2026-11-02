@@ -127,6 +127,15 @@ namespace FlyVibeMex.Models
         /// <summary>Monto del pago APROBADO más reciente (base del reembolso; el de cortesía devuelve todo).</summary>
         public decimal? monto_pagado { get; set; }
 
+        /// <summary>Hasta cuándo aplica el reembolso del 100 % (inicio − horas de la política). null si no se puede cancelar.</summary>
+        public DateTime? limite_reembolso_total { get; set; }
+
+        /// <summary>Porcentaje que se devuelve DESPUÉS de ese límite (el tardío de la política de la compra).</summary>
+        public decimal porcentaje_tardio { get; set; }
+
+        /// <summary>Monto que se devolvería después del límite (para el simulador del bot).</summary>
+        public decimal monto_reembolso_tardio { get; set; }
+
         /// <summary>Texto para el modal: "Se te reembolsarán $1,200.00 MXN (100 %)".</summary>
         public string TextoReembolso => monto_reembolso > 0
             ? $"Se te reembolsarán ${monto_reembolso:N2} {moneda} ({porcentaje:0.##} % según la política de tu compra)."
@@ -307,6 +316,9 @@ namespace FlyVibeMex.Models
         public int mensajes { get; set; }
         /// <summary>El último mensaje es del personal y el ticket sigue abierto: le toca responder al cliente.</summary>
         public bool respuesta_nueva { get; set; }
+
+        /// <summary>Calificación de la atención (1 a 5) que dio el cliente desde el bot; null si no ha calificado.</summary>
+        public byte? calificacion { get; set; }
     }
 
     /// <summary>Un mensaje de la conversación de un ticket (el primero es el mensaje con el que se abrió).</summary>
