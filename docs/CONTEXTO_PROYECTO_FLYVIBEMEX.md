@@ -18,6 +18,13 @@
 
 ## 0. Cambios recientes
 
+### 01/11/2026 · Bot de Telegram implementado (Etapa 7; `main` en `31e2e71` + cambios sin commit)
+- Decisiones del equipo: **vincular la cuenta** (código de un solo uso en Mi cuenta › Telegram) en vez de código de reserva + correo; **`Telegram.Bot` 22.10.3.3**; aviso de tickets nuevos a un **grupo privado de agentes**. Detalle, archivos, puesta en marcha y guion de prueba: `docs/06_ANALISIS_Y_DISENO_BOT_TELEGRAM.md` sección 11.
+- Esquema: tabla nueva **`telegram_vinculos`** en `sql/01_crear_base_datos.sql` (**30 tablas**; recrear con 01 → 02 → 03 o ejecutar solo ese bloque). Modelo `TelegramVinculos`, `DbSet` y `/Home/TestDb` actualizados.
+- Código: carpeta nueva `Bot/` (worker con long polling, router en 4 partials, flujos, límites, avisos); `Services/` +`VinculacionTelegramService`, `EstadoBotTelegram`, `IAvisosTelegram`, `ConsultasTelegramService`; `SoporteClienteService` / `SoportePanelService` disparan avisos; `ResultadoOperacion.IdCreado`; pestaña **Telegram** en Mi cuenta (`MiusuarioController.Telegram`, `Views/Miusuario/Telegram/Index.cshtml`). `Program.cs`: `builder.Services.AgregarBotTelegram(builder.Configuration)`. `appsettings.json`: sección `TelegramBot` **sin token** (token en user-secrets).
+- El bot reutiliza los servicios de la web (catálogo, Mis reservaciones, Soporte, contenido del sitio): no hay SQL nuevo fuera de `Services/`. No cobra ni cancela; nunca pide ni guarda tarjetas ni contraseñas.
+- **Escrito sin compilador** (el entorno de Claude no tiene SDK de .NET): falta `dotnet build` y la prueba en vivo.
+
 ### 31/10/2026 · Este documento se mudó a `docs/` (T8.3)
 - Antes había dos copias: la de la raíz (la más nueva, en Git) y una vieja en `docs/` (del 18/10, fuera de Git). Ahora
   solo existe `docs/CONTEXTO_PROYECTO_FLYVIBEMEX.md`, con el contenido de la raíz, y ya **se versiona** (igual que
