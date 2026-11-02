@@ -15,11 +15,34 @@ public static partial class FormatoBot
     /// <summary>Telegram acepta hasta 4096 caracteres por mensaje; se deja margen.</summary>
     public const int LargoMaximoMensaje = 3900;
 
+    /// <summary>El pie de una foto admite 1024 caracteres; se deja margen.</summary>
+    public const int LargoMaximoPie = 1000;
+
     /// <summary>Escapa &amp;, &lt;, &gt; y comillas para el modo HTML de Telegram.</summary>
     public static string Html(string? texto) =>
         string.IsNullOrEmpty(texto)
             ? string.Empty
             : texto.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
+    /// <summary>
+    /// Primera línea de una pantalla: dónde está el usuario ("🔎 Explorar › 🏨 Hoteles › 📍 Cancún").
+    /// Las partes ya deben venir escapadas con <see cref="Html"/> si traen datos de la BD.
+    /// </summary>
+    public static string Ruta(params string[] partes) => $"<i>{string.Join(" › ", partes)}</i>";
+
+    /// <summary>"Paso 2 de 3 · Detalle" (flujos de varios pasos).</summary>
+    public static string Progreso(int paso, int total, string nombre) => $"<i>Paso {paso} de {total} · {nombre}</i>";
+
+    /// <summary>Minúsculas y sin acentos ("Cancún" → "cancun"), para buscar sin que importe cómo se escribió.</summary>
+    public static string SinAcentos(string? texto)
+    {
+        if (string.IsNullOrEmpty(texto)) return string.Empty;
+        var sb = new StringBuilder(texto.Length);
+        foreach (var c in texto.Normalize(NormalizationForm.FormD))
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(char.ToLowerInvariant(c));
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
 
     /// <summary>Recorta (antes de escapar) y agrega "…".</summary>
     public static string Recortar(string? texto, int maximo)
@@ -127,11 +150,12 @@ public static partial class FormatoBot
     /// Asegura el largo máximo cortando en un salto de línea (cada línea de los mensajes del bot tiene sus etiquetas
     /// HTML completas, así que cortar entre líneas nunca deja una etiqueta abierta).
     /// </summary>
-    public static string AjustarLargo(string html)
+    /// <param name="maximo"><see cref="LargoMaximoMensaje"/> para un mensaje; <see cref="LargoMaximoPie"/> para el pie de una foto.</param>
+    public static string AjustarLargo(string html, int maximo = LargoMaximoMensaje)
     {
-        if (html.Length <= LargoMaximoMensaje) return html;
-        var corte = html.LastIndexOf('\n', LargoMaximoMensaje - 40);
-        if (corte <= 0) corte = LargoMaximoMensaje - 40;
+        if (html.Length <= maximo) return html;
+        var corte = html.LastIndexOf('\n', maximo - 40);
+        if (corte <= 0) corte = maximo - 40;
         return html[..corte] + "\n…";
     }
 

@@ -1,11 +1,13 @@
 using System.Text;
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FlyVibeMex.Bot;
 
@@ -20,6 +22,12 @@ public sealed class ContextoBot
     /// <summary>Cliente de FlyVibeMex vinculado a este chat (null = sin vincular).</summary>
     public ClienteTelegram? Cliente { get; init; }
 
+    /// <summary>
+    /// Mensaje del bot cuyo botón se tocó: la primera pantalla que se muestre lo reescribe en lugar de mandar otro
+    /// (así el chat no se llena de mensajes). Es null si el usuario escribió algo o si el botón venía de un aviso.
+    /// </summary>
+    public MensajeEditable? Editable { get; set; }
+
     public bool Vinculado => Cliente is not null;
 
     public string Nombre => Cliente?.Nombre ?? NombreTelegram;
@@ -33,9 +41,12 @@ public sealed class ContextoBot
     };
 }
 
+/// <summary>Mensaje del bot que se puede reescribir; <paramref name="EsFoto"/> = tiene foto (se edita su pie, no su texto).</summary>
+public sealed record MensajeEditable(int Id, bool EsFoto);
+
 /// <summary>
 /// Router del bot (docs/06): recibe cada mensaje o botón, decide qué comando o paso de un flujo es y responde.
-/// Partes: Catálogo y ayuda (público) · Cuenta (vincular, reservaciones) · Soporte (tickets).
+/// Partes: Catálogo y ayuda (público) · Búsqueda por texto · Cuenta (vincular, reservaciones) · Soporte (tickets).
 /// </summary>
 /// <remarks>
 /// <para>Reglas que se cumplen en todo el bot:</para>
@@ -47,9 +58,19 @@ public sealed class ContextoBot
 /// <item>No cobra ni cancela: eso se hace en la web (los botones llevan allá).</item>
 /// <item>El log nunca incluye el texto de los mensajes.</item>
 /// </list>
+/// <para>Pantallas: un botón reescribe el mensaje donde estaba (<see cref="MostrarAsync"/>); lo que el usuario escribe
+/// recibe un mensaje nuevo; los avisos (te respondieron, ticket cerrado) nunca se reescriben.</para>
 /// </remarks>
 public sealed partial class ManejadorActualizaciones
 {
+    /// <summary>Dato de un flujo: id del mensaje del paso actual (para quitarle los botones al avanzar).</summary>
+    private const string DatoMensajePaso = "msg";
+
+    /// <summary>Acciones que pertenecen al flujo en curso y por eso NO lo interrumpen.</summary>
+    private static readonly HashSet<string> AccionesDelFlujo = new(StringComparer.Ordinal) { "ok", "no", "atr", "eda", "edm", "rev" };
+
+    private static readonly LinkPreviewOptions SinVistaPrevia = new() { IsDisabled = true };
+
     private readonly ITelegramBotClient _bot;
     private readonly IEstadoConversacionStore _estados;
     private readonly ILimitadorIntentos _limitador;
@@ -60,6 +81,8 @@ public sealed partial class ManejadorActualizaciones
     private readonly IContenidoSitioService _contenido;
     private readonly IConsultasTelegramService _consultas;
     private readonly EstadoBotTelegram _estadoBot;
+    private readonly FotosServicio _fotos;
+    private readonly IMemoryCache _cache;
     private readonly TelegramBotOpciones _opciones;
     private readonly ILogger<ManejadorActualizaciones> _logger;
 
@@ -74,6 +97,8 @@ public sealed partial class ManejadorActualizaciones
         IContenidoSitioService contenido,
         IConsultasTelegramService consultas,
         EstadoBotTelegram estadoBot,
+        FotosServicio fotos,
+        IMemoryCache cache,
         IOptions<TelegramBotOpciones> opciones,
         ILogger<ManejadorActualizaciones> logger)
     {
@@ -87,6 +112,8 @@ public sealed partial class ManejadorActualizaciones
         _contenido = contenido;
         _consultas = consultas;
         _estadoBot = estadoBot;
+        _fotos = fotos;
+        _cache = cache;
         _opciones = opciones.Value;
         _logger = logger;
     }
@@ -116,11 +143,14 @@ public sealed partial class ManejadorActualizaciones
         var chatId = mensaje.Chat.Id;
         if (!_limitador.Permitir($"msg:{chatId}", 30, TimeSpan.FromMinutes(1))) return;   // anti spam
 
-        var ctx = await ContextoAsync(chatId, mensaje.From, ct);
+        await EscribiendoAsync(chatId, ct);   // "escribiendo…" mientras se consulta la BD
+        var ctx = await ContextoAsync(chatId, mensaje.From, editable: null, ct);
         var texto = mensaje.Text?.Trim();
         if (string.IsNullOrEmpty(texto))
         {
-            await EnviarAsync(ctx.ChatId, "Por ahora solo entiendo mensajes de texto. Escribe /menu para ver lo que puedo hacer.", null, ct);
+            await MostrarAsync(ctx,
+                "Por ahora solo entiendo mensajes de texto. Escríbeme un destino (por ejemplo «Cancún») o usa los botones.",
+                TecladoMenu(ctx), ct);
             return;
         }
 
@@ -128,6 +158,14 @@ public sealed partial class ManejadorActualizaciones
         {
             var (comando, argumentos, _) = Partir(texto);
             await ComandoAsync(ctx, comando, argumentos, ct);
+            return;
+        }
+
+        // Botones del teclado fijo (llegan como texto): funcionan igual que un comando.
+        if (ComandosBot.Atajo(texto) is { } atajo)
+        {
+            MarcarTecladoFijo(chatId);   // si lo tocó, ya lo tiene
+            await ComandoAsync(ctx, atajo, string.Empty, ct);
             return;
         }
 
@@ -144,7 +182,7 @@ public sealed partial class ManejadorActualizaciones
             return;
         }
 
-        await EnviarAsync(ctx.ChatId, "No entendí ese mensaje 🤔. Usa los botones o escribe /menu.", TecladoMenu(ctx), ct);
+        await TextoLibreAsync(ctx, texto, ct);   // búsqueda en el catálogo o saludo
     }
 
     private async Task BotonAsync(CallbackQuery boton, CancellationToken ct)
@@ -155,8 +193,16 @@ public sealed partial class ManejadorActualizaciones
             var chatId = boton.Message?.Chat.Id ?? boton.From.Id;
             if (!_limitador.Permitir($"msg:{chatId}", 30, TimeSpan.FromMinutes(1))) return;
 
-            var ctx = await ContextoAsync(chatId, boton.From, ct);
-            await AccionAsync(ctx, boton.Data ?? string.Empty, ct);
+            // Los botones de un aviso abren una pantalla NUEVA: el aviso se queda en el historial del chat.
+            var datos = boton.Data ?? string.Empty;
+            var deAviso = datos.EndsWith(Teclado.SufijoAviso, StringComparison.Ordinal);
+            if (deAviso) datos = datos[..^Teclado.SufijoAviso.Length];
+
+            var editable = !deAviso && boton.Message is { } m
+                ? new MensajeEditable(m.Id, m.Photo is { Length: > 0 })
+                : null;
+            var ctx = await ContextoAsync(chatId, boton.From, editable, ct);
+            await AccionAsync(ctx, datos, ct);
         }
         finally
         {
@@ -172,11 +218,12 @@ public sealed partial class ManejadorActualizaciones
         }
     }
 
-    private async Task<ContextoBot> ContextoAsync(long chatId, User? usuario, CancellationToken ct) => new()
+    private async Task<ContextoBot> ContextoAsync(long chatId, User? usuario, MensajeEditable? editable, CancellationToken ct) => new()
     {
         ChatId = chatId,
         NombreTelegram = string.IsNullOrWhiteSpace(usuario?.FirstName) ? "viajero" : usuario!.FirstName,
-        Cliente = await _vinculos.ClientePorChatAsync(chatId, ct)
+        Cliente = await _vinculos.ClientePorChatAsync(chatId, ct),
+        Editable = editable
     };
 
     // =============================================================================================
@@ -186,7 +233,7 @@ public sealed partial class ManejadorActualizaciones
     private async Task ComandoAsync(ContextoBot ctx, string comando, string argumentos, CancellationToken ct)
     {
         // Un comando siempre interrumpe el flujo que estuviera a medias.
-        _estados.Limpiar(ctx.ChatId);
+        await TerminarFlujoAsync(ctx, ct);
 
         switch (comando)
         {
@@ -194,7 +241,8 @@ public sealed partial class ManejadorActualizaciones
                 await InicioAsync(ctx, argumentos, ct);
                 break;
             case "menu":
-                await MenuAsync(ctx, saludo: false, ct);
+                await AsegurarTecladoFijoAsync(ctx, ct);
+                await MenuAsync(ctx, ct);
                 break;
             case "explorar":
                 await CategoriasAsync(ctx, ct);
@@ -212,24 +260,27 @@ public sealed partial class ManejadorActualizaciones
             case "reservaciones":
                 await ReservasAsync(ctx, ct);
                 break;
+            case "soporte":
+                await SoporteMenuAsync(ctx, ct);
+                break;
             case "tickets":
                 await TicketsAsync(ctx, ct);
                 break;
             case "asesoria":
             case "asesoría":
-                await IniciarTicketAsync(ctx, "ASESORIA", null, null, ct);
+                await IniciarTicketAsync(ctx, "ASESORIA", null, null, totalPasos: 3, ct);
                 break;
             case "problema":
                 await ProblemaElegirReservacionAsync(ctx, ct);
                 break;
             case "cancelar":
-                await EnviarAsync(ctx.ChatId, "Listo, cancelé lo que estábamos haciendo.", TecladoMenu(ctx), ct);
+                await MostrarAsync(ctx, "Listo, cancelé lo que estábamos haciendo.", TecladoMenu(ctx), ct);
                 break;
             case "idchat":
-                await EnviarAsync(ctx.ChatId, "Ese comando es para el grupo de agentes: agrégame al grupo y escribe ahí /idchat.", null, ct);
+                await MostrarAsync(ctx, "Ese comando es para el grupo de agentes: agrégame al grupo y escribe ahí /idchat.", null, ct);
                 break;
             default:
-                await EnviarAsync(ctx.ChatId, "No conozco ese comando. Escribe /menu para ver las opciones.", TecladoMenu(ctx), ct);
+                await MostrarAsync(ctx, "No conozco ese comando. Escribe /menu para ver las opciones.", TecladoMenu(ctx), ct);
                 break;
         }
     }
@@ -240,20 +291,23 @@ public sealed partial class ManejadorActualizaciones
         var accion = partes[0];
         string? Parte(int i) => partes.Length > i ? partes[i] : null;
 
-        // Cualquier botón (salvo Enviar / Cancelar de un ticket) interrumpe el flujo que estuviera a medias.
-        if (accion is not ("ok" or "no")) _estados.Limpiar(ctx.ChatId);
+        // Cualquier botón que no sea del flujo en curso (Enviar, Cancelar, Atrás, Editar…) lo interrumpe.
+        if (!AccionesDelFlujo.Contains(accion)) await TerminarFlujoAsync(ctx, ct);
 
         switch (accion)
         {
-            case "menu": await MenuAsync(ctx, saludo: false, ct); break;
+            case "menu": await MenuAsync(ctx, ct); break;
 
-            // ---- Catálogo y ayuda (público) ----
+            // ---- Catálogo y ayuda (público). La ficha recibe id:destino:página para que "←" regrese a la misma lista ----
             case "exp": await CategoriasAsync(ctx, ct); break;
             case "cat": await ListaAsync(ctx, Parte(1), null, Entero(Parte(2)), ct); break;
             case "catd": await ListaAsync(ctx, Parte(1), Id(Parte(2)), Entero(Parte(3)), ct); break;
             case "dst": await DestinosAsync(ctx, Parte(1), ct); break;
-            case "srv" when Id(Parte(1)) is ulong idServicio: await FichaAsync(ctx, idServicio, ct); break;
-            case "fch" when Id(Parte(1)) is ulong idFechas: await FechasAsync(ctx, idFechas, ct); break;
+            case "srv" when Id(Parte(1)) is ulong s1: await FichaAsync(ctx, s1, PestanaFicha.Resumen, Id(Parte(2)), Entero(Parte(3)), ct); break;
+            case "srvd" when Id(Parte(1)) is ulong s2: await FichaAsync(ctx, s2, PestanaFicha.Detalles, Id(Parte(2)), Entero(Parte(3)), ct); break;
+            case "srvp" when Id(Parte(1)) is ulong s3: await FichaAsync(ctx, s3, PestanaFicha.Politica, Id(Parte(2)), Entero(Parte(3)), ct); break;
+            case "srvo" when Id(Parte(1)) is ulong s4: await FichaAsync(ctx, s4, PestanaFicha.Promos, Id(Parte(2)), Entero(Parte(3)), ct); break;
+            case "fch" when Id(Parte(1)) is ulong s5: await FichaAsync(ctx, s5, PestanaFicha.Fechas, Id(Parte(2)), Entero(Parte(3)), ct); break;
             case "ayu" when Parte(1) is null: await AyudaAsync(ctx, ct); break;
             case "ayu": await AyudaTemaAsync(ctx, Parte(1)!, ct); break;
 
@@ -266,22 +320,29 @@ public sealed partial class ManejadorActualizaciones
 
             // ---- Soporte ----
             case "sop": await SoporteMenuAsync(ctx, ct); break;
-            case "ase": await IniciarTicketAsync(ctx, "ASESORIA", null, null, ct); break;
-            case "prb" when Parte(1) is { Length: > 0 } codigoProblema: await ProblemaConCodigoAsync(ctx, codigoProblema, ct); break;
+            case "ase": await IniciarTicketAsync(ctx, "ASESORIA", null, null, totalPasos: 3, ct); break;
+            case "prb" when Parte(1) is { Length: > 0 } codigoProblema: await ProblemaConCodigoAsync(ctx, codigoProblema, totalPasos: 3, ct); break;
+            case "prbc" when Parte(1) is { Length: > 0 } codigoElegido: await ProblemaConCodigoAsync(ctx, codigoElegido, totalPasos: 4, ct); break;
             case "prb": await ProblemaElegirReservacionAsync(ctx, ct); break;
             case "prbr" when Id(Parte(1)) is ulong idReservacion: await ProblemaConReservacionAsync(ctx, idReservacion, ct); break;
-            case "prbn": await IniciarTicketAsync(ctx, "PROBLEMA", null, null, ct); break;
+            case "prbn": await IniciarTicketAsync(ctx, "PROBLEMA", null, null, totalPasos: 4, ct); break;
             case "tkt" when Id(Parte(1)) is ulong idTicket: await TicketAsync(ctx, idTicket, ct); break;
             case "tkt": await TicketsAsync(ctx, ct); break;
             case "rsp" when Id(Parte(1)) is ulong idResponder: await IniciarRespuestaAsync(ctx, idResponder, ct); break;
+
+            // ---- Botones del flujo de un ticket (no lo interrumpen) ----
             case "ok": await ConfirmarTicketAsync(ctx, ct); break;
+            case "atr": await TicketAtrasAsync(ctx, ct); break;
+            case "eda": await TicketEditarAsync(ctx, Pasos.Asunto, ct); break;
+            case "edm": await TicketEditarAsync(ctx, Pasos.Mensaje, ct); break;
+            case "rev": await TicketResumenAsync(ctx, ct); break;
             case "no":
-                _estados.Limpiar(ctx.ChatId);
-                await EnviarAsync(ctx.ChatId, "Listo, no se envió nada.", TecladoMenu(ctx), ct);
+                await TerminarFlujoAsync(ctx, ct);
+                await MostrarAsync(ctx, "Listo, cancelé lo que estábamos haciendo. No se envió nada.", TecladoMenu(ctx), ct);
                 break;
 
             default:
-                await MenuAsync(ctx, saludo: false, ct);
+                await MenuAsync(ctx, ct);
                 break;
         }
     }
@@ -301,14 +362,14 @@ public sealed partial class ManejadorActualizaciones
                 await PasoRespuestaAsync(ctx, estado, texto, ct);
                 break;
             default:
-                _estados.Limpiar(ctx.ChatId);
-                await MenuAsync(ctx, saludo: false, ct);
+                await TerminarFlujoAsync(ctx, ct);
+                await MenuAsync(ctx, ct);
                 break;
         }
     }
 
     // =============================================================================================
-    // Inicio y menú
+    // Inicio, menú y teclado fijo
     // =============================================================================================
 
     private async Task InicioAsync(ContextoBot ctx, string argumentos, CancellationToken ct)
@@ -317,38 +378,37 @@ public sealed partial class ManejadorActualizaciones
         if (argumentos.StartsWith("v_", StringComparison.OrdinalIgnoreCase))
         {
             await IntentarVincularAsync(ctx, argumentos, ct);
+            await AsegurarTecladoFijoAsync(ctx, ct);
             return;
         }
         if (argumentos.Equals("soporte", StringComparison.OrdinalIgnoreCase))
         {
             await SoporteMenuAsync(ctx, ct);
+            await AsegurarTecladoFijoAsync(ctx, ct);
             return;
         }
-        await MenuAsync(ctx, saludo: true, ct);
+
+        // Saludo (lleva el teclado fijo) y, aparte, el menú con sus botones.
+        var sb = new StringBuilder()
+            .Linea($"¡Hola, {FormatoBot.Html(ctx.Nombre)}! Soy el asistente de <b>FlyVibe Mex</b> ✈️")
+            .Linea()
+            .Linea("Te muestro vuelos, hoteles, vehículos, tours y paquetes. Si vinculas tu cuenta, también tus reservaciones y tus tickets de soporte.")
+            .Linea()
+            .Linea("🔒 Los pagos y las cancelaciones se hacen solo en la web: nunca te pediré datos de tarjeta ni tu contraseña.")
+            .Linea()
+            .Linea("⌨️ Abajo tienes accesos directos. También puedes escribirme un destino, por ejemplo «Cancún».");
+        await EnviarConTecladoFijoAsync(ctx.ChatId, sb.ToString(), ct);
+        await MenuAsync(ctx, ct);
     }
 
-    private async Task MenuAsync(ContextoBot ctx, bool saludo, CancellationToken ct)
+    private async Task MenuAsync(ContextoBot ctx, CancellationToken ct)
     {
-        var sb = new StringBuilder();
-        if (saludo)
-        {
-            sb.Linea($"¡Hola, {FormatoBot.Html(ctx.Nombre)}! Soy el asistente de <b>FlyVibe Mex</b> ✈️")
-              .Linea()
-              .Linea("Te muestro vuelos, hoteles, vehículos, tours y paquetes. Si vinculas tu cuenta, también tus reservaciones y tus tickets de soporte.")
-              .Linea()
-              .Linea("🔒 Los pagos y las cancelaciones se hacen solo en la web: nunca te pediré datos de tarjeta ni tu contraseña.");
-        }
-        else
-        {
-            sb.Linea("<b>Menú principal</b>");
-        }
-
-        if (ctx.Vinculado)
-            sb.Linea().Linea($"Cuenta vinculada: <b>{FormatoBot.Html(ctx.Nombre)}</b>.");
-        else
-            sb.Linea().Linea("Tu cuenta aún no está vinculada (puedes explorar sin vincularla).");
-
-        await EnviarAsync(ctx.ChatId, sb.ToString(), TecladoMenu(ctx), ct);
+        var sb = new StringBuilder().Linea("<b>Menú principal</b>").Linea();
+        sb.Linea(ctx.Vinculado
+            ? $"Cuenta vinculada: <b>{FormatoBot.Html(ctx.Nombre)}</b>."
+            : "Tu cuenta aún no está vinculada (puedes explorar sin vincularla).");
+        sb.Linea().Linea("💡 Escríbeme un destino o un servicio (por ejemplo «hotel Cancún») y lo busco.");
+        await MostrarAsync(ctx, sb.ToString(), TecladoMenu(ctx), ct);
     }
 
     private static Teclado TecladoMenu(ContextoBot ctx)
@@ -358,6 +418,27 @@ public sealed partial class ManejadorActualizaciones
             .Fila(("💬 Soporte", "sop"), ("ℹ️ Ayuda", "ayu"));
         if (!ctx.Vinculado) teclado.Boton("🔗 Vincular mi cuenta", "vinc");
         return teclado;
+    }
+
+    private static string LlaveTecladoFijo(long chatId) => $"tg:teclado:{chatId}";
+
+    private void MarcarTecladoFijo(long chatId) =>
+        _cache.Set(LlaveTecladoFijo(chatId), true, TimeSpan.FromDays(1));
+
+    /// <summary>
+    /// Manda el teclado fijo si este chat no lo ha recibido desde que arrancó la app (p. ej. usuarios que ya
+    /// tenían el chat antes de esta versión). Telegram lo recuerda; no hace falta mandarlo en cada mensaje.
+    /// </summary>
+    private async Task AsegurarTecladoFijoAsync(ContextoBot ctx, CancellationToken ct)
+    {
+        if (_cache.TryGetValue(LlaveTecladoFijo(ctx.ChatId), out _)) return;
+        await EnviarConTecladoFijoAsync(ctx.ChatId, "⌨️ Te dejé accesos directos abajo del chat.", ct);
+    }
+
+    private async Task EnviarConTecladoFijoAsync(long chatId, string html, CancellationToken ct)
+    {
+        await EnviarNuevoAsync(chatId, html, ComandosBot.TecladoFijo(), ct);
+        MarcarTecladoFijo(chatId);
     }
 
     // =============================================================================================
@@ -386,17 +467,182 @@ public sealed partial class ManejadorActualizaciones
             sb.Linea("Para recibir aquí los tickets nuevos, guárdalo en la PC donde corre la app y reiníciala:")
               .Linea($"<code>dotnet user-secrets set \"TelegramBot:ChatIdAgentes\" \"{id}\"</code>");
         }
-        await EnviarAsync(id, sb.ToString(), null, ct);
+        await EnviarNuevoAsync(id, sb.ToString(), null, ct);
+    }
+
+    // =============================================================================================
+    // Pantallas: reescribir el mensaje del botón o mandar uno nuevo
+    // =============================================================================================
+
+    /// <summary>
+    /// Muestra una pantalla y devuelve el id del mensaje donde quedó (null si no se pudo mostrar).
+    /// <list type="bullet">
+    /// <item>Si se tocó un botón: se reescribe ESE mensaje (texto, o el pie si es una foto).</item>
+    /// <item>Si cambia el tipo (texto ↔ foto): Telegram no convierte uno en otro; se borra el anterior y se manda uno nuevo.</item>
+    /// <item>Si el usuario escribió algo, o el mensaje ya no se puede editar: mensaje nuevo.</item>
+    /// <item>Tocar dos veces el mismo botón ("message is not modified") no es un error.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="foto">Ruta pública de la imagen (<c>/uploads/...</c>); si no existe o Telegram la rechazó, va en texto.</param>
+    private async Task<int?> MostrarAsync(ContextoBot ctx, string html, Teclado? teclado, CancellationToken ct, string? foto = null)
+    {
+        var botones = teclado?.Crear();
+        var conFoto = foto is not null && _fotos.Disponible(foto);
+        var texto = FormatoBot.AjustarLargo(html, conFoto ? FormatoBot.LargoMaximoPie : FormatoBot.LargoMaximoMensaje);
+
+        // Solo la primera pantalla de cada toque reemplaza al mensaje del botón; las siguientes van aparte.
+        var editable = ctx.Editable;
+        ctx.Editable = null;
+
+        if (editable is not null)
+        {
+            if (editable.EsFoto == conFoto)
+            {
+                try
+                {
+                    if (conFoto)
+                        await _bot.EditMessageCaption(ctx.ChatId, editable.Id, texto, parseMode: ParseMode.Html,
+                            replyMarkup: botones, cancellationToken: ct);
+                    else
+                        await _bot.EditMessageText(ctx.ChatId, editable.Id, texto, parseMode: ParseMode.Html,
+                            replyMarkup: botones, linkPreviewOptions: SinVistaPrevia, cancellationToken: ct);
+                    return editable.Id;
+                }
+                catch (ApiRequestException ex) when (SinCambios(ex))
+                {
+                    return editable.Id;
+                }
+                catch (ApiRequestException)
+                {
+                    // Ya no se puede editar (muy viejo o borrado): se manda uno nuevo abajo.
+                }
+            }
+            else
+            {
+                await BorrarAsync(ctx.ChatId, editable.Id, ct);
+            }
+        }
+
+        if (conFoto && await EnviarFotoAsync(ctx.ChatId, foto!, texto, botones, ct) is int idFoto)
+            return idFoto;
+
+        var nuevo = await _bot.SendMessage(ctx.ChatId, texto, parseMode: ParseMode.Html, replyMarkup: botones,
+            linkPreviewOptions: SinVistaPrevia, cancellationToken: ct);
+        return nuevo.Id;
+    }
+
+    /// <summary>
+    /// Manda la foto de un servicio con su pie. La primera vez sube el archivo de <c>wwwroot/uploads</c> (funciona
+    /// también con localhost) y guarda el <c>file_id</c> que devuelve Telegram para no volver a subirla.
+    /// Devuelve null si Telegram no aceptó la imagen (se recuerda y la ficha se muestra en texto).
+    /// </summary>
+    private async Task<int?> EnviarFotoAsync(long chatId, string rutaPublica, string pie, InlineKeyboardMarkup? botones,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (_fotos.IdTelegram(rutaPublica) is { } idTelegram)
+            {
+                var reenviada = await _bot.SendPhoto(chatId, InputFile.FromFileId(idTelegram), caption: pie,
+                    parseMode: ParseMode.Html, replyMarkup: botones, cancellationToken: ct);
+                return reenviada.Id;
+            }
+
+            if (_fotos.RutaFisica(rutaPublica) is not { } archivo) return null;
+            await using var contenido = File.OpenRead(archivo);
+            var enviada = await _bot.SendPhoto(chatId, InputFile.FromStream(contenido, Path.GetFileName(archivo)), caption: pie,
+                parseMode: ParseMode.Html, replyMarkup: botones, cancellationToken: ct);
+            if (enviada.Photo is { Length: > 0 } tamanos) _fotos.Recordar(rutaPublica, tamanos[^1].FileId);
+            return enviada.Id;
+        }
+        catch (ApiRequestException ex) when (ex.ErrorCode == 400)
+        {
+            _logger.LogInformation("Telegram no aceptó la imagen de un servicio; la ficha se muestra sin foto.");
+            _fotos.Rechazar(rutaPublica);
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;   // el archivo se está reemplazando en este momento: se muestra sin foto
+        }
+    }
+
+    /// <summary>Mensaje nuevo sin pasar por la lógica de pantallas (grupo, teclado fijo).</summary>
+    private Task<Message> EnviarNuevoAsync(long chatId, string html, ReplyMarkup? botones, CancellationToken ct) =>
+        _bot.SendMessage(chatId, FormatoBot.AjustarLargo(html), parseMode: ParseMode.Html, replyMarkup: botones,
+            linkPreviewOptions: SinVistaPrevia, cancellationToken: ct);
+
+    private static bool SinCambios(ApiRequestException ex) =>
+        ex.ErrorCode == 400 && ex.Message.Contains("not modified", StringComparison.OrdinalIgnoreCase);
+
+    private async Task BorrarAsync(long chatId, int idMensaje, CancellationToken ct)
+    {
+        try
+        {
+            await _bot.DeleteMessage(chatId, idMensaje, ct);
+        }
+        catch (ApiRequestException)
+        {
+            // Más de 48 h o ya borrado: se queda donde está.
+        }
+    }
+
+    private async Task QuitarBotonesAsync(long chatId, int idMensaje, CancellationToken ct)
+    {
+        try
+        {
+            await _bot.EditMessageReplyMarkup(chatId, idMensaje, replyMarkup: null, cancellationToken: ct);
+        }
+        catch (ApiRequestException)
+        {
+            // Ya no tenía botones o ya no se puede editar.
+        }
+    }
+
+    private async Task EscribiendoAsync(long chatId, CancellationToken ct)
+    {
+        try
+        {
+            await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+        }
+        catch (RequestException)
+        {
+            // Solo es un indicador: si falla, se responde igual.
+        }
+    }
+
+    // =============================================================================================
+    // Flujos de varios pasos
+    // =============================================================================================
+
+    /// <summary>
+    /// Muestra el mensaje de un paso y guarda el estado. Antes le quita los botones al mensaje del paso anterior
+    /// (para que no queden botones viejos activos), salvo que sea el mismo mensaje que se va a reescribir.
+    /// </summary>
+    private async Task MostrarPasoAsync(ContextoBot ctx, string flujo, string paso, Dictionary<string, string> datos,
+        string html, Teclado? teclado, CancellationToken ct)
+    {
+        if (datos.TryGetValue(DatoMensajePaso, out var anterior) && int.TryParse(anterior, out var idAnterior)
+            && idAnterior != ctx.Editable?.Id)
+            await QuitarBotonesAsync(ctx.ChatId, idAnterior, ct);
+
+        datos.Remove(DatoMensajePaso);
+        if (await MostrarAsync(ctx, html, teclado, ct) is int idPaso) datos[DatoMensajePaso] = idPaso.ToString();
+        _estados.Guardar(ctx.ChatId, flujo, paso, datos);
+    }
+
+    /// <summary>Termina el flujo en curso (si hay) y le quita los botones al mensaje de su último paso.</summary>
+    private async Task TerminarFlujoAsync(ContextoBot ctx, CancellationToken ct)
+    {
+        if (_estados.Obtener(ctx.ChatId) is not { } estado) return;
+        _estados.Limpiar(ctx.ChatId);
+        if (int.TryParse(estado.Dato(DatoMensajePaso), out var idPaso) && idPaso != ctx.Editable?.Id)
+            await QuitarBotonesAsync(ctx.ChatId, idPaso, ct);
     }
 
     // =============================================================================================
     // Ayudantes
     // =============================================================================================
-
-    private async Task EnviarAsync(long chatId, string html, Teclado? teclado, CancellationToken ct) =>
-        await _bot.SendMessage(chatId, FormatoBot.AjustarLargo(html), parseMode: ParseMode.Html,
-            replyMarkup: teclado?.Crear(), linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-            cancellationToken: ct);
 
     /// <summary>
     /// Agrega un enlace al sitio: botón si la dirección es pública; si es localhost (demo en la misma PC), Telegram no
@@ -422,24 +668,17 @@ public sealed partial class ManejadorActualizaciones
             .Linea("3. Mándamelo aquí: <code>/vincular TU-CODIGO</code> (o usa el botón de la web).");
         var teclado = new Teclado();
         EnlaceWeb(teclado, sb, "Abrir Mi cuenta › Telegram", "/Miusuario/Telegram");
-        teclado.Fila(("Ya tengo mi código", "vinc"), ("Menú", "menu"));
-        await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+        teclado.Boton("🔑 Ya tengo mi código", "vinc").Navegacion();
+        await MostrarAsync(ctx, sb.ToString(), teclado, ct);
         return false;
     }
 
     private async Task AdvertirTarjetaAsync(ContextoBot ctx, int idMensaje, CancellationToken ct)
     {
         // En un chat privado el bot puede borrar los mensajes recibidos (menos de 48 h).
-        try
-        {
-            await _bot.DeleteMessage(ctx.ChatId, idMensaje, ct);
-        }
-        catch (ApiRequestException)
-        {
-            // Si no se pudo borrar, igual no se guarda ni se registra.
-        }
+        await BorrarAsync(ctx.ChatId, idMensaje, ct);
 
-        await EnviarAsync(ctx.ChatId,
+        await MostrarAsync(ctx,
             "🔒 Por seguridad borré tu mensaje: parecía un número de tarjeta. Nunca mandes por aquí tarjetas, CVV ni contraseñas; " +
             "los pagos se hacen solo en la web. Si estabas escribiendo un ticket, vuelve a escribirlo sin ese número.",
             null, ct);

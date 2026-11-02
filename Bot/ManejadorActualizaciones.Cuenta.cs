@@ -14,6 +14,9 @@ public sealed partial class ManejadorActualizaciones
     private const int MaximoIntentosVincular = 5;
     private static readonly TimeSpan VentanaIntentosVincular = TimeSpan.FromMinutes(15);
 
+    private const string RutaVincular = "🔗 Vincular cuenta";
+    private const string RutaReservas = "🧳 Mis reservaciones";
+
     // =============================================================================================
     // Vincular / desvincular
     // =============================================================================================
@@ -26,30 +29,30 @@ public sealed partial class ManejadorActualizaciones
             return;
         }
 
-        var sb = new StringBuilder();
+        var sb = new StringBuilder().Linea(FormatoBot.Ruta(RutaVincular)).Linea();
         if (ctx.Vinculado)
             sb.Linea($"Este chat ya está vinculado a la cuenta de <b>{FormatoBot.Html(ctx.Nombre)}</b>.")
               .Linea("Si quieres vincular otra cuenta, genera un código con esa cuenta y mándamelo.")
               .Linea();
 
-        sb.Linea("Escribe el código que generaste en la web (<b>Mi cuenta › Telegram</b>). Se ve así: <code>K7P2-9QXM</code>")
-          .Linea("Para salir: /cancelar");
+        sb.Linea("Escribe el código que generaste en la web (<b>Mi cuenta › Telegram</b>). Se ve así: <code>K7P2-9QXM</code>");
 
-        _estados.Guardar(ctx.ChatId, Flujos.Vincular, Pasos.Codigo, new Dictionary<string, string>());
         var teclado = new Teclado();
         EnlaceWeb(teclado, sb, "Generar mi código en la web", "/Miusuario/Telegram");
-        await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+        teclado.Boton("✖ Cancelar", "no");
+        await MostrarPasoAsync(ctx, Flujos.Vincular, Pasos.Codigo, new Dictionary<string, string>(), sb.ToString(), teclado, ct);
     }
 
     private async Task IntentarVincularAsync(ContextoBot ctx, string codigo, CancellationToken ct)
     {
-        _estados.Limpiar(ctx.ChatId);
+        await TerminarFlujoAsync(ctx, ct);
 
         if (!_limitador.Permitir($"vincular:{ctx.ChatId}", MaximoIntentosVincular, VentanaIntentosVincular))
         {
             _logger.LogWarning("Telegram: un chat superó el límite de intentos de /vincular.");
-            await EnviarAsync(ctx.ChatId,
-                "Hiciste demasiados intentos. Espera 15 minutos y genera un código nuevo en la web (Mi cuenta › Telegram).", null, ct);
+            await MostrarAsync(ctx,
+                "Hiciste demasiados intentos. Espera 15 minutos y genera un código nuevo en la web (Mi cuenta › Telegram).",
+                new Teclado().Navegacion(), ct);
             return;
         }
 
@@ -65,15 +68,17 @@ public sealed partial class ManejadorActualizaciones
                     .Linea("Puedes desvincularla cuando quieras con /desvincular o desde la web.");
                 var teclado = new Teclado()
                     .Fila(("🧳 Mis reservaciones", "res"), ("💬 Soporte", "sop"))
-                    .Boton("Menú", "menu");
-                await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+                    .Navegacion();
+                await MostrarAsync(ctx, sb.ToString(), teclado, ct);
                 break;
             }
             case ResultadoVinculacion.CuentaNoValida:
-                await EnviarAsync(ctx.ChatId, "Esa cuenta no se puede vincular con el bot (solo cuentas de cliente activas).", null, ct);
+                await MostrarAsync(ctx, "Esa cuenta no se puede vincular con el bot (solo cuentas de cliente activas).",
+                    new Teclado().Navegacion(), ct);
                 break;
             case ResultadoVinculacion.ErrorBd:
-                await EnviarAsync(ctx.ChatId, "No pude vincular tu cuenta en este momento. Intenta de nuevo en unos minutos.", null, ct);
+                await MostrarAsync(ctx, "No pude vincular tu cuenta en este momento. Intenta de nuevo en unos minutos.",
+                    new Teclado().Boton("🔁 Reintentar", "vinc").Navegacion(), ct);
                 break;
             default:
             {
@@ -82,8 +87,8 @@ public sealed partial class ManejadorActualizaciones
                     .Linea("Genera otro en la web: <b>Mi cuenta › Telegram</b>.");
                 var teclado = new Teclado();
                 EnlaceWeb(teclado, sb, "Generar un código nuevo", "/Miusuario/Telegram");
-                teclado.Boton("Intentar con otro código", "vinc");
-                await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+                teclado.Boton("🔁 Intentar con otro código", "vinc").Navegacion();
+                await MostrarAsync(ctx, sb.ToString(), teclado, ct);
                 break;
             }
         }
@@ -93,12 +98,12 @@ public sealed partial class ManejadorActualizaciones
     {
         if (!ctx.Vinculado)
         {
-            await EnviarAsync(ctx.ChatId, "Este chat no está vinculado a ninguna cuenta.", TecladoMenu(ctx), ct);
+            await MostrarAsync(ctx, "Este chat no está vinculado a ninguna cuenta.", TecladoMenu(ctx), ct);
             return;
         }
 
-        var teclado = new Teclado().Fila(("Sí, desvincular", "dsv:si"), ("No", "menu"));
-        await EnviarAsync(ctx.ChatId,
+        var teclado = new Teclado().Fila(("Sí, desvincular", "dsv:si"), ("✖ No", "menu"));
+        await MostrarAsync(ctx,
             $"¿Desvincular la cuenta de <b>{FormatoBot.Html(ctx.Nombre)}</b>? Ya no verás aquí tus reservaciones ni tus tickets, " +
             "ni te llegarán avisos. Tus datos en FlyVibeMex no cambian.", teclado, ct);
     }
@@ -107,7 +112,7 @@ public sealed partial class ManejadorActualizaciones
     {
         var desvinculado = await _vinculos.DesvincularChatAsync(ctx.ChatId, ct);
         var sinCuenta = new ContextoBot { ChatId = ctx.ChatId, NombreTelegram = ctx.NombreTelegram };
-        await EnviarAsync(ctx.ChatId,
+        await MostrarAsync(ctx,
             desvinculado
                 ? "Listo: desvinculé tu cuenta. Puedes volver a vincularla cuando quieras con un código nuevo."
                 : "Este chat no estaba vinculado.",
@@ -123,7 +128,7 @@ public sealed partial class ManejadorActualizaciones
         if (!await RequiereCuentaAsync(ctx, ct)) return;
 
         var vm = await _viajes.ReservacionesAsync(ctx.Cuenta, ct);
-        var sb = new StringBuilder();
+        var sb = new StringBuilder().Linea(FormatoBot.Ruta(RutaReservas)).Linea();
         var teclado = new Teclado();
 
         if (vm.Proximas.Count == 0)
@@ -146,9 +151,10 @@ public sealed partial class ManejadorActualizaciones
         if (vm.Pasadas.Count > 0 || vm.Canceladas.Count > 0)
             sb.Linea().Linea($"Pasados: {vm.Pasadas.Count} · Cancelados: {vm.Canceladas.Count} (los ves en la web).");
 
-        teclado.Fila(("🔎 Explorar", "exp"), ("Menú", "menu"));
+        teclado.Boton("🔎 Explorar", "exp");
         EnlaceWeb(teclado, sb, "Mis reservaciones en la web", "/Miusuario/Misreservaciones");
-        await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+        teclado.Navegacion();
+        await MostrarAsync(ctx, sb.ToString(), teclado, ct);
     }
 
     private async Task ReservacionAsync(ContextoBot ctx, string codigo, CancellationToken ct)
@@ -159,14 +165,15 @@ public sealed partial class ManejadorActualizaciones
         var d = await _viajes.DetalleAsync(ctx.Cuenta, codigo, ct);
         if (d is null)
         {
-            await EnviarAsync(ctx.ChatId, "No encontré esa reservación en tu cuenta.", new Teclado().Boton("🧳 Mis reservaciones", "res"), ct);
+            await MostrarAsync(ctx, "No encontré esa reservación en tu cuenta.", new Teclado().Navegacion("Mis reservaciones", "res"), ct);
             return;
         }
 
         var c = d.Comprobante;
         var r = d.Reservacion;
         var sb = new StringBuilder()
-            .Linea($"🧳 <b>Reservación <code>{FormatoBot.Html(c.codigo_reserva)}</code></b>")
+            .Linea(FormatoBot.Ruta(RutaReservas, FormatoBot.Html(c.codigo_reserva)))
+            .Linea()
             .Linea($"Estado: <b>{FormatoBot.Estado(c.estado)}</b>")
             .Linea()
             .Linea($"<b>{FormatoBot.HtmlRecortado(c.servicio, 120)}</b>");
@@ -198,10 +205,9 @@ public sealed partial class ManejadorActualizaciones
                 sb.Linea($"• {FormatoBot.FechaHora(h.fecha)} · {FormatoBot.Estado(h.estado)} · {FormatoBot.Html(h.quien)}");
         }
 
-        var teclado = new Teclado()
-            .Boton("🆘 Reportar un problema con esta reservación", $"prb:{c.codigo_reserva}")
-            .Fila(("🧳 Mis reservaciones", "res"), ("Menú", "menu"));
+        var teclado = new Teclado().Boton("🆘 Reportar un problema con esta reservación", $"prb:{c.codigo_reserva}");
         EnlaceWeb(teclado, sb, "Ver o cancelar en la web", $"/Miusuario/Reservacion/{Uri.EscapeDataString(c.codigo_reserva)}");
-        await EnviarAsync(ctx.ChatId, sb.ToString(), teclado, ct);
+        teclado.Navegacion("Mis reservaciones", "res");
+        await MostrarAsync(ctx, sb.ToString(), teclado, ct);
     }
 }

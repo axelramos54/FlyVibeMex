@@ -152,7 +152,7 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
             .Linea(FormatoBot.HtmlRecortado(r.Mensaje, 1500));
 
         var teclado = new Teclado()
-            .Fila(("✍️ Responder", $"rsp:{r.IdTicket}"), ("Ver la conversación", $"tkt:{r.IdTicket}"));
+            .Fila(("✍️ Responder", Teclado.DeAviso($"rsp:{r.IdTicket}")), ("Ver la conversación", Teclado.DeAviso($"tkt:{r.IdTicket}")));
         await EnviarAsync(chat.Value, sb.ToString(), teclado, ct);
     }
 
@@ -170,7 +170,8 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
             .Linea()
             .Linea("Si necesitas algo más, abre otro con /asesoria o /problema.");
 
-        var teclado = new Teclado().Fila(("Ver el ticket", $"tkt:{t.Id}"), ("Soporte", "sop"));
+        // Botones "de aviso": abren una pantalla nueva y el aviso se queda en el chat.
+        var teclado = new Teclado().Fila(("Ver el ticket", Teclado.DeAviso($"tkt:{t.Id}")), ("Soporte", Teclado.DeAviso("sop")));
         await EnviarAsync(chat.Value, sb.ToString(), teclado, ct);
     }
 

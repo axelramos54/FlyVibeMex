@@ -10,6 +10,13 @@
       (%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.json), fuera del repositorio.
     -->
     <UserSecretsId>flyvibemex-9b6d9483-4ded-4987-a992-d9edf61e015e</UserSecretsId>
+    <!--
+      Las imágenes que se suben desde el panel (wwwroot/uploads) son DATOS, no código: se excluyen del proyecto para que
+      `dotnet watch` no reinicie la app cada vez que alguien sube una foto (y no falle su recarga en caliente).
+      Las sirve Program.cs con UseStaticFiles mientras la app corre, así que en el sitio y en el bot se siguen viendo.
+      Nota: por lo mismo, `dotnet publish` no las copia; en un servidor la carpeta uploads se respalda aparte.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);wwwroot/uploads/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

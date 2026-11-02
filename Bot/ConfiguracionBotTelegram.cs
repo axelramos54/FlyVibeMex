@@ -35,6 +35,7 @@ public static class ConfiguracionBotTelegram
 
         services.AddSingleton<IEstadoConversacionStore, EstadoConversacionEnMemoria>();
         services.AddSingleton<ILimitadorIntentos, LimitadorIntentosEnMemoria>();
+        services.AddSingleton<FotosServicio>();
 
         services.AddSingleton<ColaAvisosTelegram>();
         services.AddSingleton<IAvisosTelegram>(sp => sp.GetRequiredService<ColaAvisosTelegram>());

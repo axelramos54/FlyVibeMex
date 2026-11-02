@@ -11,6 +11,15 @@ namespace FlyVibeMex.Bot;
 public sealed class Teclado
 {
     private const int MaximoBytesCallback = 64;
+
+    /// <summary>
+    /// Sufijo de los botones que van en un AVISO (te respondieron, ticket cerrado): al tocarlos se abre una pantalla
+    /// nueva en lugar de reescribir el aviso, para que siga en el historial del chat.
+    /// </summary>
+    public const string SufijoAviso = ":a";
+
+    /// <summary>Datos de un botón de aviso: <c>DeAviso("tkt:5")</c> → <c>"tkt:5:a"</c>.</summary>
+    public static string DeAviso(string datos) => datos + SufijoAviso;
     private readonly List<List<InlineKeyboardButton>> _filas = new();
 
     public bool Vacio => _filas.Count == 0;
@@ -25,6 +34,14 @@ public sealed class Teclado
         if (fila.Count > 0) _filas.Add(fila);
         return this;
     }
+
+    /// <summary>
+    /// Último renglón de casi todas las pantallas: "← (pantalla anterior)" y "🏠 Menú". Sin pantalla anterior, solo "🏠 Menú".
+    /// </summary>
+    public Teclado Navegacion(string? volverA = null, string? datosVolver = null) =>
+        volverA is null || datosVolver is null
+            ? Boton("🏠 Menú", "menu")
+            : Fila(($"← {volverA}", datosVolver), ("🏠 Menú", "menu"));
 
     /// <summary>Botón que abre una dirección web (solo si es pública: ver <see cref="FormatoBot.EsUrlPublica"/>).</summary>
     public bool Enlace(string texto, string? url)
