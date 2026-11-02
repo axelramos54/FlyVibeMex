@@ -160,6 +160,7 @@ public sealed class SoporteClienteService : ISoporteClienteService
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
+            if (guardado) _avisos.ClienteRespondio(idTicket);   // Telegram: grupo de agentes
             return guardado
                 ? ResultadoOperacion.Ok("Enviamos tu mensaje. Te avisaremos aquí cuando te respondan.")
                 : ResultadoOperacion.Falla("Este ticket ya está cerrado. Si necesitas algo más, abre una nueva solicitud.");
@@ -188,6 +189,7 @@ public sealed class SoporteClienteService : ISoporteClienteService
             if (filas == 1)
             {
                 _logger.LogInformation("El cliente {IdUsuario} calificó el ticket {IdTicket} con {Estrellas} estrellas.", idUsuario, idTicket, estrellas);
+                _avisos.TicketActualizado(idTicket);   // la calificación aparece en el mensaje del ticket en el grupo
                 return ResultadoCalificacion.Guardada;
             }
 

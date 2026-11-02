@@ -508,14 +508,14 @@ public sealed partial class ManejadorActualizaciones
     }
 
     // =============================================================================================
-    // Grupos (solo /idchat, para configurar el grupo de agentes)
+    // Grupos: /idchat (configurar el grupo de agentes) y /pendientes (solo en ese grupo)
     // =============================================================================================
 
     private async Task GrupoAsync(Message mensaje, CancellationToken ct)
     {
         if (mensaje.Text is not { } texto || !texto.StartsWith('/')) return;
         var (comando, _, destinatario) = Partir(texto.Trim());
-        if (comando != "idchat") return;
+        if (comando is not ("idchat" or "pendientes")) return;
 
         // "/idchat@OtroBot" es para otro bot.
         if (destinatario is not null && _estadoBot.NombreUsuario is { } yo &&
@@ -523,6 +523,12 @@ public sealed partial class ManejadorActualizaciones
         if (!_limitador.Permitir($"grupo:{mensaje.Chat.Id}", 5, TimeSpan.FromMinutes(1))) return;
 
         var id = mensaje.Chat.Id;
+        if (comando == "pendientes")
+        {
+            await PendientesGrupoAsync(id, ct);
+            return;
+        }
+
         var sb = new StringBuilder().Linea($"Id de este chat: <code>{id}</code>");
         if (_opciones.ChatIdAgentes == id)
         {
@@ -534,6 +540,29 @@ public sealed partial class ManejadorActualizaciones
               .Linea($"<code>dotnet user-secrets set \"TelegramBot:ChatIdAgentes\" \"{id}\"</code>");
         }
         await EnviarNuevoAsync(id, sb.ToString(), null, ct);
+    }
+
+    /// <summary>
+    /// /pendientes: el mismo resumen del día, a pedido. Solo en el grupo de agentes configurado (es información interna)
+    /// y como máximo una vez por minuto.
+    /// </summary>
+    private async Task PendientesGrupoAsync(long idGrupo, CancellationToken ct)
+    {
+        if (_opciones.ChatIdAgentes != idGrupo)
+        {
+            await EnviarNuevoAsync(idGrupo, "Este comando solo funciona en el grupo de agentes configurado (ver /idchat).", null, ct);
+            return;
+        }
+        if (!_limitador.Permitir($"pendientes:{idGrupo}", 1, TimeSpan.FromMinutes(1)))
+        {
+            await EnviarNuevoAsync(idGrupo, "Acabo de mandar los pendientes; vuelve a pedirlos en un minuto.", null, ct);
+            return;
+        }
+
+        var ahora = DateTime.Now;
+        var resumen = await _consultas.ResumenSoporteAsync(ahora, ct);
+        var (html, teclado) = MensajesGrupoSoporte.Resumen(resumen, ahora, _opciones.UrlSitioWeb, diario: false);
+        await EnviarNuevoAsync(idGrupo, html, teclado.Crear(), ct);
     }
 
     // =============================================================================================

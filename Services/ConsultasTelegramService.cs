@@ -15,7 +15,27 @@ public static class TiposAvisoTelegram
     /// <summary>Recordatorios antes del viaje (referencia: reservaciones.id).</summary>
     public const string Recordatorio72 = "RECORDATORIO_72";
     public const string Recordatorio24 = "RECORDATORIO_24";
+    /// <summary>Mensaje del ticket en el grupo de agentes (referencia: solicitudes_soporte.id; guarda chat e id del mensaje).</summary>
+    public const string TicketGrupo = "TICKET_GRUPO";
+    /// <summary>Re-aviso de un PROBLEMA urgente que sigue sin agente (referencia: solicitudes_soporte.id).</summary>
+    public const string UrgenteSinAgente = "URGENTE_SIN_AGENTE";
+    /// <summary>Resumen diario del grupo (referencia: fecha AAAAMMDD).</summary>
+    public const string ResumenDiario = "RESUMEN_DIARIO";
 }
+
+/// <summary>Estado de un ticket para su mensaje en el grupo de agentes (sin datos personales del cliente).</summary>
+/// <param name="Agente">Nombre de quien lo atiende (null = sin agente).</param>
+/// <param name="LeTocaAlPersonal">Sigue abierto y el último mensaje es del cliente (o no hay respuestas).</param>
+public sealed record TicketParaGrupo(ulong Id, ulong IdCliente, string Tipo, string Asunto, string Estado, string? CodigoReserva,
+    DateTime? InicioViaje, string? Agente, bool LeTocaAlPersonal, DateTime CreadaEn, DateTime ActualizadaEn, byte? Calificacion);
+
+/// <summary>Dónde quedó el mensaje de un ticket en el grupo (para editarlo o responderle).</summary>
+public sealed record MensajeGrupo(long ChatId, int IdMensaje);
+
+/// <summary>Cifras del resumen de soporte para el grupo de agentes (diario o con /pendientes).</summary>
+public sealed record ResumenSoporte(int SinAgente, int EnProceso, int EsperanAlPersonal, int TotalUrgentes,
+    List<TicketParaGrupo> Urgentes, List<TicketParaGrupo> MasAntiguos, List<(string agente, int tickets)> PorAgente,
+    int CerradosAyer, int CalificacionesSemana, decimal? PromedioSemana);
 
 /// <summary>Qué se reservó y cuándo (primer servicio de la reservación, inicio más temprano y fin más tardío).</summary>
 public sealed record ViajeResumen(string Servicio, DateTime Inicio, DateTime Fin);
@@ -75,10 +95,30 @@ public interface IConsultasTelegramService
     /// Aparta un aviso ANTES de mandarlo (INSERT en telegram_avisos). Devuelve false si ya estaba apartado: el índice
     /// único (tipo, id_referencia) garantiza que nunca se mande dos veces, aunque haya reinicios.
     /// </summary>
-    Task<bool> ApartarAvisoAsync(ulong idUsuario, string tipo, ulong idReferencia, CancellationToken cancellationToken = default);
+    Task<bool> ApartarAvisoAsync(ulong? idUsuario, string tipo, ulong idReferencia, CancellationToken cancellationToken = default);
 
     /// <summary>Quita un aviso apartado que no se pudo entregar por un problema pasajero (se reintenta en el siguiente ciclo).</summary>
     Task LiberarAvisoAsync(string tipo, ulong idReferencia, CancellationToken cancellationToken = default);
+
+    // ---- Grupo de agentes (lote 4) ----
+
+    /// <summary>Estado actual de un ticket para su mensaje en el grupo; null si no existe.</summary>
+    Task<TicketParaGrupo?> TicketParaGrupoAsync(ulong idTicket, CancellationToken cancellationToken = default);
+
+    /// <summary>Mensaje del ticket en el grupo (si se guardó al crearlo); null en tickets anteriores a esta función.</summary>
+    Task<MensajeGrupo?> MensajeGrupoAsync(ulong idTicket, CancellationToken cancellationToken = default);
+
+    /// <summary>Guarda dónde quedó el mensaje de un ticket nuevo en el grupo (false si ya estaba guardado).</summary>
+    Task<bool> GuardarMensajeGrupoAsync(ulong idTicket, ulong idCliente, long chatId, int idMensaje, CancellationToken cancellationToken = default);
+
+    /// <summary>Pendientes, urgentes, más antiguos, carga por agente, cerrados ayer y calificación de los últimos 7 días.</summary>
+    Task<ResumenSoporte> ResumenSoporteAsync(DateTime ahora, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// PROBLEMAS abiertos sin agente desde hace más de <paramref name="espera"/>, con viaje en menos de 72 h, que aún no
+    /// tuvieron su re-aviso.
+    /// </summary>
+    Task<List<TicketParaGrupo>> UrgentesSinAgenteAsync(DateTime ahora, TimeSpan espera, CancellationToken cancellationToken = default);
 }
 
 public sealed class ConsultasTelegramService : IConsultasTelegramService
@@ -213,9 +253,139 @@ public sealed class ConsultasTelegramService : IConsultasTelegramService
             .ToList();
     }
 
-    public async Task<bool> ApartarAvisoAsync(ulong idUsuario, string tipo, ulong idReferencia, CancellationToken cancellationToken = default)
+    public Task<bool> ApartarAvisoAsync(ulong? idUsuario, string tipo, ulong idReferencia, CancellationToken cancellationToken = default) =>
+        InsertarAvisoAsync(new TelegramAvisos
+        {
+            id_usuarioglobal = idUsuario, tipo = tipo, id_referencia = idReferencia, enviado_en = DateTime.Now
+        }, cancellationToken);
+
+    public Task<bool> GuardarMensajeGrupoAsync(ulong idTicket, ulong idCliente, long chatId, int idMensaje,
+        CancellationToken cancellationToken = default) =>
+        InsertarAvisoAsync(new TelegramAvisos
+        {
+            id_usuarioglobal = idCliente, tipo = TiposAvisoTelegram.TicketGrupo, id_referencia = idTicket,
+            chat_id = chatId, id_mensaje = idMensaje, enviado_en = DateTime.Now
+        }, cancellationToken);
+
+    public async Task<MensajeGrupo?> MensajeGrupoAsync(ulong idTicket, CancellationToken cancellationToken = default)
     {
-        var aviso = new TelegramAvisos { id_usuarioglobal = idUsuario, tipo = tipo, id_referencia = idReferencia, enviado_en = DateTime.Now };
+        var fila = await _db.TelegramAvisos.AsNoTracking()
+            .Where(a => a.tipo == TiposAvisoTelegram.TicketGrupo && a.id_referencia == idTicket)
+            .Select(a => new { a.chat_id, a.id_mensaje })
+            .FirstOrDefaultAsync(cancellationToken);
+        return fila is { chat_id: long chat, id_mensaje: int mensaje } ? new MensajeGrupo(chat, mensaje) : null;
+    }
+
+    public async Task<TicketParaGrupo?> TicketParaGrupoAsync(ulong idTicket, CancellationToken cancellationToken = default) =>
+        (await TicketsParaGrupoAsync(_db.SolicitudesSoporte.Where(t => t.id == idTicket), cancellationToken)).FirstOrDefault();
+
+    public async Task<ResumenSoporte> ResumenSoporteAsync(DateTime ahora, CancellationToken cancellationToken = default)
+    {
+        var pendientes = await TicketsParaGrupoAsync(_db.SolicitudesSoporte.Where(t => t.estado != TicketCerrado), cancellationToken);
+
+        var urgentes = pendientes.Where(t => EsUrgente(t, ahora)).OrderBy(t => t.InicioViaje).ToList();
+        var masAntiguos = pendientes
+            .Where(t => t.Estado == TicketAbierto || t.LeTocaAlPersonal)   // los que esperan al personal
+            .OrderBy(t => t.ActualizadaEn).ThenBy(t => t.Id)
+            .Take(5)
+            .ToList();
+        var porAgente = pendientes
+            .Where(t => t.Estado == TicketEnProceso && t.Agente is not null)
+            .GroupBy(t => t.Agente!)
+            .Select(g => (agente: g.Key, tickets: g.Count()))
+            .OrderByDescending(x => x.tickets).ThenBy(x => x.agente)
+            .ToList();
+
+        var hoy = ahora.Date;
+        var ayer = hoy.AddDays(-1);
+        var cerradosAyer = await _db.SolicitudesSoporte.AsNoTracking()
+            .CountAsync(t => t.estado == TicketCerrado && t.actualizada_en >= ayer && t.actualizada_en < hoy, cancellationToken);
+
+        var semana = ahora.AddDays(-7);
+        var calificaciones = await _db.SolicitudesSoporte.AsNoTracking()
+            .Where(t => t.calificacion != null && t.calificada_en >= semana)
+            .Select(t => t.calificacion)
+            .ToListAsync(cancellationToken);
+        decimal? promedio = calificaciones.Count == 0
+            ? null
+            : Math.Round((decimal)calificaciones.Average(c => (int)c!.Value), 1, MidpointRounding.AwayFromZero);
+
+        return new ResumenSoporte(
+            SinAgente: pendientes.Count(t => t.Estado == TicketAbierto),
+            EnProceso: pendientes.Count(t => t.Estado == TicketEnProceso),
+            EsperanAlPersonal: pendientes.Count(t => t.Estado == TicketEnProceso && t.LeTocaAlPersonal),
+            TotalUrgentes: urgentes.Count,
+            Urgentes: urgentes.Take(5).ToList(),
+            MasAntiguos: masAntiguos,
+            PorAgente: porAgente,
+            CerradosAyer: cerradosAyer,
+            CalificacionesSemana: calificaciones.Count,
+            PromedioSemana: promedio);
+    }
+
+    public async Task<List<TicketParaGrupo>> UrgentesSinAgenteAsync(DateTime ahora, TimeSpan espera, CancellationToken cancellationToken = default)
+    {
+        var limite = ahora - espera;
+        var candidatos = await TicketsParaGrupoAsync(_db.SolicitudesSoporte.Where(t =>
+                t.estado == TicketAbierto && t.id_agente_asignado == null && t.tipo == "PROBLEMA" && t.id_reservacion != null
+                && t.creada_en <= limite
+                && !_db.TelegramAvisos.Any(a => a.tipo == TiposAvisoTelegram.UrgenteSinAgente && a.id_referencia == t.id)),
+            cancellationToken);
+        return candidatos.Where(t => EsUrgente(t, ahora)).ToList();
+    }
+
+    private const string TicketAbierto = "ABIERTA";
+    private const string TicketEnProceso = "EN_PROCESO";
+    private const string TicketCerrado = "CERRADA";
+
+    /// <summary>PROBLEMA sin cerrar cuyo viaje empieza en menos de 72 h (misma regla que la etiqueta URGENTE del aviso).</summary>
+    public static bool EsUrgente(TicketParaGrupo t, DateTime ahora) =>
+        t.Tipo == "PROBLEMA" && t.Estado != TicketCerrado
+        && t.InicioViaje is DateTime inicio && inicio > ahora && inicio - ahora <= TimeSpan.FromHours(72);
+
+    /// <summary>Arma <see cref="TicketParaGrupo"/> para los tickets de la consulta (agente, reservación, a quién le toca).</summary>
+    private async Task<List<TicketParaGrupo>> TicketsParaGrupoAsync(IQueryable<SolicitudesSoporte> consulta, CancellationToken cancellationToken)
+    {
+        var tickets = await consulta.AsNoTracking()
+            .Select(t => new { t.id, t.id_usuarioglobal, t.tipo, t.asunto, t.estado, t.id_reservacion, t.id_agente_asignado,
+                               t.creada_en, t.actualizada_en, t.calificacion })
+            .ToListAsync(cancellationToken);
+        if (tickets.Count == 0) return new List<TicketParaGrupo>();
+
+        var conversacion = await ConversacionSoporte.ResumenAsync(_db, cancellationToken);
+
+        var idsReservacion = tickets.Where(t => t.id_reservacion is not null).Select(t => t.id_reservacion!.Value).Distinct().ToList();
+        var reservaciones = idsReservacion.Count == 0
+            ? new Dictionary<ulong, (string codigo, DateTime? inicio)>()
+            : (await _db.Reservaciones.AsNoTracking()
+                    .Where(r => idsReservacion.Contains(r.id))
+                    .Select(r => new
+                    {
+                        r.id,
+                        r.codigo_reserva,
+                        inicio = _db.DetallesReservacion.Where(d => d.id_reservacion == r.id).Min(d => (DateTime?)d.fecha_inicio)
+                    })
+                    .ToListAsync(cancellationToken))
+                .ToDictionary(r => r.id, r => (r.codigo_reserva, r.inicio));
+
+        var agentes = new Dictionary<ulong, string>();
+        foreach (var idAgente in tickets.Where(t => t.id_agente_asignado is not null).Select(t => t.id_agente_asignado!.Value).Distinct())
+            agentes[idAgente] = await ConversacionSoporte.NombreAsync(_db, idAgente, cancellationToken) ?? $"Usuario {idAgente}";
+
+        return tickets.Select(t =>
+        {
+            var (mensajes, ultimoEsPersonal) = conversacion.GetValueOrDefault(t.id);
+            (string codigo, DateTime? inicio)? reservacion =
+                t.id_reservacion is ulong idReservacion && reservaciones.TryGetValue(idReservacion, out var r) ? r : null;
+            return new TicketParaGrupo(t.id, t.id_usuarioglobal, t.tipo, t.asunto, t.estado, reservacion?.codigo, reservacion?.inicio,
+                t.id_agente_asignado is ulong a ? agentes.GetValueOrDefault(a) : null,
+                t.estado != TicketCerrado && (mensajes == 0 || !ultimoEsPersonal),
+                t.creada_en, t.actualizada_en, t.calificacion);
+        }).ToList();
+    }
+
+    private async Task<bool> InsertarAvisoAsync(TelegramAvisos aviso, CancellationToken cancellationToken)
+    {
         _db.TelegramAvisos.Add(aviso);
         try
         {

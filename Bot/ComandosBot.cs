@@ -21,9 +21,10 @@ public static class ComandosBot
         new() { Command = "ayuda", Description = "Políticas, métodos de pago y contacto" },
     };
 
-    /// <summary>Grupos: ahí el bot solo responde /idchat (para configurar el grupo de agentes).</summary>
+    /// <summary>Grupos: ahí el bot solo responde /pendientes (en el grupo de agentes) e /idchat (para configurarlo).</summary>
     public static readonly BotCommand[] Grupo =
     {
+        new() { Command = "pendientes", Description = "Resumen de tickets pendientes (grupo de agentes)" },
         new() { Command = "idchat", Description = "Id de este chat (configurar el grupo de agentes)" },
     };
 

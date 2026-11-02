@@ -21,6 +21,18 @@ public interface IAvisosTelegram
     void TicketCerrado(ulong idTicket);
 
     /// <summary>
+    /// El ticket cambió (lo tomaron, lo reasignaron, el cliente lo calificó…): se reescribe su mensaje en el grupo de
+    /// agentes con el estado actual. Respuestas y cierres del personal ya lo hacen por su cuenta.
+    /// </summary>
+    void TicketActualizado(ulong idTicket);
+
+    /// <summary>
+    /// El cliente respondió en su ticket (desde la web o el bot): se reescribe su mensaje en el grupo y, si ya lo
+    /// atiende un agente, sale además un aviso corto que sí suena ("💬 El cliente respondió en #12").
+    /// </summary>
+    void ClienteRespondio(ulong idTicket);
+
+    /// <summary>
     /// El cliente desvinculó Telegram desde la web (Mi cuenta › Telegram): aviso de seguridad a ese chat.
     /// Los avisos de reservaciones y recordatorios no pasan por aquí: los manda <c>Bot/VigilanteViajes.cs</c>.
     /// </summary>
@@ -33,5 +45,7 @@ public sealed class AvisosTelegramDesactivados : IAvisosTelegram
     public void TicketCreado(ulong idTicket) { }
     public void RespuestaDelPersonal(ulong idTicket) { }
     public void TicketCerrado(ulong idTicket) { }
+    public void TicketActualizado(ulong idTicket) { }
+    public void ClienteRespondio(ulong idTicket) { }
     public void CuentaDesvinculada(long chatId) { }
 }

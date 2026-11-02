@@ -574,7 +574,8 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.enviado_en).HasDefaultValueSql("CURRENT_TIMESTAMP");
             e.HasIndex(x => new { x.tipo, x.id_referencia }).IsUnique();
 
-            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).OnDelete(DeleteBehavior.Restrict);
+            // Opcional: los avisos al grupo de agentes (resumen diario) no son de un cliente.
+            e.HasOne<UsuariosGlobales>().WithMany().HasForeignKey(x => x.id_usuarioglobal).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

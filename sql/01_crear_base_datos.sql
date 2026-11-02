@@ -543,17 +543,27 @@ CREATE UNIQUE INDEX uq_telegram_vinculos_usuario ON dbo.telegram_vinculos(id_usu
 CREATE UNIQUE INDEX uq_telegram_vinculos_chat    ON dbo.telegram_vinculos(chat_id)          WHERE activo = 1;
 GO
 
-/* Avisos automáticos que el bot YA mandó (confirmación, cancelación, reembolso, recordatorios 72 h / 24 h).
-   El índice único (tipo, id_referencia) impide mandar el mismo aviso dos veces, aunque la app se reinicie.
-   id_referencia: historial_estado_reservacion.id (RESERVACION), historial_estado_reembolso.id (REEMBOLSO)
-   o reservaciones.id (RECORDATORIO_72 / RECORDATORIO_24). Solo metadatos: nunca el texto del mensaje. */
+/* Avisos automáticos que el bot YA mandó. El índice único (tipo, id_referencia) impide mandar el mismo aviso dos
+   veces, aunque la app se reinicie. Solo metadatos: nunca el texto del mensaje.
+     Al cliente:  RESERVACION (ref: historial_estado_reservacion.id) · REEMBOLSO (ref: historial_estado_reembolso.id)
+                  RECORDATORIO_72 / RECORDATORIO_24 (ref: reservaciones.id)
+     Al grupo de agentes (id_usuarioglobal = cliente del ticket o NULL):
+                  TICKET_GRUPO (ref: solicitudes_soporte.id; guarda chat_id e id_mensaje para EDITAR ese mensaje)
+                  URGENTE_SIN_AGENTE (ref: solicitudes_soporte.id) · RESUMEN_DIARIO (ref: fecha AAAAMMDD) */
 CREATE TABLE dbo.telegram_avisos(
     id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_telegram_avisos PRIMARY KEY,
-    id_usuarioglobal BIGINT       NOT NULL CONSTRAINT fk_telegram_avisos_usuarios REFERENCES dbo.usuarios(id),
+    id_usuarioglobal BIGINT       NULL     CONSTRAINT fk_telegram_avisos_usuarios REFERENCES dbo.usuarios(id),
     tipo             NVARCHAR(20) NOT NULL CONSTRAINT ck_telegram_avisos_tipo
-                     CHECK (tipo IN (N'RESERVACION', N'REEMBOLSO', N'RECORDATORIO_72', N'RECORDATORIO_24')),
+                     CHECK (tipo IN (N'RESERVACION', N'REEMBOLSO', N'RECORDATORIO_72', N'RECORDATORIO_24',
+                                     N'TICKET_GRUPO', N'URGENTE_SIN_AGENTE', N'RESUMEN_DIARIO')),
     id_referencia    BIGINT       NOT NULL,
-    enviado_en       DATETIME     NOT NULL CONSTRAINT df_telegram_avisos_enviado_en DEFAULT(CURRENT_TIMESTAMP)
+    chat_id          BIGINT       NULL,
+    id_mensaje       INT          NULL,
+    enviado_en       DATETIME     NOT NULL CONSTRAINT df_telegram_avisos_enviado_en DEFAULT(CURRENT_TIMESTAMP),
+    -- Los avisos al cliente siempre tienen cliente; el mensaje de un ticket en el grupo siempre sabe dónde está.
+    CONSTRAINT ck_telegram_avisos_cliente CHECK (id_usuarioglobal IS NOT NULL
+                                                 OR tipo IN (N'TICKET_GRUPO', N'URGENTE_SIN_AGENTE', N'RESUMEN_DIARIO')),
+    CONSTRAINT ck_telegram_avisos_mensaje CHECK (tipo <> N'TICKET_GRUPO' OR (chat_id IS NOT NULL AND id_mensaje IS NOT NULL))
 );
 GO
 CREATE UNIQUE INDEX uq_telegram_avisos ON dbo.telegram_avisos(tipo, id_referencia);

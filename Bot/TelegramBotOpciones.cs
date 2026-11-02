@@ -30,6 +30,17 @@ public sealed partial class TelegramBotOpciones
     /// <summary>Usuario del bot sin @ (respaldo para los enlaces t.me si Telegram aún no responde). Opcional.</summary>
     public string? NombreUsuarioBot { get; set; }
 
+    /// <summary>Hora local del resumen diario en el grupo de agentes ("HH:mm"). Vacía o inválida = sin resumen.</summary>
+    public string? HoraResumen { get; set; } = "09:00";
+
+    /// <summary>false = el resumen sale solo de lunes a viernes.</summary>
+    public bool ResumenFinesDeSemana { get; set; }
+
+    /// <summary>Hora del resumen ya interpretada, o null si no hay resumen.</summary>
+    public TimeOnly? HoraResumenValida =>
+        TimeOnly.TryParseExact(HoraResumen?.Trim(), "HH:mm", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var hora) ? hora : null;
+
     /// <summary>Formato de un token de @BotFather: número del bot, dos puntos y la clave.</summary>
     [GeneratedRegex(@"^\d{5,}:[A-Za-z0-9_-]{30,}$")]
     private static partial Regex FormatoToken();

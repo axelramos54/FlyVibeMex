@@ -10,17 +10,23 @@ namespace FlyVibeMex.Models
     {
         public ulong id {get; set;}
 
-        /// <summary>Cliente que recibió el aviso (usuarios.id).</summary>
-        public ulong id_usuarioglobal {get; set;}
+        /// <summary>Cliente que recibió el aviso (usuarios.id). NULL en avisos al grupo de agentes que no son de un cliente.</summary>
+        public ulong? id_usuarioglobal {get; set;}
 
-        /// <summary>RESERVACION, REEMBOLSO, RECORDATORIO_72 o RECORDATORIO_24 (ver <c>Services.TiposAvisoTelegram</c>).</summary>
+        /// <summary>Ver <c>Services.TiposAvisoTelegram</c> (RESERVACION, REEMBOLSO, RECORDATORIO_72/24, TICKET_GRUPO…).</summary>
         public string tipo {get; set;} = string.Empty;
 
         /// <summary>
-        /// historial_estado_reservacion.id (RESERVACION), historial_estado_reembolso.id (REEMBOLSO)
-        /// o reservaciones.id (recordatorios).
+        /// historial_estado_reservacion.id (RESERVACION), historial_estado_reembolso.id (REEMBOLSO), reservaciones.id
+        /// (recordatorios), solicitudes_soporte.id (TICKET_GRUPO, URGENTE_SIN_AGENTE) o la fecha AAAAMMDD (RESUMEN_DIARIO).
         /// </summary>
         public ulong id_referencia {get; set;}
+
+        /// <summary>Solo TICKET_GRUPO: chat del grupo donde quedó el mensaje del ticket (para editarlo).</summary>
+        public long? chat_id {get; set;}
+
+        /// <summary>Solo TICKET_GRUPO: id del mensaje del ticket en ese grupo.</summary>
+        public int? id_mensaje {get; set;}
 
         public DateTime enviado_en {get; set;}
     }

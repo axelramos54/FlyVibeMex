@@ -9,7 +9,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace FlyVibeMex.Bot;
 
-public enum TipoAvisoTelegram { TicketCreado, RespuestaDelPersonal, TicketCerrado, CuentaDesvinculada }
+public enum TipoAvisoTelegram { TicketCreado, RespuestaDelPersonal, TicketCerrado, CuentaDesvinculada, TicketActualizado, ClienteRespondio }
 
 /// <param name="IdTicket">Ticket del aviso (0 en <see cref="TipoAvisoTelegram.CuentaDesvinculada"/>).</param>
 /// <param name="ChatId">Chat destino, solo para <see cref="TipoAvisoTelegram.CuentaDesvinculada"/> (el vínculo ya no existe).</param>
@@ -33,6 +33,10 @@ public sealed class ColaAvisosTelegram : IAvisosTelegram
     public void TicketCerrado(ulong idTicket) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.TicketCerrado, idTicket));
 
     public void CuentaDesvinculada(long chatId) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.CuentaDesvinculada, 0, chatId));
+
+    public void TicketActualizado(ulong idTicket) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.TicketActualizado, idTicket));
+
+    public void ClienteRespondio(ulong idTicket) => _canal.Writer.TryWrite(new AvisoTelegram(TipoAvisoTelegram.ClienteRespondio, idTicket));
 }
 
 /// <summary>
@@ -45,8 +49,11 @@ public sealed class ColaAvisosTelegram : IAvisosTelegram
 /// </remarks>
 public sealed class DespachadorAvisosTelegram : BackgroundService
 {
-    /// <summary>Un PROBLEMA con viaje dentro de estas horas sale marcado como URGENTE.</summary>
-    private static readonly TimeSpan HorasUrgente = TimeSpan.FromHours(72);
+    /// <summary>"💬 El cliente respondió" suena como máximo una vez cada 10 minutos por ticket (anti ruido en el grupo).</summary>
+    private static readonly TimeSpan PausaAvisoRespuesta = TimeSpan.FromMinutes(10);
+
+    /// <summary>Último aviso "el cliente respondió" por ticket (solo lo usa este servicio: un lector a la vez).</summary>
+    private readonly Dictionary<ulong, DateTime> _ultimoAvisoRespuesta = new();
 
     private readonly ColaAvisosTelegram _cola;
     private readonly ITelegramBotClient _bot;
@@ -101,16 +108,26 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
         var consultas = scope.ServiceProvider.GetRequiredService<IConsultasTelegramService>();
         var vinculos = scope.ServiceProvider.GetRequiredService<IVinculacionTelegramService>();
 
+        // Primero el grupo (su mensaje del ticket queda al día) y después el cliente: si el cliente bloqueó al bot
+        // (403), el grupo ya se actualizó.
         switch (aviso.Tipo)
         {
             case TipoAvisoTelegram.TicketCreado:
                 await TicketCreadoAsync(consultas, aviso.IdTicket, ct);
                 break;
             case TipoAvisoTelegram.RespuestaDelPersonal:
+                await ActualizarGrupoAsync(consultas, aviso.IdTicket, ct);
                 await RespuestaAsync(consultas, vinculos, aviso.IdTicket, ct);
                 break;
             case TipoAvisoTelegram.TicketCerrado:
+                await ActualizarGrupoAsync(consultas, aviso.IdTicket, ct);
                 await CerradoAsync(consultas, vinculos, aviso.IdTicket, ct);
+                break;
+            case TipoAvisoTelegram.TicketActualizado:
+                await ActualizarGrupoAsync(consultas, aviso.IdTicket, ct);
+                break;
+            case TipoAvisoTelegram.ClienteRespondio:
+                await ClienteRespondioAsync(consultas, aviso.IdTicket, ct);
                 break;
             case TipoAvisoTelegram.CuentaDesvinculada:
                 await DesvinculadaAsync(aviso.ChatId, ct);
@@ -121,27 +138,56 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
     private async Task TicketCreadoAsync(IConsultasTelegramService consultas, ulong idTicket, CancellationToken ct)
     {
         if (_opciones.ChatIdAgentes is not long grupo) return;   // sin grupo configurado no se avisa
-        var t = await consultas.TicketParaAvisoAsync(idTicket, ct);
+        var t = await consultas.TicketParaGrupoAsync(idTicket, ct);
         if (t is null) return;
 
-        var sb = new StringBuilder()
-            .Linea($"🆕 <b>Ticket #{t.Id}</b> · {FormatoBot.TipoTicket(t.Tipo)}")
-            .Linea($"<b>Asunto:</b> {FormatoBot.HtmlRecortado(t.Asunto, 120)}");
-        if (t.CodigoReserva is not null)
-            sb.Linea($"<b>Reservación:</b> <code>{FormatoBot.Html(t.CodigoReserva)}</code>");
+        // El botón abre ESTE ticket (/Admin/Soporte/Ticket/{id}); antes llevaba a "Atender nuevo ticket", que abre el
+        // más antiguo de la fila. Se guarda el mensaje para reescribirlo cada vez que el ticket cambie.
+        var (html, teclado) = MensajesGrupoSoporte.Ticket(t, DateTime.Now, _opciones.UrlSitioWeb);
+        var enviado = await EnviarAsync(grupo, html, teclado, ct);
+        await consultas.GuardarMensajeGrupoAsync(t.Id, t.IdCliente, grupo, enviado.Id, ct);
+    }
+
+    /// <summary>Reescribe el mensaje del ticket en el grupo con su estado actual (si se guardó al crearlo).</summary>
+    private async Task ActualizarGrupoAsync(IConsultasTelegramService consultas, ulong idTicket, CancellationToken ct)
+    {
+        if (await consultas.MensajeGrupoAsync(idTicket, ct) is not { } mensaje) return;   // ticket anterior a esta función
+        var t = await consultas.TicketParaGrupoAsync(idTicket, ct);
+        if (t is null) return;
+
+        var (html, teclado) = MensajesGrupoSoporte.Ticket(t, DateTime.Now, _opciones.UrlSitioWeb);
+        try
+        {
+            await _bot.EditMessageText(mensaje.ChatId, mensaje.IdMensaje, FormatoBot.AjustarLargo(html), parseMode: ParseMode.Html,
+                replyMarkup: teclado.Crear(), linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true }, cancellationToken: ct);
+        }
+        catch (ApiRequestException ex) when (ex.ErrorCode == 400)
+        {
+            // "message is not modified" (nada cambió) o el mensaje ya se borró del grupo: no es un error.
+            if (!ex.Message.Contains("not modified", StringComparison.OrdinalIgnoreCase))
+                _logger.LogInformation("Telegram: no se pudo actualizar el mensaje del ticket {IdTicket} en el grupo.", idTicket);
+        }
+    }
+
+    /// <summary>El cliente respondió: se actualiza el mensaje del ticket y, si ya lo atiende un agente, sale un aviso que suena.</summary>
+    private async Task ClienteRespondioAsync(IConsultasTelegramService consultas, ulong idTicket, CancellationToken ct)
+    {
+        await ActualizarGrupoAsync(consultas, idTicket, ct);
+        if (_opciones.ChatIdAgentes is not long grupo) return;
+
+        var t = await consultas.TicketParaGrupoAsync(idTicket, ct);
+        if (t is not { Estado: "EN_PROCESO" }) return;   // si está en la fila, el mensaje del ticket ya lo dice
 
         var ahora = DateTime.Now;
-        if (t.Tipo == "PROBLEMA" && t.InicioViaje is DateTime inicio && inicio > ahora && inicio - ahora <= HorasUrgente)
-            sb.Linea($"⚠️ <b>URGENTE</b>: el viaje empieza el {FormatoBot.FechaHora(inicio)} (en menos de 72 h).");
+        if (_ultimoAvisoRespuesta.TryGetValue(idTicket, out var ultimo) && ahora - ultimo < PausaAvisoRespuesta) return;
+        _ultimoAvisoRespuesta[idTicket] = ahora;
+        if (_ultimoAvisoRespuesta.Count > 1000) _ultimoAvisoRespuesta.Clear();
 
-        sb.Linea().Linea("Atiéndelo en el panel: Soporte › Atender nuevo ticket.");
-
-        var teclado = new Teclado();
-        var url = FormatoBot.UrlWeb(_opciones.UrlSitioWeb, "/Admin/Soporte/NuevoTicket");
-        if (!teclado.Enlace("Abrir el panel de soporte", url) && url is not null)
-            sb.Linea(FormatoBot.Html(url));
-
-        await EnviarAsync(grupo, sb.ToString(), teclado, ct);
+        var mensaje = await consultas.MensajeGrupoAsync(idTicket, ct);
+        var respondeA = mensaje is not null && mensaje.ChatId == grupo ? mensaje.IdMensaje : (int?)null;
+        await _bot.SendMessage(grupo, MensajesGrupoSoporte.ClienteRespondio(t), parseMode: ParseMode.Html,
+            replyParameters: respondeA is int id ? new ReplyParameters { MessageId = id, AllowSendingWithoutReply = true } : null,
+            cancellationToken: ct);
     }
 
     private async Task RespuestaAsync(IConsultasTelegramService consultas, IVinculacionTelegramService vinculos, ulong idTicket,
@@ -198,7 +244,7 @@ public sealed class DespachadorAvisosTelegram : BackgroundService
         await EnviarAsync(chatId, sb.ToString(), teclado, ct);
     }
 
-    private Task EnviarAsync(long chatId, string html, Teclado teclado, CancellationToken ct) =>
+    private Task<Message> EnviarAsync(long chatId, string html, Teclado teclado, CancellationToken ct) =>
         _bot.SendMessage(chatId, FormatoBot.AjustarLargo(html), parseMode: ParseMode.Html,
             replyMarkup: teclado.Crear(), linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
             cancellationToken: ct);

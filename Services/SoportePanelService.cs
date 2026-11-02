@@ -180,6 +180,7 @@ public sealed class SoportePanelService : ISoportePanelService
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
+            if (tomado) _avisos.TicketActualizado(idTicket);   // Telegram: el mensaje del ticket en el grupo dice quién lo atiende
             return tomado
                 ? ResultadoOperacion.Ok($"Tomaste el ticket #{idTicket}. Ya aparece en \"Seguir atendiendo\".")
                 : ResultadoOperacion.Falla("Otra persona ya tomó este ticket (o ya no está abierto).");
@@ -307,6 +308,7 @@ public sealed class SoportePanelService : ISoportePanelService
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
+            if (reasignado) _avisos.TicketActualizado(idTicket);
             return reasignado
                 ? ResultadoOperacion.Ok($"Ticket #{idTicket} asignado a {nuevo.nombre}.")
                 : ResultadoOperacion.Falla("El ticket cambió mientras lo reasignabas. Revisa su estado.");
