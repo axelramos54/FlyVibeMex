@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;   // [ValidateNever] (OJO: no está en ...ModelBinding)
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 // ViewModels del panel Gestor de ventas.
