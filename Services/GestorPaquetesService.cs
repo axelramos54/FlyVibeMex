@@ -166,7 +166,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
         try
         {
             if (datos.imagen is { Length: > 0 })
-                rutaImagen = await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Paquetes, cancellationToken);
+                rutaImagen = await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Servicios, cancellationToken);
 
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
@@ -257,7 +257,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
         try
         {
             if (datos.imagen is { Length: > 0 })
-                rutaNueva = await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Paquetes, cancellationToken);
+                rutaNueva = await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Servicios, cancellationToken);
 
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
@@ -325,7 +325,9 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
             return ResultadoOperacion.Falla("No se pudieron guardar los cambios. Intenta de nuevo.");
         }
 
-        if (rutaAnterior is not null && rutaAnterior != rutaNueva) _imagenes.Eliminar(rutaAnterior);
+        // Solo se borra si ningún otro servicio sigue usando ese archivo (L6b).
+        if (rutaAnterior != rutaNueva)
+            await _db.BorrarImagenSiNadieLaUsaAsync(_imagenes, rutaAnterior, cancellationToken);
         return ResultadoOperacion.Ok($"Se guardaron los cambios del paquete \"{datos.nombre.Trim()}\". Las compras anteriores conservan sus condiciones.");
     }
 

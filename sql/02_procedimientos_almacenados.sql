@@ -343,6 +343,7 @@ CREATE OR ALTER PROCEDURE dbo.pa_alta_evento
     @horas_reembolso_total       INT           = 24,
     @porcentaje_reembolso_tardio DECIMAL(5,2)  = 0,
     @politica_cancelacion        NVARCHAR(500) = NULL,
+    @imagen_ruta                 NVARCHAR(260) = NULL,  -- L6b: los tours ya pueden tener imagen
     @id_servicio                 BIGINT        = NULL OUTPUT
 AS
 BEGIN
@@ -358,7 +359,7 @@ BEGIN
     BEGIN TRANSACTION;
         EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'EVENTO', @nombre, @descripcion, @precio_base, @moneda,
              @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
-             NULL, @id_servicio OUTPUT;
+             @imagen_ruta, @id_servicio OUTPUT;
 
         DECLARE @precio DECIMAL(12,2) = COALESCE(@inventario_precio, @precio_base);
         EXEC dbo.pa_interno_generar_disponibilidad @id_servicio, @inventario_desde, @inventario_hasta, @inventario_cupo, @precio;
@@ -396,7 +397,8 @@ CREATE OR ALTER PROCEDURE dbo.pa_alta_vuelo
     @permite_cancelacion         BIT           = 1,
     @horas_reembolso_total       INT           = 24,
     @porcentaje_reembolso_tardio DECIMAL(5,2)  = 0,
-    @politica_cancelacion        NVARCHAR(500) = NULL
+    @politica_cancelacion        NVARCHAR(500) = NULL,
+    @imagen_ruta                 NVARCHAR(260) = NULL   -- L6b: la comparten todas las salidas de este vuelo
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -470,7 +472,7 @@ BEGIN
 
             EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'VUELO', @nombre, @descripcion, @precio_base, @moneda,
                  @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
-                 NULL, @id_servicio OUTPUT;
+                 @imagen_ruta, @id_servicio OUTPUT;
 
             INSERT INTO dbo.vuelos (id_servicio, id_origen, id_destino, codigo_vuelo, fecha_salida, fecha_llegada, clase)
             VALUES (@id_servicio, @id_origen, @id_destino, @codigo_vuelo, @salida, DATEADD(MINUTE, @duracion, @salida), @clase);

@@ -73,15 +73,6 @@ namespace FlyVibeMex.Models
         [Display(Name = "Destino")]
         public ulong? id_ubicacion_destino { get; set; }
 
-        [Display(Name = "Imagen")]
-        public IFormFile? imagen { get; set; }
-
-        [Display(Name = "Quitar la imagen actual")]
-        public bool quitar_imagen { get; set; }
-
-        [BindNever]
-        public string? imagen_actual { get; set; }
-
         /// <summary>Una fila por candidato (en el mismo orden que <see cref="Candidatos"/>); cuentan las marcadas.</summary>
         public List<PaqueteComponenteForm> componentes { get; set; } = new();
 

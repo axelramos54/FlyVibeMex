@@ -45,21 +45,4 @@
         <input asp-for="hora_salida" type="time" asp-format="{0:HH:mm}" class="form-control" required />
         <span asp-validation-for="hora_salida" class="text-danger small"></span>
     </div>
-
-    <div class="col-12">
-        <label asp-for="imagen" class="form-label"></label>
-        @if (!string.IsNullOrEmpty(Model.imagen_actual))
-        {
-            <div class="d-flex align-items-center gap-3 mb-2">
-                <img src="@Model.imagen_actual" alt="Imagen actual" class="rounded border object-fit-cover" style="width: 120px; height: 80px" />
-                <div class="form-check">
-                    <input asp-for="quitar_imagen" class="form-check-input" />
-                    <label asp-for="quitar_imagen" class="form-check-label"></label>
-                </div>
-            </div>
-        }
-        <input asp-for="imagen" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" />
-        <div class="form-text">JPG, PNG o WEBP, máximo 2 MB.@(string.IsNullOrEmpty(Model.imagen_actual) ? "" : " Si eliges otra, reemplaza a la actual.")</div>
-        <span asp-validation-for="imagen" class="text-danger small"></span>
-    </div>
 </div>

@@ -1,0 +1,38 @@
+@*
+ _ImagenServicioCampos.cshtml — campo de imagen de CUALQUIER servicio (L6b).
+
+ Antes este bloque estaba copiado en _FormHospedaje, _FormVehiculo y PaqueteForm, porque `imagen_ruta` vivía en
+ cada tabla de subtipo. Por eso los VUELOS y los TOURS (EVENTO, que no tiene tabla de subtipo) no tenían dónde
+ poner una foto: era un hueco estructural, no un campo olvidado.
+ Ahora la imagen es un dato común de `servicios` (regla R1), los tres campos viven en ServicioFormBase y este
+ parcial se pinta UNA vez para los cinco tipos: lo incluyen _FormServicio.cshtml y PaqueteForm.cshtml.
+
+ El archivo lo guarda Services/AlmacenImagenes.cs en wwwroot/uploads/servicios/ con un nombre GUID; en la base
+ de datos solo va su ruta. Se redimensiona a 1600 px de ancho al subirla (lote L3b).
+*@
+@model ServicioFormBase
+
+<div class="row g-3">
+    <div class="col-12">
+        <label asp-for="imagen" class="form-label"></label>
+        @if (!string.IsNullOrEmpty(Model.imagen_actual))
+        {
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <img src="@Model.imagen_actual" alt="Imagen actual" class="rounded border object-fit-cover" style="width: 120px; height: 80px" />
+                <div class="form-check">
+                    <input asp-for="quitar_imagen" class="form-check-input" />
+                    <label asp-for="quitar_imagen" class="form-check-label"></label>
+                </div>
+            </div>
+        }
+        <input asp-for="imagen" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" />
+        <div class="form-text">
+            JPG, PNG o WEBP, máximo 2 MB.@(string.IsNullOrEmpty(Model.imagen_actual) ? "" : " Si eliges otra, reemplaza a la actual.")
+            @if (Model is VueloFormViewModel { repetir: "DIARIO" or "SEMANAL" })
+            {
+                <text>Todas las salidas que se creen compartirán esta imagen.</text>
+            }
+        </div>
+        <span asp-validation-for="imagen" class="text-danger small"></span>
+    </div>
+</div>

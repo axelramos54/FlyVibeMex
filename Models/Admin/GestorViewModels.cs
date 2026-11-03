@@ -189,6 +189,24 @@ namespace FlyVibeMex.Models
 
         public bool EsAlta => id == 0;
 
+
+        // ---------- Imagen (L6b) ----------
+        // Vive aquí, en la clase base, y no en cada formulario de subtipo, porque `servicios.imagen_ruta` es un
+        // dato común a los cinco tipos (R1). Antes estaba repetida en los ViewModels de hospedaje, vehículo y
+        // paquete, y por eso VUELO y EVENTO (los tours) no tenían campo de imagen: era un hueco estructural.
+
+        /// <summary>Archivo que se sube. Opcional en todos los tipos.</summary>
+        [Display(Name = "Imagen")]
+        public IFormFile? imagen { get; set; }
+
+        /// <summary>Al actualizar: deja el servicio sin imagen (y borra el archivo si nadie más lo usa).</summary>
+        [Display(Name = "Quitar la imagen actual")]
+        public bool quitar_imagen { get; set; }
+
+        /// <summary>Ruta de la imagen que ya tiene, para mostrarla en el formulario. La llena el servidor.</summary>
+        [ValidateNever]
+        public string? imagen_actual { get; set; }
+
         public static List<SelectListItem> OpcionesMoneda() => new()
         {
             new("MXN - Peso mexicano", "MXN"),
@@ -249,16 +267,6 @@ namespace FlyVibeMex.Models
         [Display(Name = "Hora de salida")]
         [Required(ErrorMessage = "Indica la hora de salida.")]
         public TimeOnly? hora_salida { get; set; }
-
-        [Display(Name = "Imagen")]
-        public IFormFile? imagen { get; set; }
-
-        [Display(Name = "Quitar la imagen actual")]
-        public bool quitar_imagen { get; set; }
-
-        /// <summary>Ruta guardada (solo para mostrarla al actualizar).</summary>
-        [BindNever]
-        public string? imagen_actual { get; set; }
     }
 
     /// <summary>servicios + vehiculos (+ disponibilidad inicial)</summary>
@@ -288,15 +296,6 @@ namespace FlyVibeMex.Models
         [Display(Name = "Capacidad de pasajeros")]
         [Range(1, 255, ErrorMessage = "Debe ser entre 1 y 255.")]
         public byte capacidad_pasajeros { get; set; } = 4;
-
-        [Display(Name = "Imagen")]
-        public IFormFile? imagen { get; set; }
-
-        [Display(Name = "Quitar la imagen actual")]
-        public bool quitar_imagen { get; set; }
-
-        [BindNever]
-        public string? imagen_actual { get; set; }
     }
 
     /// <summary>

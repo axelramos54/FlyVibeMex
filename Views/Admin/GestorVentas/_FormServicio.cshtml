@@ -39,6 +39,12 @@
             break;
     }
 
+    @* Imagen (L6b): dato común de `servicios`, así que se pinta UNA vez para los cinco tipos —vuelos y tours
+       incluidos— en vez de repetirla en el parcial de cada subtipo. Va aquí, después de los campos del subtipo,
+       para no moverla de lugar en los formularios que ya la tenían. *@
+    <hr class="my-4" />
+    <partial name="~/Views/Admin/GestorVentas/_ImagenServicioCampos.cshtml" model="Model" />
+
     @if (Model.EsAlta && Model is ServicioConInventarioFormBase inventario)
     {
         <hr class="my-4" />

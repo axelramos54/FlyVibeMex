@@ -334,7 +334,9 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                 if (datos is VueloFormViewModel v)
                 {
                     // Una salida = un servicio + su vuelo + la disponibilidad de ese día.
-                    var servicios = salidas.Select(_ => NuevoServicio(datos, ahora)).ToList();
+                    // Todas las salidas comparten la misma imagen: es el mismo vuelo. El borrado del archivo
+                    // está protegido por BorrarImagenSiNadieLaUsaAsync (Services/ImagenesServicioExtensions.cs).
+                    var servicios = salidas.Select(_ => NuevoServicio(datos, ahora, rutaImagen)).ToList();
                     _db.Servicios.AddRange(servicios);
                     await _db.SaveChangesAsync(cancellationToken);
 
@@ -529,8 +531,6 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         fila.capacidad_huespedes = h.capacidad_huespedes;
                         fila.hora_entrada = h.hora_entrada!.Value;
                         fila.hora_salida = h.hora_salida!.Value;
-                        if (rutaNueva is not null || h.quitar_imagen)
-                            rutaAnterior = await CambiarImagenDelServicioAsync(id, rutaNueva, cancellationToken);
                         break;
                     }
                     case VehiculoFormViewModel ve:
@@ -546,11 +546,14 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         fila.marca = ve.marca.Trim();
                         fila.modelo = ve.modelo.Trim();
                         fila.capacidad_pasajeros = ve.capacidad_pasajeros;
-                        if (rutaNueva is not null || ve.quitar_imagen)
-                            rutaAnterior = await CambiarImagenDelServicioAsync(id, rutaNueva, cancellationToken);
                         break;
                     }
                 }
+
+                // Imagen (L6b): UNA sola vez para todos los tipos, fuera del switch. Antes estaba dentro de las
+                // ramas de hospedaje y vehículo, que eran los únicos que podían tenerla.
+                if (rutaNueva is not null || datos.quitar_imagen)
+                    rutaAnterior = await CambiarImagenDelServicioAsync(id, rutaNueva, cancellationToken);
 
                 _db.RegistrarBitacora(idUsuario, "ACTUALIZAR", "servicios", id,
                     $"Datos de \"{datos.nombre.Trim()}\" actualizados{(datos.activo ? "" : " (queda inactivo)")}.");
@@ -564,8 +567,10 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
             return ResultadoOperacion.Falla("No se pudieron guardar los cambios. Intenta de nuevo.");
         }
 
-        // La imagen anterior se borra solo cuando la BD ya apunta a la nueva.
-        if (rutaAnterior is not null && rutaAnterior != rutaNueva) _imagenes.Eliminar(rutaAnterior);
+        // La imagen anterior se borra solo cuando la BD ya apunta a la nueva, y solo si ningún OTRO servicio la
+        // sigue usando: las salidas de un vuelo con "repetir" comparten archivo (L6b).
+        if (rutaAnterior != rutaNueva)
+            await _db.BorrarImagenSiNadieLaUsaAsync(_imagenes, rutaAnterior, cancellationToken);
         return ResultadoOperacion.Ok($"Se guardaron los cambios de \"{datos.nombre.Trim()}\". Las compras anteriores conservan sus condiciones.");
     }
 
@@ -901,20 +906,23 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
     private Task<bool> UbicacionActivaAsync(ulong id, CancellationToken cancellationToken) =>
         _db.Ubicaciones.AsNoTracking().AnyAsync(u => u.id == id && u.activo, cancellationToken);
 
-    private async Task<string?> GuardarImagenNuevaAsync(ServicioFormBase datos, CancellationToken cancellationToken) => datos switch
-    {
-        HospedajeFormViewModel { imagen.Length: > 0 } h => await _imagenes.GuardarAsync(h.imagen!, CarpetaImagen.Hospedajes, cancellationToken),
-        VehiculoFormViewModel { imagen.Length: > 0 } v => await _imagenes.GuardarAsync(v.imagen!, CarpetaImagen.Vehiculos, cancellationToken),
-        _ => null
-    };
+    /// <summary>Guarda la imagen que venga en el formulario y devuelve su ruta pública, o <c>null</c> si no hay.</summary>
+    /// <remarks>
+    /// L6b: antes esto distinguía por tipo (hospedaje a una carpeta, vehículo a otra) y los demás tipos caían en
+    /// <c>_ => null</c>: esa era la razón por la que un vuelo o un tour nunca guardaba imagen, aunque se enviara
+    /// el archivo. Ahora la imagen es un dato común de <c>servicios</c>, así que vale para los cinco tipos.
+    /// </remarks>
+    private async Task<string?> GuardarImagenNuevaAsync(ServicioFormBase datos, CancellationToken cancellationToken) =>
+        datos.imagen is { Length: > 0 }
+            ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Servicios, cancellationToken)
+            : null;
 
     /// <summary>
     /// Cambia la imagen del servicio y devuelve la ruta que tenía antes, para poder borrar ese archivo.
     /// </summary>
     /// <remarks>
     /// L6: la imagen pasó de cada subtipo a <c>servicios</c>, así que ya no se escribe en la fila del subtipo.
-    /// Cuando los campos de imagen suban a la clase base del formulario (lote L6b), las dos llamadas a este
-    /// método —una por tipo, dentro del <c>switch</c>— se unifican en una sola fuera de él.
+    /// L6b: se llama UNA vez, fuera del <c>switch</c> de subtipos, porque ya vale para los cinco tipos.
     /// </remarks>
     private async Task<string?> CambiarImagenDelServicioAsync(ulong idServicio, string? rutaNueva,
         CancellationToken cancellationToken)

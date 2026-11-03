@@ -3,9 +3,16 @@ namespace FlyVibeMex.Services;
 /// <summary>Subcarpetas permitidas dentro de <c>wwwroot/uploads/</c> (una por tabla con imagen).</summary>
 public enum CarpetaImagen
 {
-    Hospedajes,
-    Vehiculos,
-    Paquetes,
+    /// <summary>
+    /// Imágenes del catálogo: vuelos, hospedajes, vehículos, paquetes y tours.
+    /// </summary>
+    /// <remarks>
+    /// L6b: antes había una carpeta por subtipo (Hospedajes, Vehiculos, Paquetes) porque <c>imagen_ruta</c>
+    /// vivía en cada tabla de subtipo. Ahora la imagen es un dato común de <c>servicios</c> (R1), así que una
+    /// sola carpeta corresponde a una sola columna.
+    /// </remarks>
+    Servicios,
+    /// <summary>Foto de perfil del usuario (<c>usuarios.imagen_ruta</c>). Todavía sin pantalla que la use.</summary>
     Usuarios,
     /// <summary>Imágenes del contenido del sitio que edita el SA (tarjetas del Inicio).</summary>
     Contenido
@@ -23,7 +30,7 @@ public enum CarpetaImagen
 /// if (error is not null) ModelState.AddModelError(nameof(datos.imagen), error);
 /// if (!ModelState.IsValid) return View(datos);
 /// string? ruta = datos.imagen is { Length: > 0 }
-///     ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Hospedajes, ct)
+///     ? await _imagenes.GuardarAsync(datos.imagen, CarpetaImagen.Servicios, ct)
 ///     : null;
 /// try { /* INSERT con imagen_ruta = ruta */ }
 /// catch { _imagenes.Eliminar(ruta); throw; }   // si falla la BD, no dejar archivos huérfanos
