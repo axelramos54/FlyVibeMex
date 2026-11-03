@@ -1,9 +1,11 @@
+using System.IO.Compression;
 using FlyVibeMex.Bot;
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
@@ -20,6 +22,34 @@ builder.Services.AddControllersWithViews(opciones =>
 
 // Caché en memoria: el contenido del sitio que edita el SA (ContenidoSitioService) se lee de la BD cada 10 minutos.
 builder.Services.AddMemoryCache();
+
+// =============================================================================================
+// Compresión de las respuestas dinámicas (L3.11 de docs/PLAN_CALIDAD_Y_OPTIMIZACION.md)
+// ---------------------------------------------------------------------------------------------
+// Lo que interesa comprimir es el HTML que generan las vistas Razor (20-40 KB por página): los archivos de
+// wwwroot ya los sirve MapStaticAssets() precomprimidos.
+//
+// El middleware SOLO se agrega fuera de Development (ver más abajo), por dos razones:
+//   1. En la demostración en localhost comprimir no ahorra nada —el ancho de banda del loopback es enorme— y en
+//      cambio gasta CPU, justo lo que escasea en un equipo antiguo.
+//   2. EnableForHttps está deshabilitado por omisión en ASP.NET Core a propósito: comprimir una página dinámica
+//      que mezcla ENTRADA REFLEJADA del usuario con un SECRETO en la misma respuesta abre la puerta a los
+//      ataques CRIME y BREACH. La mitigación que documenta Microsoft son los tokens antiforgery, y este
+//      proyecto los tiene en TODOS los POST, con token aleatorizado por respuesta. Por eso aquí se puede
+//      activar; si algún día se quita el antiforgery de una página con filtros de texto, hay que revisarlo.
+// =============================================================================================
+builder.Services.AddResponseCompression(opciones =>
+{
+    opciones.EnableForHttps = true;
+    opciones.Providers.Add<BrotliCompressionProvider>();
+    opciones.Providers.Add<GzipCompressionProvider>();
+    // A los tipos de siempre (text/html, text/css, application/json...) se agrega el SVG de "sin imagen".
+    opciones.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "image/svg+xml" });
+});
+
+// Nivel "Fastest": en un servidor modesto importa más no retrasar la respuesta que ahorrar los últimos bytes.
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
 
 // =============================================================================================
 // Base de datos (Entity Framework Core + SQL Server)
@@ -158,6 +188,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Estado/500");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    // Compresión del HTML: solo aquí, nunca en Development (ver el comentario del registro, más arriba).
+    // Va DESPUÉS del manejador de excepciones para que la página de error regenerada también se comprima.
+    app.UseResponseCompression();
 }
 
 app.UseHttpsRedirection();
@@ -174,8 +207,17 @@ app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(carpetaUploads),
     RequestPath = "/uploads",
-    // El navegador no debe "adivinar" el tipo: un archivo .jpg siempre se trata como imagen.
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.XContentTypeOptions = "nosniff"
+    OnPrepareResponse = ctx =>
+    {
+        // El navegador no debe "adivinar" el tipo: un archivo .jpg siempre se trata como imagen.
+        ctx.Context.Response.Headers.XContentTypeOptions = "nosniff";
+
+        // Caché de un año (L3.4 de docs/PLAN_CALIDAD_Y_OPTIMIZACION.md). Es seguro porque el nombre de cada
+        // archivo es un GUID que genera AlmacenImagenes: NUNCA se reescribe una imagen con el mismo nombre, y
+        // cambiar la foto de un servicio produce un nombre nuevo. Al ser inmutable, el navegador se queda con
+        // su copia sin volver a preguntar; antes pedía cada imagen otra vez en cada página.
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    }
 });
 app.UseRouting();
 

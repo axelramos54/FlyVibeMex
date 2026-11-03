@@ -252,7 +252,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                     capacidad_huespedes = h?.capacidad_huespedes ?? 1,
                     hora_entrada = h?.hora_entrada,
                     hora_salida = h?.hora_salida,
-                    imagen_actual = h?.imagen_ruta
+                    imagen_actual = s.imagen_ruta   // L6: vive en el servicio
                 };
                 break;
             }
@@ -266,7 +266,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                     marca = v?.marca ?? string.Empty,
                     modelo = v?.modelo ?? string.Empty,
                     capacidad_pasajeros = v?.capacidad_pasajeros ?? 4,
-                    imagen_actual = v?.imagen_ruta
+                    imagen_actual = s.imagen_ruta   // L6: vive en el servicio
                 };
                 break;
             }
@@ -363,7 +363,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                     return;
                 }
 
-                var servicio = NuevoServicio(datos, ahora);
+                var servicio = NuevoServicio(datos, ahora, rutaImagen);
                 _db.Servicios.Add(servicio);
                 await _db.SaveChangesAsync(cancellationToken);
                 idsCreados.Add(servicio.id);
@@ -379,8 +379,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                             categoria = Limpiar(h.categoria),
                             capacidad_huespedes = h.capacidad_huespedes,
                             hora_entrada = h.hora_entrada!.Value,
-                            hora_salida = h.hora_salida!.Value,
-                            imagen_ruta = rutaImagen
+                            hora_salida = h.hora_salida!.Value
                         });
                         break;
                     case VehiculoFormViewModel ve:
@@ -391,8 +390,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                             categoria = ve.categoria.Trim(),
                             marca = ve.marca.Trim(),
                             modelo = ve.modelo.Trim(),
-                            capacidad_pasajeros = ve.capacidad_pasajeros,
-                            imagen_ruta = rutaImagen
+                            capacidad_pasajeros = ve.capacidad_pasajeros
                         });
                         break;
                 }
@@ -532,10 +530,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         fila.hora_entrada = h.hora_entrada!.Value;
                         fila.hora_salida = h.hora_salida!.Value;
                         if (rutaNueva is not null || h.quitar_imagen)
-                        {
-                            rutaAnterior = fila.imagen_ruta;
-                            fila.imagen_ruta = rutaNueva;
-                        }
+                            rutaAnterior = await CambiarImagenDelServicioAsync(id, rutaNueva, cancellationToken);
                         break;
                     }
                     case VehiculoFormViewModel ve:
@@ -552,10 +547,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         fila.modelo = ve.modelo.Trim();
                         fila.capacidad_pasajeros = ve.capacidad_pasajeros;
                         if (rutaNueva is not null || ve.quitar_imagen)
-                        {
-                            rutaAnterior = fila.imagen_ruta;
-                            fila.imagen_ruta = rutaNueva;
-                        }
+                            rutaAnterior = await CambiarImagenDelServicioAsync(id, rutaNueva, cancellationToken);
                         break;
                     }
                 }
@@ -916,7 +908,25 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         _ => null
     };
 
-    private static Servicios NuevoServicio(ServicioFormBase datos, DateTime ahora) => new()
+    /// <summary>
+    /// Cambia la imagen del servicio y devuelve la ruta que tenía antes, para poder borrar ese archivo.
+    /// </summary>
+    /// <remarks>
+    /// L6: la imagen pasó de cada subtipo a <c>servicios</c>, así que ya no se escribe en la fila del subtipo.
+    /// Cuando los campos de imagen suban a la clase base del formulario (lote L6b), las dos llamadas a este
+    /// método —una por tipo, dentro del <c>switch</c>— se unifican en una sola fuera de él.
+    /// </remarks>
+    private async Task<string?> CambiarImagenDelServicioAsync(ulong idServicio, string? rutaNueva,
+        CancellationToken cancellationToken)
+    {
+        var anterior = await _db.Servicios.AsNoTracking().Where(srv => srv.id == idServicio)
+            .Select(srv => srv.imagen_ruta).FirstOrDefaultAsync(cancellationToken);
+        await _db.Servicios.Where(srv => srv.id == idServicio)
+            .ExecuteUpdateAsync(srv => srv.SetProperty(x => x.imagen_ruta, rutaNueva), cancellationToken);
+        return anterior;
+    }
+
+    private static Servicios NuevoServicio(ServicioFormBase datos, DateTime ahora, string? rutaImagen = null) => new()
     {
         id_proveedor = datos.id_proveedor!.Value,
         tipo_servicio = datos.TipoServicio,
@@ -928,6 +938,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         horas_reembolso_total = datos.horas_reembolso_total,
         porcentaje_reembolso_tardio = datos.porcentaje_reembolso_tardio,
         politica_cancelacion = datos.politica_cancelacion,
+        imagen_ruta = rutaImagen,        // L6: dato común del servicio (R1). El camino de "repetir vuelo"
+                                         // no la pasa, así que sus salidas quedan sin imagen, como antes.
         activo = true,
         creado_en = ahora,
         actualizado_en = ahora

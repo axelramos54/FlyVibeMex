@@ -36,6 +36,66 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <!-- Bot de Telegram (docs/06): cliente oficial de la comunidad para la Bot API. El token va en dotnet user-secrets. -->
     <PackageReference Include="Telegram.Bot" Version="22.10.3.3" />
+    <!--
+      Redimensionado de las imágenes que se suben desde el panel (Services/AlmacenImagenes.cs).
+      Ver docs/PLAN_CALIDAD_Y_OPTIMIZACION.md, lote L3b.
+
+      ====================  POR QUÉ LA VERSIÓN ESTÁ CLAVADA EN 3.1.12  ====================
+      NO SUBIR DE VERSIÓN sin leer esto. Probado el 02/11/2026 en este proyecto:
+
+        · 4.x    -> exige una licencia de Six Labors en tiempo de compilación.
+        · 3.2.0  -> TAMBIÉN la exige: "No Six Labors license found. This Debug build can continue,
+                    but Release builds require a valid license." El Debug pasa con una advertencia,
+                    pero `dotnet publish -c Release` FALLA. Comprobado, no supuesto.
+        · 3.1.12 -> última versión SIN validación de licencia. Es la que usamos.
+
+      La Six Labors Split License v1.0 concede los términos de Apache 2.0 cuando el software que la
+      consume tiene licencia Open Source (FlyVibeMex es MIT, ver el archivo LICENSE) o cuando quien la
+      usa es una organización sin fines de lucro, así que el USO es gratuito; lo que la 3.2.0 y la 4.x
+      agregan es una comprobación de clave en el build, y una clave no se puede commitear a un
+      repositorio público ni se le puede pedir a cada integrante del equipo antes de una entrega.
+    -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+
+  <!--
+    ====================  AVISOS DE SEGURIDAD DE IMAGESHARP 3.1.12  ====================
+    La 3.1.12 arrastra 6 avisos publicados el 07/10/2026 (12 advertencias NU1902/NU1903, porque NuGet
+    los reporta dos veces). La versión que los corrige es la 4.1.2, que no podemos usar (ver arriba).
+    Se suprimen con el análisis de alcance hecho el 02/11/2026, NO para callar el ruido:
+
+      Cinco de los seis son de TIFF y ESTE PROYECTO NUNCA DECODIFICA NI ESCRIBE TIFF:
+        · GHSA-j9gm-c75j-xc9q (alta)      codificador TIFF CCITT T4, escritura fuera del búfer
+        · GHSA-jjfr-hcj7-qf5w (alta)      codificador TIFF CCITT T6, escritura fuera del búfer
+        · GHSA-v76p-62qx-wwq2 (alta)      TIFF fax en mosaico, escritura fuera de los límites del heap
+        · GHSA-wmxv-xphr-5c9g (moderada)  conteo de IFD de BigTIFF, bucle sin avance
+        · GHSA-j3p4-wp97-rph4 (alta)      exige decodificar un TIFF de coma flotante como
+                                          Image<HalfVector4> y llamar a HistogramEqualization()
+
+      Por qué son inalcanzables: AlmacenImagenes.Validar() lee los magic bytes y SOLO acepta JPG, PNG
+      y WEBP, y esa validación corre ANTES de cualquier llamada a ImageSharp (ver GuardarAsync). El
+      codificador y el decodificador de TIFF no se alcanzan por ninguna ruta, y el proyecto no llama a
+      HistogramEqualization en ningún lugar.
+
+      El sexto SÍ podría ser alcanzable y se acepta el riesgo a conciencia:
+        · GHSA-gwg2-r3hj-4w44 (moderada)  el análisis de CLUT de ICC asigna memoria a partir de
+                                          dimensiones sin validar -> negación de servicio.
+          Un JPG o PNG puede llevar perfil ICC. Pero la ÚNICA forma de subir una imagen a este sistema
+          es el panel: los 4 formularios con type="file" están bajo Views/Admin/ y sus controladores
+          llevan [Authorize(Roles = Administrador)] o [Authorize(Roles = SA)]. Los clientes no suben
+          imágenes (CarpetaImagen.Usuarios existe en el enum pero no se usa). El atacante tendría que
+          ser un administrador autenticado, que es el rol más privilegiado del sistema.
+
+    REVISAR ESTO SI: se permite que un cliente suba imágenes, se acepta TIFF en AlmacenImagenes, o
+    aparece una versión 3.x con los avisos corregidos y sin validación de licencia.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-v76p-62qx-wwq2" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44" />
   </ItemGroup>
 
 </Project>

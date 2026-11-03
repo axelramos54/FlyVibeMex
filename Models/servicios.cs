@@ -3,8 +3,9 @@ namespace FlyVibeMex.Models
     /// <summary>
     /// <b>Supertipo</b> de todo lo reservable. Concentra los datos comunes: proveedor, nombre,
     /// descripción, precio base y moneda. Cada fila tiene un subtipo 1:1 según <c>tipo_servicio</c>:
-    /// VUELO → (clase Vuelos, pendiente), HOSPEDAJE → <c>Hospedajes</c>, VEHICULO → <c>Vehiculos</c>,
-    /// PAQUETE → <c>Paquetes</c>. En el diseño, cada subtipo usa <c>id_servicio</c> como su llave primaria y foránea.
+    /// VUELO → <c>Vuelos</c>, HOSPEDAJE → <c>Hospedajes</c>, VEHICULO → <c>Vehiculos</c>,
+    /// PAQUETE → <c>Paquetes</c>. EVENTO (los tours) no tiene subtipo: le basta esta fila.
+    /// Cada subtipo usa <c>id_servicio</c> como su llave primaria y foránea.
     /// </summary>
     
     /// <remarks>
@@ -12,8 +13,6 @@ namespace FlyVibeMex.Models
     /// <c>precio_base</c> es solo el precio de referencia antes de promociones.
     /// </remarks>
     
-    // NOTA: falta la clase del subtipo VUELO (Vuelos: id_servicio, id_origen, id_destino, codigo_vuelo,
-    // fecha_salida, fecha_llegada, clase), que sí aparece en el diagrama entidad-relación.
     public class Servicios
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
@@ -58,5 +57,17 @@ namespace FlyVibeMex.Models
 
         /// <summary>Texto de la política que ve el cliente antes de pagar (opcional).</summary>
         public string? politica_cancelacion {get; set;}
+
+        /// <summary>
+        /// Ruta pública de la imagen del servicio (opcional), p. ej. <c>/uploads/hospedajes/&lt;guid&gt;.jpg</c>.
+        /// El archivo vive en <c>wwwroot/uploads/</c>; lo guarda <see cref="FlyVibeMex.Services.IAlmacenImagenes"/>.
+        /// </summary>
+        /// <remarks>
+        /// L6 (02/11/2026): la imagen es un dato <b>común</b> a todos los tipos de servicio, igual que el nombre
+        /// y el precio, así que vive aquí y no en cada subtipo (R1). Antes estaba repetida en <c>Hospedajes</c>,
+        /// <c>Vehiculos</c> y <c>Paquetes</c>, y por eso los VUELOS y los TOURS (EVENTO, que no tiene tabla de
+        /// subtipo) no podían tener foto.
+        /// </remarks>
+        public string? imagen_ruta {get; set;}
     }
 }

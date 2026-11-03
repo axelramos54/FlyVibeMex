@@ -31,11 +31,5 @@ namespace FlyVibeMex.Models
 
         /// <summary>Hora estándar de check-out.</summary>
         public TimeOnly hora_salida {get; set;}
-
-        /// <summary>
-        /// Ruta pública de la imagen (opcional), p. ej. <c>/uploads/hospedajes/&lt;guid&gt;.jpg</c>. El archivo vive en
-        /// <c>wwwroot/uploads/</c>; lo guarda <see cref="FlyVibeMex.Services.IAlmacenImagenes"/>.
-        /// </summary>
-        public string? imagen_ruta {get; set;}
     }
 }

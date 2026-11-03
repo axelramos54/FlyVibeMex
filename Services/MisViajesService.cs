@@ -347,19 +347,15 @@ public sealed class MisViajesService : IMisViajesService
             .ToDictionary(g => g.Key, g => g.Count() == 1 ? g.First().nombre : $"{g.First().nombre} y {g.Count() - 1} más");
     }
 
-    /// <summary>Imagen de cada servicio que tenga una (hospedajes, vehículos y paquetes).</summary>
-    private async Task<Dictionary<ulong, string>> ImagenesAsync(CancellationToken cancellationToken)
-    {
-        var imagenes = new Dictionary<ulong, string>();
-        foreach (var h in await _db.Hospedajes.AsNoTracking().Where(x => x.imagen_ruta != null)
-                     .Select(x => new { x.id_servicio, x.imagen_ruta }).ToListAsync(cancellationToken))
-            imagenes[h.id_servicio] = h.imagen_ruta!;
-        foreach (var v in await _db.Vehiculos.AsNoTracking().Where(x => x.imagen_ruta != null)
-                     .Select(x => new { x.id_servicio, x.imagen_ruta }).ToListAsync(cancellationToken))
-            imagenes[v.id_servicio] = v.imagen_ruta!;
-        foreach (var p in await _db.Paquetes.AsNoTracking().Where(x => x.imagen_ruta != null)
-                     .Select(x => new { x.id_servicio, x.imagen_ruta }).ToListAsync(cancellationToken))
-            imagenes[p.id_servicio] = p.imagen_ruta!;
-        return imagenes;
-    }
+    /// <summary>Imagen de cada servicio que tenga una.</summary>
+    /// <remarks>
+    /// L6 (02/11/2026): antes esto eran TRES consultas —hospedajes, vehículos y paquetes— porque
+    /// <c>imagen_ruta</c> estaba repetida en cada subtipo. Ahora vive en <c>servicios</c> (R1) y basta una,
+    /// que además incluye los vuelos y los tours.
+    /// </remarks>
+    private async Task<Dictionary<ulong, string>> ImagenesAsync(CancellationToken cancellationToken) =>
+        await _db.Servicios.AsNoTracking()
+            .Where(srv => srv.imagen_ruta != null)
+            .Select(srv => new { srv.id, ruta = srv.imagen_ruta! })
+            .ToDictionaryAsync(x => x.id, x => x.ruta, cancellationToken);
 }

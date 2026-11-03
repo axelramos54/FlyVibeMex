@@ -161,6 +161,10 @@ CREATE TABLE dbo.servicios(
     porcentaje_reembolso_tardio DECIMAL(5,2)  NOT NULL CONSTRAINT df_servicios_pct_tardio DEFAULT(50)
                                 CONSTRAINT ck_servicios_pct_tardio CHECK (porcentaje_reembolso_tardio BETWEEN 0 AND 100),
     politica_cancelacion        NVARCHAR(500) NULL,   -- texto que ve el cliente antes de pagar
+    -- Imagen del servicio (L6). Es un dato COMÚN a todos los tipos, igual que el nombre y el precio, así que
+    -- vive aquí y no en cada subtipo (R1). Antes estaba repetida en hospedajes, vehiculos y paquete, y por eso
+    -- los VUELOS y los TOURS (EVENTO, que no tiene tabla de subtipo) no podían tener foto.
+    imagen_ruta    NVARCHAR(260)  NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
     activo         BIT            NOT NULL CONSTRAINT df_servicios_activo DEFAULT(1),
     creado_en      DATETIME       NOT NULL CONSTRAINT df_servicios_creado_en DEFAULT(CURRENT_TIMESTAMP),
     actualizado_en DATETIME       NOT NULL CONSTRAINT df_servicios_actualizado_en DEFAULT(CURRENT_TIMESTAMP)
@@ -194,8 +198,7 @@ CREATE TABLE dbo.hospedajes(
     capacidad_huespedes INT          NOT NULL CONSTRAINT df_hospedajes_capacidad DEFAULT(1)
                         CONSTRAINT ck_hospedajes_capacidad CHECK (capacidad_huespedes > 0),
     hora_entrada        TIME(0)      NOT NULL,
-    hora_salida         TIME(0)      NOT NULL,
-    imagen_ruta         NVARCHAR(260) NULL  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp 
+    hora_salida         TIME(0)      NOT NULL
 );
 GO
 
@@ -206,8 +209,7 @@ CREATE TABLE dbo.vehiculos(
     categoria           NVARCHAR(50) NOT NULL,
     marca               NVARCHAR(50) NOT NULL,
     modelo              NVARCHAR(60) NOT NULL,
-    capacidad_pasajeros TINYINT      NOT NULL CONSTRAINT ck_vehiculos_capacidad CHECK (capacidad_pasajeros > 0),
-    imagen_ruta         NVARCHAR(260) NULL  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
+    capacidad_pasajeros TINYINT      NOT NULL CONSTRAINT ck_vehiculos_capacidad CHECK (capacidad_pasajeros > 0)
 );
 GO
 
@@ -222,7 +224,6 @@ CREATE TABLE dbo.paquete(
     -- Destino del paquete. Obligatorio cuando sus servicios están en ciudades distintas; si es NULL,
     -- el destino es la ciudad de su hospedaje incluido o, si no tiene, el destino de su vuelo.
     id_ubicacion_destino BIGINT        NULL     CONSTRAINT fk_paquete_destino REFERENCES dbo.ubicaciones(id),
-    imagen_ruta          NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
     CONSTRAINT ck_paquete_personas CHECK (max_personas >= min_personas)
 );
 GO

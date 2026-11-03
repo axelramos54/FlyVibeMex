@@ -33,8 +33,5 @@ namespace FlyVibeMex.Models
 
         // NOTA: la política de cancelación ya no está aquí; es común a todos los servicios
         //            (Servicios.permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio, politica_cancelacion).
-        
-        /// <summary>Ruta pública de la imagen (opcional), p. ej. <c>/uploads/paquetes/&lt;guid&gt;.jpg</c>.</summary>
-        public string? imagen_ruta {get; set;}
     }
 }

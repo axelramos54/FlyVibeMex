@@ -51,7 +51,7 @@ public sealed class CatalogoService : ICatalogoService
 
         b.BusquedaConFechas = aplicarFechas && b.desde is not null;
         var (inicioVentana, finVentana) = VentanaSeccion(b);
-        var disponibilidad = await DisponibilidadAsync(null, inicioVentana, finVentana, cancellationToken);
+        var disponibilidad = await DisponibilidadAsync(null, b.tipo, inicioVentana, finVentana, cancellationToken);
         var ahora = DateTime.Now;
 
         var tarjetas = new List<TarjetaServicioViewModel>();
@@ -167,7 +167,7 @@ public sealed class CatalogoService : ICatalogoService
         if (c.tipo != TipoCatalogo.Vuelo)
         {
             var hoy = Hoy();
-            var proximas = await DisponibilidadAsync(idServicio, hoy, hoy.AddDays(BusquedaCatalogoViewModel.DiasSinBusqueda - 1), cancellationToken);
+            var proximas = await DisponibilidadAsync(idServicio, null, hoy, hoy.AddDays(BusquedaCatalogoViewModel.DiasSinBusqueda - 1), cancellationToken);
             vm.ProximasFechas = (proximas.GetValueOrDefault(idServicio)?.Values ?? Enumerable.Empty<FilaDisponibilidad>())
                 .OrderBy(f => f.fecha)
                 .Select(f => new DiaCotizado(f.fecha, f.precio, f.disponible, true, f.disponible > 0))
@@ -213,7 +213,7 @@ public sealed class CatalogoService : ICatalogoService
             inicio = fin = b.desde!.Value;
         }
 
-        var filas = await DisponibilidadAsync(c.id, inicio, fin, cancellationToken);
+        var filas = await DisponibilidadAsync(c.id, null, inicio, fin, cancellationToken);
         return Cotizar(c, b, filas.GetValueOrDefault(c.id) ?? new Dictionary<DateOnly, FilaDisponibilidad>());
     }
 
@@ -396,99 +396,35 @@ public sealed class CatalogoService : ICatalogoService
                     permite_cancelacion = s.permite_cancelacion,
                     horas_reembolso_total = s.horas_reembolso_total,
                     porcentaje_reembolso_tardio = s.porcentaje_reembolso_tardio,
-                    politica_cancelacion = s.politica_cancelacion
+                    politica_cancelacion = s.politica_cancelacion,
+                    imagen_ruta = s.imagen_ruta        // L6: la imagen ya viene del supertipo
                 })
             .ToListAsync(cancellationToken);
 
         if (candidatos.Count == 0) return candidatos;
 
+        // Cada subtipo completa sus propios campos. Las consultas se UNEN a `servicios`, que ya trae el filtro
+        // del tipo y —en el detalle— el del id: así el SQL lee solo las filas de subtipo que de verdad se usan.
+        // Antes se leía la tabla de subtipo COMPLETA (todas las filas y todas las columnas), incluso cuando solo
+        // se mostraba el detalle de un servicio.  [L3.8 y L4.4 de docs/PLAN_CALIDAD_Y_OPTIMIZACION.md]
         switch (tipo)
         {
             case TipoCatalogo.Hospedaje:
-            {
-                var hospedajes = await _db.Hospedajes.AsNoTracking().ToDictionaryAsync(h => h.id_servicio, cancellationToken);
-                foreach (var c in candidatos)
-                {
-                    if (!hospedajes.TryGetValue(c.id, out var hosp)) continue;
-                    c.id_destino = hosp.id_ubicacion;
-                    c.capacidad = hosp.capacidad_huespedes;
-                    c.hora_entrada = hosp.hora_entrada;
-                    c.hora_salida = hosp.hora_salida;
-                    c.tipo_habitacion = hosp.tipo_habitacion;
-                    c.categoria = hosp.categoria;
-                    c.imagen_ruta = hosp.imagen_ruta;
-                }
+                await CompletarHospedajesAsync(candidatos, servicios, cancellationToken);
                 break;
-            }
             case TipoCatalogo.Vehiculo:
-            {
-                var vehiculos = await _db.Vehiculos.AsNoTracking().ToDictionaryAsync(v => v.id_servicio, cancellationToken);
-                foreach (var c in candidatos)
-                {
-                    if (!vehiculos.TryGetValue(c.id, out var veh)) continue;
-                    c.id_destino = veh.id_ubicacion_retiro;
-                    c.capacidad = veh.capacidad_pasajeros;
-                    c.categoria = veh.categoria;
-                    c.marca_modelo = $"{veh.marca} {veh.modelo}";
-                    c.imagen_ruta = veh.imagen_ruta;
-                }
+                await CompletarVehiculosAsync(candidatos, servicios, cancellationToken);
                 break;
-            }
             case TipoCatalogo.Vuelo:
-            {
-                var vuelos = await _db.Vuelos.AsNoTracking().ToDictionaryAsync(v => v.id_servicio, cancellationToken);
-                foreach (var c in candidatos)
-                {
-                    if (!vuelos.TryGetValue(c.id, out var vue)) continue;
-                    c.id_origen = vue.id_origen;
-                    c.id_destino = vue.id_destino;
-                    c.salida = vue.fecha_salida;
-                    c.llegada = vue.fecha_llegada;
-                    c.codigo_vuelo = vue.codigo_vuelo;
-                    c.clase = vue.clase;
-                }
+                await CompletarVuelosAsync(candidatos, servicios, cancellationToken);
                 break;
-            }
             case TipoCatalogo.Paquete:
-            {
-                var paquetes = await _db.Paquetes.AsNoTracking().ToDictionaryAsync(p => p.id_servicio, cancellationToken);
-                var componentes = await _db.PaquetesServicios.AsNoTracking()
-                    .Select(ps => new { ps.id_servicio, ps.id_servicio_incluido, ps.orden })
-                    .ToListAsync(cancellationToken);
-                var ciudadHotel = await _db.Hospedajes.AsNoTracking()
-                    .Select(h => new { h.id_servicio, h.id_ubicacion })
-                    .ToDictionaryAsync(h => h.id_servicio, h => h.id_ubicacion, cancellationToken);
-                var destinoVuelo = await _db.Vuelos.AsNoTracking()
-                    .Select(v => new { v.id_servicio, v.id_destino })
-                    .ToDictionaryAsync(v => v.id_servicio, v => v.id_destino, cancellationToken);
-
-                foreach (var c in candidatos)
-                {
-                    if (!paquetes.TryGetValue(c.id, out var pq)) continue;
-
-                    // Destino: el que indicó el gestor; si no, la ciudad de su hospedaje; si no, el destino de su vuelo.
-                    var incluidos = componentes
-                        .Where(x => x.id_servicio == c.id)
-                        .OrderBy(x => x.orden ?? ushort.MaxValue)
-                        .Select(x => x.id_servicio_incluido)
-                        .ToList();
-                    c.id_destino = pq.id_ubicacion_destino
-                        ?? incluidos.Where(ciudadHotel.ContainsKey).Select(i => (ulong?)ciudadHotel[i]).FirstOrDefault()
-                        ?? incluidos.Where(destinoVuelo.ContainsKey).Select(i => (ulong?)destinoVuelo[i]).FirstOrDefault();
-
-                    c.duracion_dias = pq.duracion_dias;
-                    c.min_personas = pq.min_personas;
-                    c.max_personas = pq.max_personas;
-                    c.imagen_ruta = pq.imagen_ruta;
-                }
+                await CompletarPaquetesAsync(candidatos, servicios, cancellationToken);
                 break;
-            }
             default:   // EVENTO (Tours): la ciudad es la ubicación de su proveedor
-            {
                 foreach (var c in candidatos)
                     c.id_destino = c.id_ubicacion_proveedor;
                 break;
-            }
         }
 
         // Solo los que tienen subtipo y ubicaciones activas (en vuelos, origen y destino).
@@ -508,15 +444,182 @@ public sealed class CatalogoService : ICatalogoService
         return validos;
     }
 
+    /// <summary>Completa los campos propios de HOSPEDAJE (ciudad, capacidad, horarios, habitación, imagen).</summary>
+    private async Task CompletarHospedajesAsync(List<Candidato> candidatos, IQueryable<Servicios> servicios,
+        CancellationToken cancellationToken)
+    {
+        var hospedajes = await (
+                from h in _db.Hospedajes.AsNoTracking()
+                join s in servicios on h.id_servicio equals s.id
+                select new
+                {
+                    h.id_servicio,
+                    h.id_ubicacion,
+                    h.capacidad_huespedes,
+                    h.hora_entrada,
+                    h.hora_salida,
+                    h.tipo_habitacion,
+                    h.categoria
+                })
+            .ToDictionaryAsync(h => h.id_servicio, cancellationToken);
+
+        foreach (var c in candidatos)
+        {
+            if (!hospedajes.TryGetValue(c.id, out var hosp)) continue;
+            c.id_destino = hosp.id_ubicacion;
+            c.capacidad = hosp.capacidad_huespedes;
+            c.hora_entrada = hosp.hora_entrada;
+            c.hora_salida = hosp.hora_salida;
+            c.tipo_habitacion = hosp.tipo_habitacion;
+            c.categoria = hosp.categoria;
+        }
+    }
+
+    /// <summary>Completa los campos propios de VEHICULO (ciudad de retiro, capacidad, marca y modelo, imagen).</summary>
+    private async Task CompletarVehiculosAsync(List<Candidato> candidatos, IQueryable<Servicios> servicios,
+        CancellationToken cancellationToken)
+    {
+        var vehiculos = await (
+                from v in _db.Vehiculos.AsNoTracking()
+                join s in servicios on v.id_servicio equals s.id
+                select new
+                {
+                    v.id_servicio,
+                    v.id_ubicacion_retiro,
+                    v.capacidad_pasajeros,
+                    v.categoria,
+                    v.marca,
+                    v.modelo
+                })
+            .ToDictionaryAsync(v => v.id_servicio, cancellationToken);
+
+        foreach (var c in candidatos)
+        {
+            if (!vehiculos.TryGetValue(c.id, out var veh)) continue;
+            c.id_destino = veh.id_ubicacion_retiro;
+            c.capacidad = veh.capacidad_pasajeros;
+            c.categoria = veh.categoria;
+            c.marca_modelo = $"{veh.marca} {veh.modelo}";
+        }
+    }
+
+    /// <summary>Completa los campos propios de VUELO (ruta, horario, código y clase).</summary>
+    private async Task CompletarVuelosAsync(List<Candidato> candidatos, IQueryable<Servicios> servicios,
+        CancellationToken cancellationToken)
+    {
+        var vuelos = await (
+                from v in _db.Vuelos.AsNoTracking()
+                join s in servicios on v.id_servicio equals s.id
+                select new
+                {
+                    v.id_servicio,
+                    v.id_origen,
+                    v.id_destino,
+                    v.fecha_salida,
+                    v.fecha_llegada,
+                    v.codigo_vuelo,
+                    v.clase
+                })
+            .ToDictionaryAsync(v => v.id_servicio, cancellationToken);
+
+        foreach (var c in candidatos)
+        {
+            if (!vuelos.TryGetValue(c.id, out var vue)) continue;
+            c.id_origen = vue.id_origen;
+            c.id_destino = vue.id_destino;
+            c.salida = vue.fecha_salida;
+            c.llegada = vue.fecha_llegada;
+            c.codigo_vuelo = vue.codigo_vuelo;
+            c.clase = vue.clase;
+        }
+    }
+
+    /// <summary>
+    /// Completa los campos propios de PAQUETE (duración, personas, imagen) y deduce su destino.
+    /// </summary>
+    /// <remarks>
+    /// Destino: el que indicó el gestor; si no, la ciudad de su hospedaje incluido; si no, el destino de su vuelo
+    /// incluido. El orden de los incluidos importa (decide cuál ciudad gana cuando hay más de un hospedaje), así
+    /// que se ordena por <c>orden</c> con los nulos al final —igual que antes— ANTES de agrupar: <c>ToLookup</c>
+    /// conserva ese orden dentro de cada paquete.  [L3.9 de docs/PLAN_CALIDAD_Y_OPTIMIZACION.md: antes se
+    /// recorría la lista completa del puente una vez por paquete, O(n×m)]
+    /// Las ciudades de hospedajes y los destinos de vuelos NO se pueden filtrar por `servicios` (son servicios
+    /// INCLUIDOS, de otro tipo), pero ya se leen proyectados a dos columnas.
+    /// </remarks>
+    private async Task CompletarPaquetesAsync(List<Candidato> candidatos, IQueryable<Servicios> servicios,
+        CancellationToken cancellationToken)
+    {
+        var paquetes = await (
+                from pq in _db.Paquetes.AsNoTracking()
+                join s in servicios on pq.id_servicio equals s.id
+                select new
+                {
+                    pq.id_servicio,
+                    pq.id_ubicacion_destino,
+                    pq.duracion_dias,
+                    pq.min_personas,
+                    pq.max_personas
+                })
+            .ToDictionaryAsync(pq => pq.id_servicio, cancellationToken);
+
+        var componentes = await (
+                from ps in _db.PaquetesServicios.AsNoTracking()
+                join s in servicios on ps.id_servicio equals s.id
+                select new { ps.id_servicio, ps.id_servicio_incluido, ps.orden })
+            .ToListAsync(cancellationToken);
+
+        var incluidosPorPaquete = componentes
+            .OrderBy(x => x.orden ?? ushort.MaxValue)
+            .ToLookup(x => x.id_servicio, x => x.id_servicio_incluido);
+
+        var ciudadHotel = await _db.Hospedajes.AsNoTracking()
+            .Select(h => new { h.id_servicio, h.id_ubicacion })
+            .ToDictionaryAsync(h => h.id_servicio, h => h.id_ubicacion, cancellationToken);
+        var destinoVuelo = await _db.Vuelos.AsNoTracking()
+            .Select(v => new { v.id_servicio, v.id_destino })
+            .ToDictionaryAsync(v => v.id_servicio, v => v.id_destino, cancellationToken);
+
+        foreach (var c in candidatos)
+        {
+            if (!paquetes.TryGetValue(c.id, out var pq)) continue;
+
+            var incluidos = incluidosPorPaquete[c.id];
+            c.id_destino = pq.id_ubicacion_destino
+                ?? incluidos.Where(ciudadHotel.ContainsKey).Select(i => (ulong?)ciudadHotel[i]).FirstOrDefault()
+                ?? incluidos.Where(destinoVuelo.ContainsKey).Select(i => (ulong?)destinoVuelo[i]).FirstOrDefault();
+
+            c.duracion_dias = pq.duracion_dias;
+            c.min_personas = pq.min_personas;
+            c.max_personas = pq.max_personas;
+        }
+    }
+
     /// <summary>
     /// Disponibilidad entre dos fechas (incluidas), agrupada por servicio y por día.
-    /// Con <paramref name="idServicio"/> solo lee ese servicio.
+    /// Con <paramref name="idServicio"/> solo lee ese servicio; con <paramref name="tipo"/>, solo los servicios
+    /// activos de ese tipo.
     /// </summary>
+    /// <remarks>
+    /// El filtro por <paramref name="tipo"/> se agregó en el lote L2 (L3.7 de
+    /// <c>docs/PLAN_CALIDAD_Y_OPTIMIZACION.md</c>). Antes la sección leía la ventana de fechas de TODOS los
+    /// servicios de la base —<c>disponibilidad_servicio</c> es la tabla con más filas del esquema— y descartaba
+    /// en memoria los que no eran de su tipo. Se filtra con un <c>Any()</c> (que EF traduce a <c>EXISTS</c>) y no
+    /// con un <c>Contains</c> sobre una lista de ids, para no depender de cómo EF convierte los <c>ulong</c>.
+    /// </remarks>
     private async Task<Dictionary<ulong, Dictionary<DateOnly, FilaDisponibilidad>>> DisponibilidadAsync(
-        ulong? idServicio, DateOnly desde, DateOnly hasta, CancellationToken cancellationToken)
+        ulong? idServicio, string? tipo, DateOnly desde, DateOnly hasta, CancellationToken cancellationToken)
     {
         var consulta = _db.DisponibilidadServicios.AsNoTracking().Where(d => d.fecha >= desde && d.fecha <= hasta);
-        if (idServicio is ulong id) consulta = consulta.Where(d => d.id_servicio == id);
+
+        if (idServicio is ulong id)
+        {
+            consulta = consulta.Where(d => d.id_servicio == id);
+        }
+        else if (tipo is not null)
+        {
+            consulta = consulta.Where(d =>
+                _db.Servicios.Any(s => s.id == d.id_servicio && s.activo && s.tipo_servicio == tipo));
+        }
 
         var filas = await consulta
             .Select(d => new FilaDisponibilidad(d.id_servicio, d.fecha, d.cantidad_disponible, d.precio_fecha))

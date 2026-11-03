@@ -144,6 +144,7 @@ CREATE OR ALTER PROCEDURE dbo.pa_interno_insertar_servicio
     @horas_reembolso_total       INT,
     @porcentaje_reembolso_tardio DECIMAL(5,2),
     @politica_cancelacion        NVARCHAR(500),
+    @imagen_ruta                 NVARCHAR(260),   -- L6: la imagen es dato común del servicio, no del subtipo
     @id_servicio                 BIGINT OUTPUT
 AS
 BEGIN
@@ -161,11 +162,12 @@ BEGIN
 
     INSERT INTO dbo.servicios (id_proveedor, tipo_servicio, nombre, descripcion, precio_base, moneda,
                                permite_cancelacion, horas_reembolso_total, porcentaje_reembolso_tardio,
-                               politica_cancelacion, activo, creado_en, actualizado_en)
+                               politica_cancelacion, imagen_ruta, activo, creado_en, actualizado_en)
     VALUES (@id_proveedor, @tipo_servicio, LTRIM(RTRIM(@nombre)), NULLIF(LTRIM(RTRIM(@descripcion)), N''),
             @precio_base, COALESCE(@moneda, N'MXN'),
             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio,
-            NULLIF(LTRIM(RTRIM(@politica_cancelacion)), N''), 1, GETDATE(), GETDATE());
+            NULLIF(LTRIM(RTRIM(@politica_cancelacion)), N''),
+            NULLIF(LTRIM(RTRIM(@imagen_ruta)), N''), 1, GETDATE(), GETDATE());
     SET @id_servicio = SCOPE_IDENTITY();
 END
 GO
@@ -251,11 +253,12 @@ BEGIN
 
     BEGIN TRANSACTION;
         EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'HOSPEDAJE', @nombre, @descripcion, @precio_base, @moneda,
-             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion, @id_servicio OUTPUT;
+             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
+             @imagen_ruta, @id_servicio OUTPUT;
 
-        INSERT INTO dbo.hospedajes (id_servicio, id_ubicacion, tipo_habitacion, categoria, capacidad_huespedes, hora_entrada, hora_salida, imagen_ruta)
+        INSERT INTO dbo.hospedajes (id_servicio, id_ubicacion, tipo_habitacion, categoria, capacidad_huespedes, hora_entrada, hora_salida)
         VALUES (@id_servicio, @id_ubicacion, LTRIM(RTRIM(@tipo_habitacion)), NULLIF(LTRIM(RTRIM(@categoria)), N''),
-                @capacidad_huespedes, @hora_entrada, @hora_salida, @imagen_ruta);
+                @capacidad_huespedes, @hora_entrada, @hora_salida);
 
         DECLARE @precio DECIMAL(12,2) = COALESCE(@inventario_precio, @precio_base);
         EXEC dbo.pa_interno_generar_disponibilidad @id_servicio, @inventario_desde, @inventario_hasta, @inventario_cupo, @precio;
@@ -305,11 +308,12 @@ BEGIN
 
     BEGIN TRANSACTION;
         EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'VEHICULO', @nombre, @descripcion, @precio_base, @moneda,
-             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion, @id_servicio OUTPUT;
+             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
+             @imagen_ruta, @id_servicio OUTPUT;
 
-        INSERT INTO dbo.vehiculos (id_servicio, id_ubicacion_retiro, categoria, marca, modelo, capacidad_pasajeros, imagen_ruta)
+        INSERT INTO dbo.vehiculos (id_servicio, id_ubicacion_retiro, categoria, marca, modelo, capacidad_pasajeros)
         VALUES (@id_servicio, @id_ubicacion_retiro, LTRIM(RTRIM(@categoria)), LTRIM(RTRIM(@marca)), LTRIM(RTRIM(@modelo)),
-                @capacidad_pasajeros, @imagen_ruta);
+                @capacidad_pasajeros);
 
         DECLARE @precio DECIMAL(12,2) = COALESCE(@inventario_precio, @precio_base);
         EXEC dbo.pa_interno_generar_disponibilidad @id_servicio, @inventario_desde, @inventario_hasta, @inventario_cupo, @precio;
@@ -353,7 +357,8 @@ BEGIN
 
     BEGIN TRANSACTION;
         EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'EVENTO', @nombre, @descripcion, @precio_base, @moneda,
-             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion, @id_servicio OUTPUT;
+             @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
+             NULL, @id_servicio OUTPUT;
 
         DECLARE @precio DECIMAL(12,2) = COALESCE(@inventario_precio, @precio_base);
         EXEC dbo.pa_interno_generar_disponibilidad @id_servicio, @inventario_desde, @inventario_hasta, @inventario_cupo, @precio;
@@ -464,7 +469,8 @@ BEGIN
             SET @dia = CAST(@salida AS DATE);
 
             EXEC dbo.pa_interno_insertar_servicio @id_proveedor, N'VUELO', @nombre, @descripcion, @precio_base, @moneda,
-                 @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion, @id_servicio OUTPUT;
+                 @permite_cancelacion, @horas_reembolso_total, @porcentaje_reembolso_tardio, @politica_cancelacion,
+                 NULL, @id_servicio OUTPUT;
 
             INSERT INTO dbo.vuelos (id_servicio, id_origen, id_destino, codigo_vuelo, fecha_salida, fecha_llegada, clase)
             VALUES (@id_servicio, @id_origen, @id_destino, @codigo_vuelo, @salida, DATEADD(MINUTE, @duracion, @salida), @clase);

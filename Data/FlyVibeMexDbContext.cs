@@ -120,7 +120,7 @@ public class FlyVibeMexDbContext : DbContext
     }
 
 
-    /// <summary>Longitud de <c>imagen_ruta</c> (NVARCHAR(260)) en usuarios, hospedajes, vehiculos y paquete (T2.5).</summary>
+    /// <summary>Longitud de <c>imagen_ruta</c> (NVARCHAR(260)) en usuarios, servicios y contenido_sitio.</summary>
     private const int LongitudRutaImagen = 260;
 
     // ---------------------------------------------------------------------------------------------
@@ -202,6 +202,8 @@ public class FlyVibeMexDbContext : DbContext
 
         modelBuilder.Entity<Servicios>(e =>
         {
+            // a imagen es dato común del servicio, ya no de cada subtipo.
+            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
             e.ToTable("servicios");
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
@@ -241,7 +243,6 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.id_servicio).ValueGeneratedNever();
             e.Property(x => x.tipo_habitacion).HasMaxLength(60);
             e.Property(x => x.categoria).HasMaxLength(40).IsRequired(false);
-            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
 
             e.HasOne<Servicios>().WithOne().HasForeignKey<Hospedajes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion).OnDelete(DeleteBehavior.Restrict);
@@ -255,7 +256,6 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.categoria).HasMaxLength(50);
             e.Property(x => x.marca).HasMaxLength(50);
             e.Property(x => x.modelo).HasMaxLength(60);
-            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
 
             e.HasOne<Servicios>().WithOne().HasForeignKey<Vehiculos>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion_retiro).OnDelete(DeleteBehavior.Restrict);
@@ -266,7 +266,6 @@ public class FlyVibeMexDbContext : DbContext
             e.ToTable("paquete");
             e.HasKey(x => x.id_servicio);
             e.Property(x => x.id_servicio).ValueGeneratedNever();
-            e.Property(x => x.imagen_ruta).HasMaxLength(LongitudRutaImagen);
 
             e.HasOne<Servicios>().WithOne().HasForeignKey<Paquetes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion_destino).IsRequired(false).OnDelete(DeleteBehavior.Restrict);

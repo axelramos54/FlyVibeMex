@@ -118,7 +118,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
             min_personas = pq?.min_personas ?? 1,
             max_personas = pq?.max_personas ?? 1,
             id_ubicacion_destino = pq?.id_ubicacion_destino,
-            imagen_actual = pq?.imagen_ruta,
+            imagen_actual = s.imagen_ruta,   // L6: vive en el servicio
             componentes = incluidos.Select(i => new PaqueteComponenteForm
             {
                 id_servicio = i.id_servicio_incluido,
@@ -183,6 +183,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
                     horas_reembolso_total = datos.horas_reembolso_total,
                     porcentaje_reembolso_tardio = datos.porcentaje_reembolso_tardio,
                     politica_cancelacion = datos.politica_cancelacion,
+                    imagen_ruta = rutaImagen,        // L6: dato común del servicio (R1)
                     activo = true,
                     creado_en = ahora,
                     actualizado_en = ahora
@@ -197,8 +198,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
                     duracion_dias = (ushort)datos.duracion_dias,
                     min_personas = (ushort)datos.min_personas,
                     max_personas = (ushort)datos.max_personas,
-                    id_ubicacion_destino = datos.id_ubicacion_destino,
-                    imagen_ruta = rutaImagen
+                    id_ubicacion_destino = datos.id_ubicacion_destino
                 });
                 await _db.SaveChangesAsync(cancellationToken);   // paquete_servicio apunta a paquete (FK)
 
@@ -293,8 +293,11 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
                 paquete.id_ubicacion_destino = datos.id_ubicacion_destino;
                 if (rutaNueva is not null || datos.quitar_imagen)
                 {
-                    rutaAnterior = paquete.imagen_ruta;
-                    paquete.imagen_ruta = rutaNueva;
+                    // L6: la imagen vive en `servicios`, no en `paquete`.
+                    rutaAnterior = await _db.Servicios.AsNoTracking().Where(srv => srv.id == id)
+                        .Select(srv => srv.imagen_ruta).FirstOrDefaultAsync(cancellationToken);
+                    await _db.Servicios.Where(srv => srv.id == id)
+                        .ExecuteUpdateAsync(srv => srv.SetProperty(x => x.imagen_ruta, rutaNueva), cancellationToken);
                 }
                 await _db.SaveChangesAsync(cancellationToken);
 
