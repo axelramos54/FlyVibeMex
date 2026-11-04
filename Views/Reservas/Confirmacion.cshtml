@@ -8,6 +8,7 @@
 *@
 @model ConfirmacionReservaViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = $"Reserva {Model.codigo_reserva}";
     var es = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
 }

@@ -1,6 +1,7 @@
 @* GET /Admin/SA (SAController.Index): contadores del panel y últimas acciones de la bitácora. *@
 @model InicioSAViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = "SA";
 }
 

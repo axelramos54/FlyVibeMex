@@ -10,6 +10,7 @@
 *@
 @inject IContenidoSitioService ContenidoServicio
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = "Inicio";
     var c = await ContenidoServicio.ObtenerAsync();
     // Las 4 tarjetas de categorías: clave del contenido, id del HTML, acción del enlace y texto del botón.

@@ -2,6 +2,7 @@
    UNA sola vez (no se redirige ni se guarda: en la BD solo queda su hash). La respuesta no se guarda en caché. *@
 @model ContrasenaTemporalViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = Model.EsAlta ? "Cuenta creada" : "Contraseña restablecida";
 }
 

@@ -29,6 +29,7 @@
                             pa_reporte_tickets, pa_consultar_bitacora
    Al final hay ejemplos de uso (comentados).
    ===================================================================================== */
+*/
 
 USE FlyVibeMex_Test;
 GO

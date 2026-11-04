@@ -1,6 +1,7 @@
 @* GET /Admin/Soporte/SeguirAtendiendo: tickets propios no cerrados (primero los que esperan respuesta). *@
 @model List<TicketPanelItem>
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = "Seguir atendiendo";
 }
 

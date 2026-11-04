@@ -2,6 +2,7 @@
    se abrió en otra pestaña) o datos que no se pudieron leer. No se guardó nada. *@
 @model EstadoViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     Layout = Model.Layout;
     ViewData["Title"] = "No se pudo procesar";
 }

@@ -1,6 +1,7 @@
 @* 404 (EstadoController): la dirección no existe o el registro no es de quien lo pide. *@
 @model EstadoViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     Layout = Model.Layout;
     ViewData["Title"] = "Página no encontrada";
 }

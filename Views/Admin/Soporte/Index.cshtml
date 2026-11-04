@@ -1,6 +1,7 @@
 @* GET /Admin/Soporte (SoporteController.Index): resumen de lo pendiente y accesos a cada pantalla. *@
 @model ResumenSoporteViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = "Soporte";
 }
 

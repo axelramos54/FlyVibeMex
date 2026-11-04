@@ -4,6 +4,7 @@
  El menú y las tarjetas se ocultan por comodidad; la protección real es el [Authorize(Roles = ...)] de cada controlador.
 *@
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     ViewData["Title"] = "Panel de administración";
     var verSoporte = Roles.Puede(User, Roles.PanelSoporte);
     var verGestor = Roles.Puede(User, Roles.PanelGestor);

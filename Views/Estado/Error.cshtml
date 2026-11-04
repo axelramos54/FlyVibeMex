@@ -2,6 +2,7 @@
    el detalle técnico queda en el log del servidor (buscar la referencia). *@
 @model EstadoViewModel
 @{
+    ViewData["SinValidacion"] = true;   // L3a: esta página no tiene ningún formulario
     Layout = Model.Layout;
     ViewData["Title"] = "Error";
 }

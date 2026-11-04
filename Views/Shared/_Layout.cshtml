@@ -28,9 +28,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@(ViewData["Title"] is string titulo ? $"{titulo} - FlyVibeMex" : "FlyVibeMex")</title>
-    @* Bootstrap 5.3.8 desde CDN (las copias locales de wwwroot/lib solo contienen archivos LICENSE). *@
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    @* Bootstrap 5.3.8 desde wwwroot/lib (ver _BootstrapCss.cshtml: en una feria, un CDN caído = sitio sin estilos). *@
+    <partial name="_BootstrapCss" />
     @* Hoja global: navbar, header, contenedor principal, mensajes y footer. *@
     <link rel="stylesheet" href="~/assets/css/style.css" asp-append-version="true">
     <partial name="_Favicon" />
@@ -108,11 +107,18 @@
     </footer>
 
     @* JS de Bootstrap (dropdowns, modales…). Los scripts de cada vista van DESPUÉS, en la sección Scripts. *@
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-            crossorigin="anonymous"></script>
+    <partial name="_BootstrapJs" />
     @* Validación en el navegador + "Procesando…" en los botones (T6.1). *@
-    <partial name="_ValidationScriptsPartial" />
+    @* Validación en el navegador + "Procesando…" en los botones (T6.1).
+       L3a: una página que no tiene NINGÚN formulario declara ViewData["SinValidacion"] = true y se ahorra los
+       ~131 KB de jQuery + validation, que en un equipo antiguo cuestan parseo en CADA carga.
+       Es un opt-OUT a propósito: por omisión la validación se carga, así que una página nueva nunca la pierde
+       por olvido. La lista de páginas sin formulario se calculó resolviendo los <partial> de forma transitiva
+       (una vista sin <form> propio puede incluir un parcial que sí lo tiene, como _ModalesCancelacion). *@
+    @if (ViewData["SinValidacion"] is not true)
+    {
+        <partial name="_ValidationScriptsPartial" />
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

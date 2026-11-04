@@ -1,0 +1,18 @@
+@*
+ _BootstrapCss.cshtml — hoja de estilos de Bootstrap 5.3.8, servida desde el PROPIO sitio (L3a).
+ Va dentro del <head>. La incluyen _Layout, _AdminLayout y las tres pantallas de acceso (Layout = null).
+
+ Antes esta misma etiqueta estaba copiada en CINCO archivos apuntando a cdn.jsdelivr.net. Ahora el archivo vive
+ en wwwroot/lib/ (lo baja herramientas/descargar-librerias.ps1), por dos razones:
+   · En una FERIA DE PROYECTOS, si el wifi del lugar falla, un Bootstrap por CDN deja el sitio SIN ESTILOS
+     —no "más lento": roto— y no hay forma de arreglarlo en el momento.
+   · Se quita un DNS y un TLS a un dominio ajeno, que es lo que más tarda en una red lenta.
+
+ Al ser un archivo propio ya no hace falta el atributo `integrity`: la verificación de integridad existe para
+ archivos que sirve un tercero, y aquí los sirve este mismo sitio.
+ MapStaticAssets() lo entrega precomprimido y con huella de versión.
+
+ Para cambiar de versión de Bootstrap hay que tocar TRES cosas: este archivo, _BootstrapJs.cshtml y
+ herramientas/descargar-librerias.ps1.
+*@
+<link rel="stylesheet" href="~/lib/bootstrap/bootstrap.min.css" asp-append-version="true">
