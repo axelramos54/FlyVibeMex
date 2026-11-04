@@ -112,6 +112,11 @@ builder.Services.AddScoped<IDiagnosticoBdService, DiagnosticoBdService>();
 // Imágenes subidas: se guardan en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
 builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 
+// Límite de intentos por llave y ventana de tiempo. Singleton porque el conteo vive en memoria del proceso y
+// tiene que ser el mismo para todas las peticiones. Va aquí, SIN condiciones, y no en AgregarBotTelegram: ese
+// método sale antes cuando no hay token de Telegram, y lo usan tanto el bot como el sitio web.
+builder.Services.AddSingleton<ILimitadorIntentos, LimitadorIntentosEnMemoria>();
+
 // Catálogo público: búsqueda por sección, detalle y cotización.
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 

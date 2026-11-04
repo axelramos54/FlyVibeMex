@@ -34,7 +34,9 @@ public static class ConfiguracionBotTelegram
         services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(token));
 
         services.AddSingleton<IEstadoConversacionStore, EstadoConversacionEnMemoria>();
-        services.AddSingleton<ILimitadorIntentos, LimitadorIntentosEnMemoria>();
+        // ILimitadorIntentos ya NO se registra aquí: lo hace Program.cs sin condiciones. Este método sale antes,
+        // en el `return` de arriba, cuando no hay token de Telegram — y el limitador también lo usa el sitio web
+        // (login y registro), así que registrarlo aquí lo dejaba ausente justo donde más falta hace.
         services.AddSingleton<FotosServicio>();
 
         services.AddSingleton<ColaAvisosTelegram>();
