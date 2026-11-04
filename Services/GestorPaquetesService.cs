@@ -239,8 +239,15 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
         return ResultadoOperacion.Ok($"Se dio de alta el paquete \"{datos.nombre.Trim()}\" con su disponibilidad. Ya aparece en el catálogo.");
     }
 
+    /// <summary>Guarda los cambios de un paquete: su fila de <c>servicios</c>, su fila de <c>paquete</c> y sus servicios incluidos.</summary>
+    /// <remarks>
+    /// <b>Los servicios incluidos se reemplazan completos</b> (se borran y se reinsertan). Es seguro porque las
+    /// compras pasadas no dependen de <c>paquete_servicio</c>: lo que compró el cliente quedó copiado en
+    /// <c>detalle_reservacion</c> al pagar (R4). Cambiar el contenido de un paquete no altera un viaje vendido.
+    /// </remarks>
     public async Task<ResultadoOperacion> ActualizarAsync(ulong id, PaqueteFormViewModel datos, ulong idUsuario, CancellationToken cancellationToken = default)
     {
+        // ---- Paso 1: existe, es un PAQUETE, y sus datos pasan las validaciones ----
         var actual = await _db.Servicios.AsNoTracking().FirstOrDefaultAsync(s => s.id == id && s.tipo_servicio == "PAQUETE", cancellationToken);
         if (actual is null) return ResultadoOperacion.Falla("El paquete ya no existe.");
 
@@ -250,6 +257,7 @@ public sealed class GestorPaquetesService : IGestorPaquetesService
         ValidarImagen(datos, errores);
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos marcados.", errores);
 
+        // ---- Paso 2: guardar servicio + paquete + incluidos en una transacción ----
         PoliticaCancelacion.Normalizar(datos);
         string? rutaNueva = null;
         string? rutaAnterior = null;

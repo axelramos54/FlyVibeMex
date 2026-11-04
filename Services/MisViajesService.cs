@@ -200,11 +200,25 @@ public sealed class MisViajesService : IMisViajesService
     /// Tarjetas de las reservaciones de la cuenta (o solo <paramref name="idReservacion"/>), con grupo, reembolso y
     /// opciones de cancelación ya calculadas.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>La política de cancelación sale del SNAPSHOT, no del catálogo.</b> Las horas de reembolso, el
+    /// porcentaje tardío y el texto se leen de <c>detalle_reservacion</c>, donde se copiaron al comprar (R4).
+    /// Si se leyeran de <c>servicios</c>, un cambio de política del gestor alteraría las condiciones de compras
+    /// ya hechas: el cliente vería otras reglas que las que aceptó al pagar.
+    /// </para>
+    /// <para>
+    /// <b>Son cinco consultas y un cruce en memoria, a propósito.</b> Cabeceras, detalles, pagos aprobados,
+    /// reembolsos e imágenes se leen de golpe —cada una filtrada por las reservaciones de esta cuenta— y se
+    /// combinan después. La alternativa, consultar por cada reservación, sería un N+1.
+    /// </para>
+    /// </remarks>
     private async Task<List<ReservacionTarjetaViewModel>> TarjetasAsync(ulong idCuenta, ulong? idReservacion, CancellationToken cancellationToken)
     {
         var reservas = _db.Reservaciones.AsNoTracking().Where(r => r.id_usuarioglobal == idCuenta);
         if (idReservacion is ulong id) reservas = reservas.Where(r => r.id == id);
 
+        // ---- Paso 1: cabeceras (una fila por reservación) con el nombre de su estado ----
         var cabeceras = await (
                 from r in reservas
                 join e in _db.EstadosReservacion.AsNoTracking() on r.id_estado_reservacion equals e.id
@@ -213,6 +227,7 @@ public sealed class MisViajesService : IMisViajesService
             .ToListAsync(cancellationToken);
         if (cabeceras.Count == 0) return new List<ReservacionTarjetaViewModel>();
 
+        // ---- Paso 2: las líneas, con la política COPIADA al comprar (R4: ver <remarks>) ----
         var detalles = await (
                 from d in _db.DetallesReservacion.AsNoTracking()
                 join r in reservas on d.id_reservacion equals r.id
@@ -234,6 +249,7 @@ public sealed class MisViajesService : IMisViajesService
                 })
             .ToListAsync(cancellationToken);
 
+        // ---- Paso 3: el pago aprobado más reciente de cada reservación (es el monto reembolsable) ----
         var pagosAprobados = await (
                 from p in _db.Pagos.AsNoTracking()
                 join r in reservas on p.id_reservacion equals r.id
@@ -243,6 +259,7 @@ public sealed class MisViajesService : IMisViajesService
                 select new { p.id_reservacion, p.monto })
             .ToListAsync(cancellationToken);
 
+        // ---- Paso 4: el reembolso más reciente, para mostrar su estado en la tarjeta ----
         var reembolsos = await (
                 from rb in _db.Reembolsos.AsNoTracking()
                 join p in _db.Pagos.AsNoTracking() on rb.id_pago equals p.id
@@ -251,6 +268,7 @@ public sealed class MisViajesService : IMisViajesService
                 select new { p.id_reservacion, rb.estado, rb.monto })
             .ToListAsync(cancellationToken);
 
+        // ---- Paso 5: armar cada tarjeta cruzando lo anterior en memoria ----
         var imagenes = await ImagenesAsync(cancellationToken);
         var ahora = DateTime.Now;
         var resultado = new List<ReservacionTarjetaViewModel>();
@@ -266,6 +284,7 @@ public sealed class MisViajesService : IMisViajesService
             var pago = pagosAprobados.FirstOrDefault(p => p.id_reservacion == c.id);
             var reembolso = reembolsos.FirstOrDefault(x => x.id_reservacion == c.id);
 
+            // Grupo de la pestaña: cancelada manda sobre todo; después, pasada si ya terminó el viaje.
             var grupo = c.estado == EstadoCancelada ? GrupoReservacion.Cancelado
                 : c.estado == EstadoCompletada || fin < ahora ? GrupoReservacion.Pasado
                 : GrupoReservacion.Proximo;

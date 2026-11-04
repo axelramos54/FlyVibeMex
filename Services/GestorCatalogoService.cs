@@ -318,6 +318,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
 
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos marcados.", errores);
 
+        // ---- Paso 2: guardar. La imagen se escribe en disco ANTES de la transacción, y si la BD falla el
+        //      catch la borra: así nunca queda un archivo huérfano apuntado por nadie ----
         PoliticaCancelacion.Normalizar(datos);
         string? rutaImagen = null;
         var idsCreados = new List<ulong>();
@@ -331,6 +333,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                 idsCreados.Clear();
                 var ahora = DateTime.Now;
 
+                // 2.a) VUELO es el único tipo que puede crear MUCHOS servicios de un formulario: con "repetir",
+                //      una salida por fecha, hasta 120. Sale por aquí y no pasa por el camino común de abajo.
                 if (datos is VueloFormViewModel v)
                 {
                     // Una salida = un servicio + su vuelo + la disponibilidad de ese día.
@@ -365,6 +369,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                     return;
                 }
 
+                // 2.b) Camino común: un servicio + su fila de subtipo + su inventario inicial, todo o nada.
                 var servicio = NuevoServicio(datos, ahora, rutaImagen);
                 _db.Servicios.Add(servicio);
                 await _db.SaveChangesAsync(cancellationToken);
@@ -397,6 +402,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         break;
                 }
 
+                // 2.c) Inventario inicial, un día a la vez (R3: el cupo vive por fecha, no en el servicio).
+                //      El cast es seguro: VUELO ya salió arriba y es el único tipo sin inventario por día.
                 var inv = (ServicioConInventarioFormBase)datos;
                 for (var dia = rango.desde; dia <= rango.hasta; dia = dia.AddDays(1))
                     _db.DisponibilidadServicios.Add(NuevoDia(servicio.id, dia, inv.inventario_cupo!.Value,
@@ -429,6 +436,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         CancellationToken cancellationToken = default)
     {
         var actual = await ServicioAsync(id, cancellationToken);
+        // ---- Paso 1: existe, y NO se puede cambiar de tipo (un hospedaje no se convierte en vuelo: su fila
+        //      de subtipo, su inventario y las compras hechas dependen del tipo) ----
         if (actual is null) return ResultadoOperacion.Falla("El servicio ya no existe.");
         if (actual.tipo_servicio != datos.TipoServicio)
             return ResultadoOperacion.Falla("No se puede cambiar el tipo de un servicio existente.");
@@ -440,6 +449,9 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         ValidarImagen(datos, errores);
 
         DateOnly? nuevaFechaVuelo = null;
+        // ---- Paso 2: validaciones. La del vuelo es la delicada: mover el DÍA de una salida con asientos ya
+        //      vendidos dejaría a esos clientes con una fecha distinta a la que compraron, así que se permite
+        //      cambiar la hora pero no el día ----
         if (datos is VueloFormViewModel vuelo && vuelo.fecha_salida is DateTime salida)
         {
             var anterior = await _db.Vuelos.AsNoTracking().Where(v => v.id_servicio == id).Select(v => (DateTime?)v.fecha_salida)
@@ -460,6 +472,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
 
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos marcados.", errores);
 
+        // ---- Paso 3: guardar. Igual que en el alta, la imagen se escribe antes de la transacción y el catch
+        //      la borra si la BD falla ----
         PoliticaCancelacion.Normalizar(datos);
         string? rutaNueva = null;
         string? rutaAnterior = null;
@@ -476,6 +490,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                 var nombre = datos.nombre.Trim();
                 var descripcion = Limpiar(datos.descripcion);
 
+                // 3.a) Los datos comunes. Un solo UPDATE, sin leer la fila primero.
                 await _db.Servicios.Where(s => s.id == id)
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(x => x.id_proveedor, idProveedor)
@@ -490,7 +505,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         .SetProperty(x => x.politica_cancelacion, datos.politica_cancelacion)
                         .SetProperty(x => x.actualizado_en, ahora), cancellationToken);
 
-                // Subtipo: si no existe (servicio creado antes sin su subtipo) se crea ahora.
+                // 3.b) Subtipo: si no existe (servicio creado antes sin su subtipo) se crea ahora.
                 switch (datos)
                 {
                     case VueloFormViewModel v:
@@ -656,9 +671,32 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         return vm;
     }
 
+    /// <summary>
+    /// Fija el cupo (y opcionalmente el precio) de un rango de fechas: crea los días que falten y ajusta los que
+    /// ya existan.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Nunca baja el cupo por debajo de lo ya vendido, y lo garantiza sin leer-y-luego-escribir.</b> El
+    /// <c>UPDATE</c> lleva la condición <c>cantidad_total - cantidad_disponible &lt;= cupo</c> (o sea
+    /// «lo vendido cabe en el cupo nuevo»), así que SQL Server descarta por su cuenta las filas conflictivas,
+    /// incluso si alguien compra en ese mismo instante.
+    /// </para>
+    /// <para>
+    /// <b>Cómo se detecta el conflicto:</b> comparando <c>actualizados</c> con <c>existentes.Count</c>. Si el
+    /// UPDATE afectó menos filas de las que había, la diferencia son exactamente los días donde lo vendido no
+    /// cabía. Solo entonces se hace una segunda consulta —para nombrar hasta 5 fechas en el mensaje— y se lanza
+    /// <c>CupoMenorQueVendidoException</c>, que deshace la transacción completa: de ahí el «No se guardó nada».
+    /// </para>
+    /// <para>
+    /// <b>Un VUELO no tiene rango:</b> su disponibilidad es el día de su salida y punto, así que se ignoran las
+    /// fechas del formulario. <b>Cupo 0</b> es la forma de cerrar fechas sin borrar su historial.
+    /// </para>
+    /// </remarks>
     public async Task<ResultadoOperacion> GuardarDisponibilidadAsync(ulong idServicio, DisponibilidadFormViewModel datos, ulong idUsuario,
         CancellationToken cancellationToken = default)
     {
+        // ---- Paso 1: qué rango de fechas se va a tocar (en un vuelo, solo el día de salida) ----
         var servicio = await ServicioAsync(idServicio, cancellationToken);
         if (servicio is null) return ResultadoOperacion.Falla("El servicio no existe.");
 
@@ -690,6 +728,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
         }
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos.", errores);
 
+        // ---- Paso 2: ajustar lo que existe y crear lo que falta, todo en una transacción ----
         var cupo = datos.cupo!.Value;
         var precio = datos.precio;
         int nuevos = 0, actualizados = 0;
@@ -715,6 +754,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         .SetProperty(d => d.precio_fecha, d => precio ?? d.precio_fecha)
                         .SetProperty(d => d.actualizado_en, ahora), cancellationToken);
 
+                // 2.a) Menos filas actualizadas que existentes = hay días donde lo vendido no cabe en el cupo
+                //      nuevo. Recién ahí se consultan para nombrarlos, y se aborta TODO (ver <remarks>).
                 if (actualizados != existentes.Count)
                 {
                     var conflictos = await _db.DisponibilidadServicios.AsNoTracking()
@@ -728,6 +769,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         conflictos.Select(c => $"{c.fecha:dd/MM} ({c.vendidos} vendido(s))")));
                 }
 
+                // 2.b) Los días del rango que no tenían fila se crean ahora (UNIQUE(id_servicio, fecha)).
                 var yaHay = existentes.ToHashSet();
                 nuevos = 0;
                 for (var dia = desde; dia <= hasta; dia = dia.AddDays(1))

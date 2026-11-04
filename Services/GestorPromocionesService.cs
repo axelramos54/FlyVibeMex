@@ -121,8 +121,29 @@ public sealed class GestorPromocionesService : IGestorPromocionesService
     // Alta, edición y estado
     // =============================================================================================
 
+    /// <summary>
+    /// Crea una promoción (<paramref name="id"/> nulo) o guarda los cambios de una existente.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Al editar, el código NO cambia</b> (se reescribe con el que ya tenía, no con el del formulario). Las
+    /// compras pasadas muestran el código con el que se hicieron: si cambiara, el historial del cliente
+    /// mencionaría una promoción que ya no existe con ese nombre.
+    /// </para>
+    /// <para>
+    /// <b>Los servicios elegidos se revalidan contra la base, nunca se confía en el navegador.</b> La lista de
+    /// válidos incluye los que YA estaban ligados (<c>yaLigados</c>): si no, editar una promoción vieja cuyo
+    /// servicio se dio de baja fallaría sin que el gestor haya tocado nada.
+    /// </para>
+    /// <para>
+    /// <b>Al editar se borran y reinsertan todas las filas de <c>promocion_servicio</c>.</b> Reemplazar el
+    /// conjunto completo es seguro porque las compras pasadas no dependen de esa tabla: su descuento quedó
+    /// copiado en <c>detalle_reservacion</c> al comprar (R4).
+    /// </para>
+    /// </remarks>
     public async Task<ResultadoOperacion> GuardarAsync(ulong? id, PromocionFormViewModel datos, ulong idUsuario, CancellationToken cancellationToken = default)
     {
+        // ---- Paso 1: si es edición, cargar la actual; si es alta, el código debe ser único ----
         var errores = new List<(string campo, string mensaje)>();
         Promociones? actual = null;
 
@@ -140,11 +161,13 @@ public sealed class GestorPromocionesService : IGestorPromocionesService
                 errores.Add((nameof(datos.codigo), "Ya existe una promoción con ese código."));
         }
 
+        // ---- Paso 2: reglas del descuento y de la vigencia (R13) ----
         if (datos.tipo_descuento == "PORCENTAJE" && datos.valor > 100)
             errores.Add((nameof(datos.valor), "Un porcentaje no puede pasar de 100."));
         if (datos.fecha_inicio is DateTime inicio && datos.fecha_fin is DateTime fin && fin <= inicio)
             errores.Add((nameof(datos.fecha_fin), "El fin de vigencia debe ser posterior al inicio."));
 
+        // ---- Paso 3: los servicios a los que aplica, revalidados en el servidor ----
         var elegidos = datos.servicios.Distinct().ToList();
         if (elegidos.Count == 0)
             errores.Add((nameof(datos.servicios), "Marca al menos un servicio: la promoción solo aplica a los servicios elegidos."));
@@ -161,6 +184,8 @@ public sealed class GestorPromocionesService : IGestorPromocionesService
 
         if (errores.Count > 0) return new ResultadoOperacion(false, "Revisa los datos marcados.", errores);
 
+        // ---- Paso 4: guardar. Los valores se sacan a variables locales porque la expresión de
+        //      ExecuteUpdateAsync solo puede capturar valores simples, no `datos.fecha_inicio!.Value` ----
         var nombre = GestorBd.Limpiar(datos.nombre);
         var descripcion = GestorBd.Limpiar(datos.descripcion);
         var fechaInicio = datos.fecha_inicio!.Value;
@@ -205,6 +230,7 @@ public sealed class GestorPromocionesService : IGestorPromocionesService
                     await _db.PromocionesServicios.Where(ps => ps.id_promocion == idGuardado).ExecuteDeleteAsync(cancellationToken);
                 }
 
+                // 4.a) Los servicios ligados se reemplazan completos (ver <remarks>).
                 foreach (var idServicio in elegidos)
                     _db.PromocionesServicios.Add(new PromocionServicio { id_promocion = idGuardado, id_servicio = idServicio });
 

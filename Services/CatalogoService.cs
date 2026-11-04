@@ -221,12 +221,36 @@ public sealed class CatalogoService : ICatalogoService
     /// Regla ÚNICA de precio y cupo (la usan la sección, el detalle y la reserva).
     /// Requiere <c>b.desde</c> (y <c>b.hasta</c> en hospedaje / vehículo), excepto en vuelos.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Qué significa <c>cantidad</c>:</b> es la UNIDAD que se descuenta de
+    /// <c>disponibilidad_servicio</c> por cada día del periodo (R3), y cambia según el tipo:
+    /// hospedaje = habitaciones · vehículo = 1 (el auto, no sus pasajeros) · vuelo = asientos (una persona, un
+    /// asiento) · paquete y tour = personas. De ahí que un vehículo para 5 pasajeros descuente 1 y un vuelo
+    /// para 5 pasajeros descuente 5.
+    /// </para>
+    /// <para>
+    /// <b>Qué significa <c>precio_unitario</c>:</b> la SUMA de los precios diarios del periodo, es decir el
+    /// precio de UNA unidad por toda la estancia (no por día). El total es <c>precio_unitario × cantidad</c>.
+    /// Es la misma convención que guarda <c>detalle_reservacion</c> al comprar, para que el snapshot (R4)
+    /// coincida con lo que vio el cliente.
+    /// </para>
+    /// <para>
+    /// <b>Tres resultados posibles:</b> <c>NoAplica</c> = la búsqueda no tiene sentido para este servicio (no
+    /// cabe la gente, el vuelo ya salió) y la tarjeta se oculta; <c>SinCupo</c> = sirve pero no alcanza el
+    /// inventario, y la tarjeta se muestra en gris; y el caso normal, con precio.
+    /// </para>
+    /// </remarks>
     private static CotizacionServicio Cotizar(Candidato c, BusquedaCatalogoViewModel b, IReadOnlyDictionary<DateOnly, FilaDisponibilidad> filas)
     {
         var personas = Math.Clamp(b.personas, 1, BusquedaCatalogoViewModel.MaxPersonas);
         var cot = new CotizacionServicio { moneda = c.moneda };
         List<DateOnly> fechas;
 
+        // ---- Paso 1: según el tipo, qué fechas se cobran, cuántas unidades y si la búsqueda cabe ----
+        // Cada rama fija `fechas` (los días que se descuentan), `cantidad` (la unidad del tipo),
+        // `inicio`/`fin` (fechas reales del servicio, con sus horas) y `resumen` (el texto que ve el cliente).
+        // Si la búsqueda no cabe en el servicio, sale por MarcarNoAplica y la tarjeta ni se muestra.
         switch (c.tipo)
         {
             case TipoCatalogo.Hospedaje:
@@ -292,6 +316,9 @@ public sealed class CatalogoService : ICatalogoService
             }
         }
 
+        // ---- Paso 2: cruzar esas fechas con el inventario día por día ----
+        // `existe = false` distingue "no hay fila cargada para ese día" de "hay fila pero sin cupo": son dos
+        // problemas distintos para el gestor, y el mensaje del paso 4 lo refleja.
         cot.unidades_periodo = fechas.Count;
         foreach (var fecha in fechas)
         {
@@ -301,8 +328,11 @@ public sealed class CatalogoService : ICatalogoService
                 cot.dias.Add(new DiaCotizado(fecha, 0, 0, false, false));
         }
 
+        // ---- Paso 3: precio de una unidad por todo el periodo (ver <remarks>) ----
         cot.precio_unitario = cot.dias.Sum(d => d.precio);
 
+        // ---- Paso 4: si falla un solo día, no hay reserva posible ----
+        // Se informa el PRIMER día que falla, no todos: al cliente le sirve una fecha concreta que corregir.
         var falla = cot.dias.FirstOrDefault(d => !d.alcanza);
         if (falla is not null)
         {

@@ -289,15 +289,39 @@ public sealed class CancelacionesService : ICancelacionesService
     // Resolver un reembolso SOLICITADO
     // =============================================================================================
 
+    /// <summary>
+    /// Un agente aprueba o rechaza un reembolso que está en <c>SOLICITADO</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Al aprobar se escriben DOS filas de historial</b>, no una: la máquina de estados del reembolso es
+    /// <c>SOLICITADO → APROBADO / RECHAZADO → PROCESADO</c> (R8), y como aquí la pasarela es simulada los dos
+    /// últimos pasos ocurren en el mismo instante. Para que al ordenar por <c>fecha_cambio</c> queden en el
+    /// orden correcto, al segundo se le suma 1 segundo: sin eso el historial podría leerse al revés.
+    /// </para>
+    /// <para>
+    /// <b>La protección contra dos agentes a la vez está en el UPDATE condicional</b>
+    /// (<c>estado == SOLICITADO</c>), no en la lectura de arriba. Esa lectura solo sirve para dar un mensaje
+    /// claro; si entre ella y la transacción otro agente resuelve el mismo reembolso, el UPDATE afecta 0 filas
+    /// y <c>CambioConcurrenteException</c> deshace todo.
+    /// </para>
+    /// <para>
+    /// <b><c>referenciaGuardar</c> es una copia local a propósito:</b> con reintentos activos
+    /// (<c>EnableRetryOnFailure</c>) el cuerpo de la transacción puede ejecutarse más de una vez, así que la
+    /// referencia se vuelve a generar en cada intento y el valor que se guarda tiene que ser el de ESE intento.
+    /// </para>
+    /// </remarks>
     public async Task<ResultadoOperacion> ResolverReembolsoAsync(ulong idReembolso, bool aprobar, string? motivo, ulong idUsuario,
         CancellationToken cancellationToken = default)
     {
+        // ---- Paso 1: validar el motivo. Rechazar SIEMPRE exige uno, porque el cliente lo va a leer ----
         motivo = GestorBd.Limpiar(motivo);
         if (!aprobar && (motivo is null || motivo.Length < 10))
             return ResultadoOperacion.Falla("Para rechazar escribe el motivo (10 a 250 caracteres): es lo que verá el cliente.");
         if (motivo is { Length: > 250 })
             return ResultadoOperacion.Falla("El motivo puede tener máximo 250 caracteres.");
 
+        // ---- Paso 2: leer el reembolso con su pago y su reservación (para el monto, la moneda y el código) ----
         var datos = await (
                 from rb in _db.Reembolsos.AsNoTracking()
                 join p in _db.Pagos.AsNoTracking() on rb.id_pago equals p.id
@@ -309,6 +333,8 @@ public sealed class CancelacionesService : ICancelacionesService
         if (datos.estado != ReembolsoSolicitado)
             return ResultadoOperacion.Falla($"Este reembolso ya fue resuelto ({datos.estado}).");
 
+        // ---- Paso 3: resolver, todo dentro de una transacción ----
+        // `referencia` se declara AQUÍ, fuera, porque el mensaje de éxito se arma después del commit.
         string? referencia = null;
         try
         {
@@ -319,6 +345,7 @@ public sealed class CancelacionesService : ICancelacionesService
                 var nuevoEstado = aprobar ? ReembolsoProcesado : ReembolsoRechazado;
                 var referenciaGuardar = referencia;
 
+                // 3.a) UPDATE condicional: es el candado real contra dos agentes resolviendo a la vez.
                 var filas = await _db.Reembolsos
                     .Where(rb => rb.id == idReembolso && rb.estado == ReembolsoSolicitado)
                     .ExecuteUpdateAsync(s => s
@@ -327,6 +354,7 @@ public sealed class CancelacionesService : ICancelacionesService
                         .SetProperty(rb => rb.referencia_externa, referenciaGuardar), cancellationToken);
                 if (filas != 1) throw new CambioConcurrenteException();
 
+                // 3.b) Bitácora del reembolso (R6) y, si se aprueba, el pago pasa a REEMBOLSADO.
                 if (aprobar)
                 {
                     _db.HistorialEstadosReembolso.Add(new HistorialEstadoReembolso
@@ -366,6 +394,7 @@ public sealed class CancelacionesService : ICancelacionesService
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
         }
+        // ---- Paso 4: traducir los dos fallos posibles a un mensaje que el agente entienda ----
         catch (CambioConcurrenteException)
         {
             return ResultadoOperacion.Falla("Otra persona resolvió este reembolso (o cambió el pago) al mismo tiempo. Revisa su estado.");
