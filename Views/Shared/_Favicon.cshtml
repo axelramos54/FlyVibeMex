@@ -1,13 +1,27 @@
 @*
  Views/Shared/_Favicon.cshtml — ícono de la pestaña (T7.3). Va dentro del <head> de cada layout / página completa.
- Si existe wwwroot/assets/img/logo.png se usa como favicon; si no, se declara un ícono vacío para que el navegador
- no pida /favicon.ico (el de la plantilla de ASP.NET se movió al respaldo en T7; sin archivo, esa petición
- respondería con la página 404 completa).
+
+ Orden de preferencia:
+   1. wwwroot/assets/img/favicon.ico  → el ícono propio del sitio.
+   2. wwwroot/assets/img/logo.png     → si todavía no hay .ico, sirve el logotipo (los navegadores actuales
+                                        aceptan PNG como favicon sin problema).
+   3. Ninguno                         → se declara un ícono VACÍO (data:,) para que el navegador no pida
+                                        /favicon.ico: ese archivo se movió al respaldo en T7 y, sin él, esa
+                                        petición respondería con la página 404 completa.
+
+ 04-11-2026: antes la condición preguntaba por logo.png pero el href apuntaba a favicon.ico, así que con solo
+ el .ico presente el sitio se quedaba SIEMPRE sin ícono. Ahora cada archivo se revisa por su cuenta
+ (Services/LogoSitio.cs) y el atributo type corresponde al archivo que de verdad se está usando.
 *@
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Entorno
-@if (LogoSitio.Existe(Entorno))
+
+@if (LogoSitio.ExisteFavicon(Entorno))
 {
-    <link rel="icon" type="image/png" href="~/assets/img/favicon.ico" asp-append-version="true">
+    <link rel="icon" type="image/x-icon" href="~/assets/img/favicon.ico" asp-append-version="true">
+}
+else if (LogoSitio.Existe(Entorno))
+{
+    <link rel="icon" type="image/png" href="~/assets/img/logo.png" asp-append-version="true">
 }
 else
 {
