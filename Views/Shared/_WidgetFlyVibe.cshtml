@@ -1,0 +1,83 @@
+@*
+ ███ ESTE ARCHIVO VA EN EL PROYECTO DE FLYVIBEMEX ███  (no en GoldStay)
+ Ruta: Views/Shared/_WidgetFlyVibe.cshtml
+*@
+@*
+ ============================================================================================
+ Views/Shared/_WidgetFlyVibe.cshtml — incrusta el widget de reserva de habitaciones de GoldStay
+ (FlyVibeMex como ANFITRIÓN).
+
+ Uso en cualquier vista del sitio público:
+   <partial name="_WidgetFlyVibe" />
+
+ Con sesión de cliente, el iframe abre /Autenticacion/LoginSSO con un token firmado y GoldStay entra con la
+ sesión ya iniciada. Sin sesión (o si falta la llave), abre /Widget/Reserva en modo visitante: se ven las
+ habitaciones y GoldStay pedirá iniciar sesión al reservar. Si el token falla, GoldStay muestra su propio
+ aviso dentro del iframe con un botón para seguir sin sesión.
+
+ IMPORTANTE: el token dura 5 minutos y es de UN SOLO USO, así que la página que incluya este parcial NO se
+ puede cachear (ni con ResponseCache ni en un proxy): el HTML cacheado traería un token ya consumido.
+
+ Atributos del iframe:
+   · El alto lo ajusta GoldStay por postMessage ("goldstay-altura"); 460 px es el valor inicial.
+   · referrerpolicy="strict-origin-when-cross-origin": GoldStay recibe el origen, no la URL completa.
+   · Sin sandbox: GoldStay necesita sus propias cookies de sesión y formularios, y un sandbox sin
+     allow-same-origin se las rompería. Es un tercero de confianza con contrato, no contenido arbitrario.
+ ============================================================================================
+*@
+@inject IWidgetFlyVibeService WidgetGoldStay
+@inject Microsoft.Extensions.Options.IOptions<FlyVibeMex.Models.OpcionesWidgetFlyVibe> OpcionesWidget
+
+@{
+    var urlWidget = WidgetGoldStay.ConstruirUrlWidget(User);
+    var origenGoldStay = OpcionesWidget.Value.Origen;
+}
+
+@if (urlWidget is null || string.IsNullOrEmpty(origenGoldStay))
+{
+    <div class="alert alert-warning" role="status">
+        El servicio de hospedaje de nuestro aliado no está disponible en este momento.
+    </div>
+}
+else
+{
+    <div class="goldstay-widget">
+        <iframe id="goldstayWidget"
+                src="@urlWidget"
+                title="Reserva tu habitación en GoldStay"
+                scrolling="no"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+
+    <style>
+        .goldstay-widget {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .goldstay-widget iframe {
+            display: block;
+            width: 100%;
+            height: 460px;   /* valor inicial; GoldStay lo ajusta por postMessage */
+            border: 0;
+            border-radius: 16px;
+            background: transparent;
+        }
+    </style>
+
+    @*
+     El origen esperado se publica como DATO (no como código generado) para que el receptor valide
+     event.origin sin tenerlo escrito a mano en el JavaScript y sin riesgo de XSS.
+    *@
+    <script id="goldstay-config" type="application/json">@Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+            new { origen = origenGoldStay },
+            new System.Text.Json.JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default
+            }))</script>
+    <script src="~/assets/js/widget-flyvibe.js" asp-append-version="true"></script>
+}

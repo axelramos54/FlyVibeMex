@@ -37,7 +37,7 @@ namespace FlyVibeMex.Models
         public bool incluido { get; set; }
 
         [Display(Name = "Cantidad")]
-        [Range(typeof(decimal), "0.01", "9999.99", ErrorMessage = "La cantidad debe estar entre 0.01 y 9,999.99.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal cantidad { get; set; } = 1;
 
         [Display(Name = "Orden")]
@@ -131,7 +131,7 @@ namespace FlyVibeMex.Models
         public string tipo_descuento { get; set; } = "PORCENTAJE";
 
         [Display(Name = "Valor")]
-        [Range(typeof(decimal), "0.01", "99999999.99", ErrorMessage = "El valor debe ser mayor a 0.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal valor { get; set; } = 10;
 
         [Display(Name = "Inicio de vigencia")]
@@ -143,8 +143,7 @@ namespace FlyVibeMex.Models
         public DateTime? fecha_fin { get; set; }
 
         [Display(Name = "Compra mínima")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Debe ser 0 o mayor.")]
-        public decimal minimo_compra { get; set; }
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]        public decimal minimo_compra { get; set; }
 
         [Display(Name = "Promoción activa")]
         public bool activo { get; set; } = true;

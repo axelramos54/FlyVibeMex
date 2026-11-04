@@ -65,6 +65,17 @@
                     <a asp-action="Hoteles" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
                 </form>
             </div>
+
+            @*
+             Widget de habitaciones de GoldStay (integración del 04-11-2026). Se pinta en el servidor con un
+             token de un solo uso y 5 minutos de vida, así que ESTA PÁGINA NO SE PUEDE CACHEAR.
+             Si el cliente tiene sesión, GoldStay lo recibe ya autenticado; si no, ve habitaciones y GoldStay
+             le pedirá iniciar sesión al reservar. Sin configuración, el parcial muestra un aviso y nada más.
+            *@
+            <div class="mt-4">
+                <h2 class="h5 mb-2">También en GoldStay</h2>
+                <partial name="_WidgetFlyVibe" />
+            </div>
         </div>
 
         @* ---- Columna derecha: resultados ---- *@

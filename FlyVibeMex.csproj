@@ -30,9 +30,13 @@
 
   <ItemGroup>
     <!-- ORM oficial: Entity Framework Core para SQL Server (.NET 10). -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
     <!-- Herramientas de diseño (Add-Migration, Scaffold-DbContext). Solo en desarrollo; no se publican. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.14">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -43,6 +47,14 @@
       Se puede quitar cuando EF Core / SqlClient ya traigan una versión corregida por su cuenta.
     -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <!--
+      Validación de los tokens JWT del SSO con GoldStay (Services/SsoIntegracionService.cs).
+      Es la biblioteca oficial de Microsoft y la 8.x es la serie ligada a .NET 9/10.
+      A propósito NO se escribe la verificación a mano: un verificador propio de JWT es donde aparecen los
+      errores clásicos (aceptar "alg": "none", comparar firmas sin tiempo constante, olvidar exp).
+      Solo se necesita VALIDAR, no emitir: el token lo firma GoldStay.
+    -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <!-- Bot de Telegram (docs/06): cliente oficial de la comunidad para la Bot API. El token va en dotnet user-secrets. -->
     <PackageReference Include="Telegram.Bot" Version="22.10.3.3" />
     <!--

@@ -153,7 +153,7 @@ namespace FlyVibeMex.Models
         public string? descripcion { get; set; }
 
         [Display(Name = "Precio base")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "El precio debe estar entre 0 y 99,999,999.99.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal precio_base { get; set; }
 
         [Display(Name = "Moneda")]
@@ -238,7 +238,7 @@ namespace FlyVibeMex.Models
         public int? inventario_cupo { get; set; }
 
         [Display(Name = "Precio por día")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal? inventario_precio { get; set; }
     }
 
@@ -355,7 +355,7 @@ namespace FlyVibeMex.Models
         public int asientos { get; set; } = 150;
 
         [Display(Name = "Precio por asiento")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal? precio_asiento { get; set; }
 
         [Display(Name = "Repetir")]
@@ -425,7 +425,7 @@ namespace FlyVibeMex.Models
         public int? cupo { get; set; }
 
         [Display(Name = "Precio por día")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "Precio no válido.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal? precio { get; set; }
     }
 
