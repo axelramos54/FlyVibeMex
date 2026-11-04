@@ -158,6 +158,9 @@ namespace FlyVibeMex.Models
 
         [Display(Name = "Moneda")]
         [Required(ErrorMessage = "Selecciona la moneda.")]
+        // R12: la moneda es un código ISO-4217 de 3 letras. Esta lista tiene que coincidir con el CHECK
+        //      ck_servicios_moneda de sql/01_crear_base_datos.sql: si se agrega una moneda aquí y no allá, el
+        //      alta pasa la validación del formulario y falla en el INSERT.
         [RegularExpression("^(MXN|USD|EUR)$", ErrorMessage = "Moneda no válida.")]
         public string moneda { get; set; } = "MXN";
 

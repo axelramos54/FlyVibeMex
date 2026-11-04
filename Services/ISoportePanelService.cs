@@ -11,6 +11,9 @@ namespace FlyVibeMex.Services;
 /// </remarks>
 public interface ISoportePanelService
 {
+    /// <summary>
+    /// Portada del panel de soporte: lo que hay pendiente. Un supervisor ve todo; un agente, lo suyo.
+    /// </summary>
     Task<ResumenSoporteViewModel> ResumenAsync(ulong idAgente, bool esSupervisor, CancellationToken cancellationToken = default);
 
     /// <summary>El ticket ABIERTO sin agente más antiguo (solo para leerlo antes de tomarlo); <c>null</c> si no hay.</summary>
@@ -28,8 +31,13 @@ public interface ISoportePanelService
     /// </summary>
     Task<TicketDetalleViewModel?> DetalleAsync(ulong idTicket, ulong idUsuario, bool esSupervisor, CancellationToken cancellationToken = default);
 
+    /// <summary>Agrega un mensaje del personal a la conversación del ticket (2 a 2000 caracteres).</summary>
     Task<ResultadoOperacion> ResponderAsync(ulong idTicket, ulong idAgente, string? mensaje, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Cierra un ticket. Solo lo logra <b>el agente asignado</b> y solo si está EN_PROCESO: la condición va en el
+    /// propio UPDATE, así que no hay ventana entre comprobar y cerrar. Un ticket cerrado queda de solo lectura.
+    /// </summary>
     Task<ResultadoOperacion> CerrarAsync(ulong idTicket, ulong idAgente, CancellationToken cancellationToken = default);
 
     /// <summary>Todos los tickets con filtros (supervisores).</summary>

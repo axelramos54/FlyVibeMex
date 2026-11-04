@@ -23,5 +23,9 @@ public interface IGestorPromocionesService
     /// <summary>Alta (<paramref name="id"/> null) o edición. Al editar, el código no cambia.</summary>
     Task<ResultadoOperacion> GuardarAsync(ulong? id, PromocionFormViewModel datos, ulong idUsuario, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Activa o desactiva una promoción (<b>R11</b>). Las promociones <b>nunca se borran</b>: las compras que
+    /// usaron el código lo siguen mostrando.
+    /// </summary>
     Task<ResultadoOperacion> CambiarEstadoAsync(ulong id, bool activo, ulong idUsuario, CancellationToken cancellationToken = default);
 }

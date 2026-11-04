@@ -4,8 +4,6 @@ namespace FlyVibeMex.Models
     /// Catálogo de estados válidos de una reservación 
     /// Un estado con <c>es_final = true</c> ya no admite transiciones (p. ej. cancelada o completada).
     /// </summary>
-    // NOTA: falta la clase de bitácora HistorialEstadoReservacion (id, id_reservacion, id_estado_reservacion,
-    // id_usuario_cambio opcional, fecha_cambio, motivo), prevista en el diseño.
     public class EstadosReservacion
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>

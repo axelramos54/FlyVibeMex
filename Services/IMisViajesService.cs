@@ -8,11 +8,19 @@ namespace FlyVibeMex.Services;
 /// </summary>
 public interface IMisViajesService
 {
+    /// <summary>
+    /// "Mis reservaciones" = los <b>viajes</b>: agrupados en Próximos, Pasados y Cancelados, con sus opciones de
+    /// cancelación ya calculadas con la política GUARDADA en la compra (R4).
+    /// </summary>
     Task<MisReservacionesViewModel> ReservacionesAsync(ContextoCuenta contexto, CancellationToken cancellationToken = default);
 
     /// <summary>Detalle de una reservación de la cuenta del contexto; <c>null</c> si no existe o no es suya.</summary>
     Task<DetalleReservacionViewModel?> DetalleAsync(ContextoCuenta contexto, string codigoReserva, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// "Mis compras" = el <b>dinero</b>: los pagos y los reembolsos de la cuenta. Es la contraparte de
+    /// "Mis reservaciones", que muestra los viajes.
+    /// </summary>
     Task<MisComprasViewModel> ComprasAsync(ContextoCuenta contexto, CancellationToken cancellationToken = default);
 
     /// <summary>

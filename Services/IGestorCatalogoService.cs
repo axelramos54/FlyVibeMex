@@ -17,9 +17,14 @@ public interface IGestorCatalogoService
     /// <summary>Ubicaciones activas, ordenadas por ciudad (para los &lt;select&gt;).</summary>
     Task<List<Ubicaciones>> UbicacionesAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Proveedores que coinciden con los filtros, ordenados por nombre.
+    /// <paramref name="incluirInactivos"/> trae también los dados de baja (R11: la baja es lógica, nunca se borran).
+    /// </summary>
     Task<List<Proveedores>> ProveedoresAsync(string? nombre, string? tipo, bool incluirInactivos, int maximo = 200,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Un proveedor por su id (activo o no), o <c>null</c> si no existe.</summary>
     Task<Proveedores?> ProveedorAsync(ulong id, CancellationToken cancellationToken = default);
 
     /// <summary>Alta (<paramref name="id"/> null) o actualización de un proveedor. Correo y teléfono no se repiten.</summary>
@@ -39,6 +44,7 @@ public interface IGestorCatalogoService
     /// <summary>Servicios de un proveedor de un tipo (VUELO, HOSPEDAJE…), para la pantalla de alta.</summary>
     Task<List<Servicios>> ServiciosDeProveedorAsync(ulong idProveedor, string tipoServicio, CancellationToken cancellationToken = default);
 
+    /// <summary>La fila de <c>servicios</c> por su id, sin su subtipo, o <c>null</c> si no existe.</summary>
     Task<Servicios?> ServicioAsync(ulong id, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -56,6 +62,10 @@ public interface IGestorCatalogoService
     Task<ResultadoOperacion> ActualizarServicioAsync(ulong id, ServicioFormBase datos, ulong idUsuario,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Da de baja o reactiva un servicio (<b>R11</b>: baja LÓGICA con la columna <c>activo</c>; nunca se borra,
+    /// porque las compras pasadas lo siguen referenciando). Si ya estaba en ese estado, no hace nada y lo informa.
+    /// </summary>
     Task<ResultadoOperacion> CambiarEstadoServicioAsync(ulong id, bool activo, ulong idUsuario, CancellationToken cancellationToken = default);
 
     // ----- Disponibilidad -----

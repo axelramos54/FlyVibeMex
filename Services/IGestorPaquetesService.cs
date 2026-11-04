@@ -9,6 +9,7 @@ namespace FlyVibeMex.Services;
 /// </summary>
 public interface IGestorPaquetesService
 {
+    /// <summary>Paquetes que coinciden con el nombre; <paramref name="incluirInactivos"/> trae los dados de baja (R11).</summary>
     Task<ListaPaquetesViewModel> ListaAsync(string? nombre, bool incluirInactivos, CancellationToken cancellationToken = default);
 
     /// <summary>Formulario de alta vacío (con la lista de servicios para incluir y el inventario inicial sugerido).</summary>
@@ -23,7 +24,15 @@ public interface IGestorPaquetesService
     /// </summary>
     Task PrepararAsync(PaqueteFormViewModel datos, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Da de alta un paquete: su fila de <c>servicios</c> (tipo PAQUETE), su fila de <c>paquete</c>, los servicios
+    /// que incluye (<b>R2</b>) y su disponibilidad inicial, todo en una transacción.
+    /// </summary>
     Task<ResultadoOperacion> CrearAsync(PaqueteFormViewModel datos, ulong idUsuario, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Guarda los cambios de un paquete. Los servicios incluidos (R2) se reemplazan completos: es seguro porque
+    /// lo que compró el cliente quedó copiado en <c>detalle_reservacion</c> (R4).
+    /// </summary>
     Task<ResultadoOperacion> ActualizarAsync(ulong id, PaqueteFormViewModel datos, ulong idUsuario, CancellationToken cancellationToken = default);
 }

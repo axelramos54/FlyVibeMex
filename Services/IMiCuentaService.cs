@@ -19,6 +19,7 @@ public interface IMiCuentaService
     /// <summary>Id de un CLIENTE por su correo (para "Ver como cliente"); <c>null</c> si no existe.</summary>
     Task<ulong?> BuscarClientePorCorreoAsync(string? correo, CancellationToken cancellationToken = default);
 
+    /// <summary>Datos del perfil de la cuenta del contexto, o <c>null</c> si la cuenta ya no existe.</summary>
     Task<MiPerfilViewModel?> PerfilAsync(ContextoCuenta contexto, CancellationToken cancellationToken = default);
 
     /// <summary>Actualiza nombre, apellidos y teléfono de la cuenta PROPIA (el correo y el rol no se cambian aquí).</summary>
@@ -27,11 +28,16 @@ public interface IMiCuentaService
     /// <summary>Cambia la contraseña de la cuenta propia verificando primero la actual.</summary>
     Task<ResultadoOperacion> CambiarPasswordAsync(ulong idUsuario, CambioPasswordViewModel datos, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Tarjetas activas de la cuenta. Solo marca, últimos 4, vencimiento y alias: <b>R5</b>, nunca el número
+    /// completo ni el CVV, que no se guardan en ninguna parte.
+    /// </summary>
     Task<MisTarjetasViewModel> TarjetasAsync(ContextoCuenta contexto, CancellationToken cancellationToken = default);
 
     /// <summary>Alta simulada (token falso + marca + últimos 4). No cobra nada y el CVV no se guarda.</summary>
     Task<ResultadoOperacion> AgregarTarjetaAsync(ulong idUsuario, TarjetaNuevaViewModel tarjeta, CancellationToken cancellationToken = default);
 
+    /// <summary>Renombra una tarjeta (solo su alias). Verifica que la tarjeta sea del usuario: evita un IDOR.</summary>
     Task<ResultadoOperacion> CambiarAliasAsync(ulong idUsuario, ulong idTarjeta, string? alias, CancellationToken cancellationToken = default);
 
     /// <summary>Baja lógica (activo = 0). Los pagos hechos con la tarjeta no cambian.</summary>
