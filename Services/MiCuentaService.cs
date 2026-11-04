@@ -138,13 +138,15 @@ public sealed class MiCuentaService : IMiCuentaService
         int filas;
         try
         {
+            var ahora = DateTime.Now;
             filas = await _db.Usuarios
                 .Where(u => u.id == idUsuario && u.activo)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(u => u.nombre, perfil.nombre.Trim())
                     .SetProperty(u => u.apellido_paterno, perfil.apellido_paterno.Trim())
                     .SetProperty(u => u.apellido_materno, perfil.apellido_materno.Trim())
-                    .SetProperty(u => u.telefono, telefono), cancellationToken);
+                    .SetProperty(u => u.telefono, telefono)
+                    .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
         }
         catch (Exception ex) when (GestorBd.EsErrorDeBd(ex))
         {
@@ -182,9 +184,12 @@ public sealed class MiCuentaService : IMiCuentaService
         }
 
         var nuevoHash = _passwordHasher.HashPassword(new UsuariosGlobales { id = idUsuario }, datos.password_nueva);
+        var ahora = DateTime.Now;
         await _db.Usuarios
             .Where(u => u.id == idUsuario)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.password_hash, nuevoHash), cancellationToken);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.password_hash, nuevoHash)
+                .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
 
         _logger.LogInformation("El usuario {IdUsuario} cambió su contraseña.", idUsuario);
         return ResultadoOperacion.Ok("Tu contraseña se cambió correctamente.");

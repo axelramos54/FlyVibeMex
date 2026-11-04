@@ -10,7 +10,6 @@ namespace FlyVibeMex.Models
     /// Las líneas de la reserva están en <c>DetallesReservacion</c>.
     
     /// </remarks>
-    // NOTA: falta `actualizada_en` (fecha de última actualización), prevista en el diseño.
     public class Reservaciones
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
@@ -39,5 +38,13 @@ namespace FlyVibeMex.Models
         
         /// <summary>Fecha y hora de alta del registro (campo de control).</summary>
         public DateTime creada_en {get; set;}
+
+        /// <summary>
+        /// Fecha y hora del último cambio a la fila (campo de control). Al crear la reservación se guarda con el
+        /// mismo valor que <c>creada_en</c>, porque el paso de PENDIENTE a CONFIRMADA sucede en la misma
+        /// transacción y es parte del alta, no una modificación posterior. En la práctica solo la cancelación
+        /// mueve esta fecha.
+        /// </summary>
+        public DateTime actualizada_en {get; set;}
     }
 }
