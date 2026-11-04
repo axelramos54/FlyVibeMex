@@ -6,7 +6,6 @@ namespace FlyVibeMex.Models
     /// </summary>
     // NOTA: faltan campos del diseño para una dirección completa: colonia, calle, numero_exterior (opcional),
     // numero_interior (opcional) y referencias.
-    // NOTA: `correo` no forma parte del diseño de ubicaciones (en la rama origin/sqlyamil ya se eliminó).
     public class Ubicaciones
     {
         /// <summary>Llave primaria (identificador único autoincremental).</summary>
@@ -17,8 +16,6 @@ namespace FlyVibeMex.Models
         public string estado { get; set; } = string.Empty;
         public string municipio_ciudad { get; set; } = string.Empty;
         public string codigo_postal { get; set; } = string.Empty;
-        // NOTA: propiedad fuera del diseño (ver nota de la clase).
-        public string correo { get; set; } = string.Empty;
 
         /// <summary>Borrado lógico <c>false</c> oculta el registro sin eliminarlo.</summary>
         public bool activo {get; set;}

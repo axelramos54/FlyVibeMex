@@ -6,7 +6,6 @@ namespace FlyVibeMex.Models
     /// Reglas: el correo identifica al usuario para iniciar sesión; la contraseña se guarda SOLO como hash
     /// (regla R10) y nunca debe enviarse a una vista ni registrarse en logs; borrado lógico con <c>activo</c>.
     /// </summary>
-    // FIXME: el diseño incluye `actualizado_en` (fecha de última actualización); falta en esta clase.
     // NOTA: la clase está en plural (Usuarios) y el archivo en singular (usuario.cs).
     public class UsuariosGlobales
     {
@@ -35,6 +34,13 @@ namespace FlyVibeMex.Models
 
         /// <summary>Fecha y hora de alta del registro (campo de control).</summary>
         public DateTime creado_en {get; set;}
+
+        /// <summary>
+        /// Fecha y hora del último cambio a la fila (campo de control). SQL Server la llena al insertar
+        /// (CURRENT_TIMESTAMP), pero cada UPDATE la tiene que estampar explícitamente: <c>ExecuteUpdateAsync</c>
+        /// no pasa por el rastreador de cambios de EF, así que no la actualiza por sí solo.
+        /// </summary>
+        public DateTime actualizado_en {get; set;}
 
         /// <summary>Foto de perfil (opcional).</summary>
         // NOTA: campo agregado por el equipo; no aparece en el diccionario de datos del PDF. // Wazaaa por Yamil 21-10-2026

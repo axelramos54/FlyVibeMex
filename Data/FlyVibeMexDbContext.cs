@@ -174,9 +174,6 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.estado).HasMaxLength(60);
             e.Property(x => x.municipio_ciudad).HasMaxLength(100);
             e.Property(x => x.codigo_postal).HasMaxLength(10);
-
-            // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
-            e.Ignore(x => x.correo);
         });
     }
 

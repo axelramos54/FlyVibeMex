@@ -161,6 +161,8 @@ public sealed class SAUsuariosService : ISAUsuariosService
         if (errores.Count > 0) return (new ResultadoOperacion(false, "Revisa los datos marcados.", errores), null);
 
         var contrasena = GenerarContrasenaTemporal();
+        // Una sola lectura del reloj para las dos fechas de control (ver AuthService.RegistrarClienteAsync).
+        var ahoraAlta = DateTime.Now;
         var cuenta = new UsuariosGlobales
         {
             id_rol = rol!.id,
@@ -171,7 +173,8 @@ public sealed class SAUsuariosService : ISAUsuariosService
             telefono = telefono,
             password_hash = _auth.GenerarHash(contrasena),
             activo = true,
-            creado_en = DateTime.Now
+            creado_en = ahoraAlta,
+            actualizado_en = ahoraAlta
         };
 
         try
@@ -220,12 +223,14 @@ public sealed class SAUsuariosService : ISAUsuariosService
         {
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
+                var ahora = DateTime.Now;
                 await _db.Usuarios.Where(u => u.id == idCuenta)
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(u => u.nombre, nombre)
                         .SetProperty(u => u.apellido_paterno, paterno)
                         .SetProperty(u => u.apellido_materno, materno)
-                        .SetProperty(u => u.telefono, telefono), cancellationToken);
+                        .SetProperty(u => u.telefono, telefono)
+                        .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
                 _db.RegistrarBitacora(idSA, "ACTUALIZAR", "usuarios", idCuenta, $"Datos actualizados: {nombre} {paterno} {materno}, tel. {telefono}.");
                 await _db.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
@@ -265,8 +270,13 @@ public sealed class SAUsuariosService : ISAUsuariosService
             var idRolNuevo = nuevo.id;
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
+                var ahora = DateTime.Now;
+                // El `id_rol == idRolAnterior` del Where es el candado de concurrencia: agregar SetProperty no lo
+                // altera, y el conteo de filas de abajo sigue valiendo lo mismo.
                 var filas = await _db.Usuarios.Where(u => u.id == idCuenta && u.id_rol == idRolAnterior)
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.id_rol, idRolNuevo), cancellationToken);
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(u => u.id_rol, idRolNuevo)
+                        .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
                 if (filas != 1) throw new ReglaSAException("La cuenta cambió mientras la editabas. Vuelve a abrirla.");
                 await ExigirUnSAActivoAsync(cancellationToken);
 
@@ -301,8 +311,11 @@ public sealed class SAUsuariosService : ISAUsuariosService
         {
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
+                var ahora = DateTime.Now;
                 var filas = await _db.Usuarios.Where(u => u.id == idCuenta && u.activo != activo)
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.activo, activo), cancellationToken);
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(u => u.activo, activo)
+                        .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
                 if (filas != 1) throw new ReglaSAException("La cuenta cambió mientras la editabas. Vuelve a abrirla.");
                 if (!activo) await ExigirUnSAActivoAsync(cancellationToken);
 
@@ -346,8 +359,11 @@ public sealed class SAUsuariosService : ISAUsuariosService
         {
             await GestorBd.EnTransaccionAsync(_db, async () =>
             {
+                var ahora = DateTime.Now;
                 await _db.Usuarios.Where(u => u.id == idCuenta)
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.password_hash, hash), cancellationToken);
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(u => u.password_hash, hash)
+                        .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
                 // Nunca se registra la contraseña: solo que se restableció.
                 _db.RegistrarBitacora(idSA, "RESTABLECER_PASS", "usuarios", idCuenta, $"Contraseña temporal generada para {cuenta.correo}.");
                 await _db.SaveChangesAsync(cancellationToken);

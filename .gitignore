@@ -86,3 +86,6 @@ publish/
 # ==============================
 wwwroot/uploads/
 
+# Respaldos previos a una refactorización: son copias del código fuente, no deben versionarse
+# (y el .csproj ya las excluye de la compilación).
+_respaldo_claude/

@@ -266,7 +266,11 @@ public sealed class ReservacionService : IReservacionService
             subtotal = cot.subtotal,
             descuento_total = descuento,
             total = cot.subtotal - descuento,
-            creada_en = ahora
+            creada_en = ahora,
+            // Misma fecha que el alta a propósito: el paso a CONFIRMADA del punto (f) ocurre en esta misma
+            // transacción y es parte de crear la reserva, no una modificación posterior, así que ahí no se vuelve
+            // a mover. Una reserva que nadie tocó después de reservar tiene actualizada_en == creada_en.
+            actualizada_en = ahora
         };
         _db.Reservaciones.Add(reservacion);
         await _db.SaveChangesAsync(cancellationToken);

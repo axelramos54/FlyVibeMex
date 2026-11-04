@@ -192,6 +192,10 @@ public sealed class AuthService : IAuthService
                 return ResultadoOperacion.Falla(MensajeNoDisponible);
             }
 
+            // Una sola lectura del reloj para las dos fechas de control: con dos DateTime.Now distintos la cuenta
+            // nacería con `actualizado_en` unos microsegundos después de `creado_en`, y la interfaz mostraría una
+            // cuenta recién creada como "modificada".
+            var ahora = DateTime.Now;
             var usuario = new UsuariosGlobales
             {
                 id_rol = rol.id,
@@ -202,7 +206,8 @@ public sealed class AuthService : IAuthService
                 telefono = telefono,
                 password_hash = GenerarHash(datos.password),
                 activo = true,
-                creado_en = DateTime.Now,
+                creado_en = ahora,
+                actualizado_en = ahora,
                 imagen_ruta = null
             };
 
@@ -234,9 +239,14 @@ public sealed class AuthService : IAuthService
             var nuevoHash = _passwordHasher.HashPassword(new UsuariosGlobales { id = idUsuario }, password);
 
             // ExecuteUpdate también es parametrizado: UPDATE usuarios SET password_hash = @p WHERE id = @id
+            // Se estampa `actualizado_en` aunque el re-hash sea automático: la columna significa "cuándo cambió
+            // esta fila por última vez", y una excepción sería más difícil de justificar que la regla.
+            var ahora = DateTime.Now;
             await _db.Usuarios
                 .Where(u => u.id == idUsuario)
-                .ExecuteUpdateAsync(s => s.SetProperty(u => u.password_hash, nuevoHash), cancellationToken);
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.password_hash, nuevoHash)
+                    .SetProperty(u => u.actualizado_en, ahora), cancellationToken);
         }
         catch (Exception ex) when (EsErrorDeBaseDeDatos(ex))
         {

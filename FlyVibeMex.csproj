@@ -17,6 +17,15 @@
       Nota: por lo mismo, `dotnet publish` no las copia; en un servidor la carpeta uploads se respalda aparte.
     -->
     <DefaultItemExcludes>$(DefaultItemExcludes);wwwroot/uploads/**</DefaultItemExcludes>
+
+    <!--
+      _respaldo_claude: copias de seguridad que se hacen antes de una refactorización grande. Son archivos .cs
+      dentro de la carpeta del proyecto, así que SIN esta exclusión el SDK los compila y cada clase respaldada
+      queda definida dos veces: 77 errores CS0111 ("ya define un miembro denominado...") que no tienen nada que
+      ver con el código real. Pasó el 03/11/2026. Si alguien del equipo copia un .cs para guardar una versión,
+      que lo haga dentro de esta carpeta y la compilación lo ignora.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);_respaldo_claude/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -102,6 +102,10 @@ CREATE TABLE dbo.usuarios(
     password_hash    VARCHAR(255)  NOT NULL,
     activo           BIT           NOT NULL CONSTRAINT df_usuarios_activo DEFAULT(1),
     creado_en        DATETIME      NOT NULL CONSTRAINT df_usuarios_creado_en DEFAULT(CURRENT_TIMESTAMP),
+    -- Fecha del último cambio a la fila. El DEFAULT la llena al insertar; CADA UPDATE de la cuenta la estampa
+    -- explícitamente, tanto en C# como en los procedimientos de este proyecto. Sin excepciones: si una sentencia
+    -- modifica la fila, mueve esta fecha.
+    actualizado_en   DATETIME      NOT NULL CONSTRAINT df_usuarios_actualizado_en DEFAULT(CURRENT_TIMESTAMP),
     imagen_ruta      NVARCHAR(260) NULL,  -- ruta pública: /uploads/<carpeta>/<guid>.jpg|png|webp
 
     -- El correo se guarda normalizado (sin espacios y en minúsculas) para que el login sea consistente.
@@ -123,7 +127,6 @@ CREATE TABLE dbo.ubicaciones(
     activo           BIT           NOT NULL CONSTRAINT df_ubicaciones_activo DEFAULT(1),
     creado_en        DATETIME      NOT NULL CONSTRAINT df_ubicaciones_creado_en DEFAULT(CURRENT_TIMESTAMP),
     actualizado_en   DATETIME      NOT NULL CONSTRAINT df_ubicaciones_actualizado_en DEFAULT(CURRENT_TIMESTAMP)
-    -- La propiedad Ubicaciones.correo NO tiene columna (el DbContext la ignora: no es parte del diseño).
 );
 GO
 
@@ -302,6 +305,10 @@ CREATE TABLE dbo.reservaciones(
     descuento_total       DECIMAL(12,2) NOT NULL CONSTRAINT df_reservaciones_descuento DEFAULT(0),
     total                 DECIMAL(12,2) NOT NULL CONSTRAINT df_reservaciones_total DEFAULT(0),
     creada_en             DATETIME      NOT NULL CONSTRAINT df_reservaciones_creada_en DEFAULT(CURRENT_TIMESTAMP),
+    -- Fecha del último cambio a la fila. Al crear la reserva se estampa IGUAL a `creada_en`: el paso de PENDIENTE a
+    -- CONFIRMADA ocurre dentro de la misma transacción del alta, así que no es una modificación posterior. En la
+    -- práctica solo la cancelación mueve esta fecha.
+    actualizada_en        DATETIME      NOT NULL CONSTRAINT df_reservaciones_actualizada_en DEFAULT(CURRENT_TIMESTAMP),
     CONSTRAINT ck_reservaciones_importes CHECK (subtotal >= 0 AND descuento_total >= 0
                                                 AND descuento_total <= subtotal AND total >= 0)
 );

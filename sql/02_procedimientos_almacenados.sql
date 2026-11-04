@@ -652,7 +652,7 @@ BEGIN
 
     BEGIN TRANSACTION;
         -- a) Estado: UPDATE condicional (si otra petición la cambió al mismo tiempo, no se toca nada).
-        UPDATE dbo.reservaciones SET id_estado_reservacion = @id_cancelada
+        UPDATE dbo.reservaciones SET id_estado_reservacion = @id_cancelada, actualizada_en = GETDATE()
         WHERE id = @id_reservacion AND id_estado_reservacion = @id_estado;
         IF @@ROWCOUNT <> 1 THROW 51078, N'La reservación cambió mientras se cancelaba. Vuelve a consultarla.', 1;
 
@@ -977,7 +977,7 @@ BEGIN
     IF @rol_actual = @rol  THROW 51113, N'La cuenta ya tiene ese rol.', 1;
 
     BEGIN TRANSACTION;
-        UPDATE dbo.usuarios SET id_rol = @id_rol WHERE id = @id_cuenta;
+        UPDATE dbo.usuarios SET id_rol = @id_rol, actualizado_en = GETDATE() WHERE id = @id_cuenta;
 
         -- Si era SA activo, debe quedar otro SA activo.
         IF @rol_actual = 'SA' AND @activo = 1 AND NOT EXISTS (
@@ -1012,7 +1012,8 @@ BEGIN
     IF @actual = @activo   THROW 51117, N'La cuenta ya está en ese estado.', 1;
 
     BEGIN TRANSACTION;
-        UPDATE dbo.usuarios SET activo = @activo WHERE id = @id_cuenta AND activo = @actual;
+        UPDATE dbo.usuarios SET activo = @activo, actualizado_en = GETDATE()
+        WHERE id = @id_cuenta AND activo = @actual;
         IF @@ROWCOUNT <> 1 THROW 51118, N'La cuenta cambió mientras se actualizaba.', 1;
 
         IF @activo = 0 AND NOT EXISTS (
@@ -1281,8 +1282,8 @@ BEGIN
         IF @intento = 10 THROW 51129, N'No se pudo generar un código de reserva único.', 1;
 
         -- d) Reservación PENDIENTE con totales históricos y detalle con snapshot (R4).
-        INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, moneda, subtotal, descuento_total, total, creada_en)
-        VALUES (@id_usuario, @id_pendiente, @codigo_reserva, @moneda, @subtotal, @descuento, @total, @ahora);
+        INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, moneda, subtotal, descuento_total, total, creada_en, actualizada_en)
+        VALUES (@id_usuario, @id_pendiente, @codigo_reserva, @moneda, @subtotal, @descuento, @total, @ahora, @ahora);
         SET @id_reservacion = SCOPE_IDENTITY();
 
         INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin,
@@ -1306,6 +1307,8 @@ BEGIN
                (@id_pago, @id_pago_aprobado, DATEADD(SECOND, 1, @ahora), N'Cobro aprobado (simulado)');
 
         -- f) Reservación CONFIRMADA (cambio automático: id_usuario_cambio = NULL).
+        -- `actualizada_en` NO se toca aquí, a propósito: este UPDATE es parte del alta (misma transacción), no una
+        -- modificación posterior, así que la fecha sigue siendo la del INSERT. Igual criterio que ReservacionService.
         UPDATE dbo.reservaciones SET id_estado_reservacion = @id_confirmada WHERE id = @id_reservacion;
         INSERT INTO dbo.historial_estado_reservacion (id_reservacion, id_estado_reservacion, id_usuario_cambio, fecha_cambio, motivo)
         VALUES (@id_reservacion, @id_confirmada, NULL, DATEADD(SECOND, 1, @ahora), N'Pago aprobado');
