@@ -17,9 +17,41 @@
     <style>
         /* Al imprimir solo sale el comprobante (sin barra de navegación, pie ni botones). */
         @@media print {
-            header, footer, .d-print-none { display: none !important; }
-            #contenido_main { margin-top: 0 !important; }
+        @@page { size: 80mm auto; margin: 2mm; }
+
+        html, body {
+            width: 76mm;
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
+
+        header, footer, .d-print-none { display: none !important; }
+        #contenido_main { margin-top: 0 !important; }
+
+        .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+
+        body, .card, .card-body, td, th, dt, dd, p, span, div {
+            font-family: "Courier New", Consolas, monospace !important;
+            font-size: 10pt !important;
+            font-weight: 700 !important;
+            line-height: 1.3 !important;
+        }
+
+        .card, .alert { border: 0 !important; box-shadow: none !important; background: #fff !important; }
+        .card-body { padding: 0 !important; }
+        .alert-info { border-top: 1px dashed #000 !important; padding: 2px 0 0 !important; }
+        .text-muted, .small, .text-success, .text-secondary, .fw-normal { color: #000 !important; }
+        .badge { background: none !important; color: #000 !important; border: 1px solid #000; }
+
+        dl.row { display: block !important; margin: 0 !important; }
+        dt, dd { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+
+        table { width: 100%; border-collapse: collapse; border-top: 1px solid #000; }
+        td { border: 0 !important; padding: 2px 0 !important; }
+        h1, .fs-3, .fs-5 { font-size: 12pt !important; }
+    }
     </style>
 }
 
