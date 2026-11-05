@@ -57,7 +57,7 @@ namespace FlyVibeMex.Models
 
         // servicios.precio_base es decimal(10,2) → máximo 99,999,999.99
         [Display(Name = "Precio base")]
-        [Range(typeof(decimal), "0", "99999999.99", ErrorMessage = "El precio debe estar entre 0 y 99,999,999.99.")]
+        [Range(typeof(decimal), "0", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Precio no válido.")]
         public decimal precio_base { get; set; }
 
         [Display(Name = "Moneda")]

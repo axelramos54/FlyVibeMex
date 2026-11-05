@@ -99,3 +99,15 @@
         <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Seguir explorando</a>
     </div>
 </div>
+
+@*
+ Fase 4 · aviso a la página anfitriona (GoldStay) de que la reserva quedó confirmada, para que actualice su
+ pantalla. Si esta página NO está dentro de un iframe, script_widget.js no hace nada: por eso el parcial puede
+ quedarse aquí sin afectar al sitio normal.
+
+ Se manda SOLO el código, el total y la moneda: lo mínimo para que el anfitrión muestre el resultado. Nada de
+ datos del cliente ni del pago. Y del lado de GoldStay este mensaje sirve para refrescar la interfaz, no como
+ comprobante: para cobrar o dar por pagada la reserva, su servidor tiene que confirmarla con el código.
+*@
+<partial name="_EventoWidget"
+         model='new EventoWidget("reserva.confirmada", new { codigo = Model.codigo_reserva, total = Model.total, moneda = Model.moneda })' />

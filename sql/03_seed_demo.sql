@@ -391,16 +391,17 @@ DECLARE @creada2 DATETIME = DATEADD(DAY, -6, @ahora);
 DECLARE @creada3 DATETIME = DATEADD(DAY, -4, @ahora);
 
 -- FV-260901 · Ana · CONFIRMADA · ejemplo del doc 06 (Cancún 12 al 15 de diciembre de 2026).
-INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en)
-VALUES (@uAna, @erConfirmada, N'FV-260901', 9330.00, 933.00, 8397.00, @creada1);
+-- `actualizada_en` = `creada_en`: nadie la modificó después de reservar (confirmar es parte del alta).
+INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en, actualizada_en)
+VALUES (@uAna, @erConfirmada, N'FV-260901', 9330.00, 933.00, 8397.00, @creada1, @creada1);
 SET @r1 = SCOPE_IDENTITY();
 INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin, precio_unitario, descuento_aplicado, subtotal, descripcion_snapshot)
 VALUES (@r1, @sHotelCun, @prBienvenida, 1, '2026-12-12T15:00:00', '2026-12-15T12:00:00', 7350.00, 735.00, 7350.00, N'Hotel Playa Azul, Hab. doble — 3 noches'),
        (@r1, @sAutoCun,  @prBienvenida, 1, '2026-12-12T10:00:00', '2026-12-15T10:00:00', 1980.00, 198.00, 1980.00, N'Renta Aveo automático — 3 días');
 
 -- FV-260902 · Cliente Prueba · CONFIRMADA · viaje en 2 días (sirve para probar la etiqueta URGENTE del bot).
-INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en)
-VALUES (@uCliente, @erConfirmada, N'FV-260902', 13000.00, 1300.00, 11700.00, @creada2);
+INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en, actualizada_en)
+VALUES (@uCliente, @erConfirmada, N'FV-260902', 13000.00, 1300.00, 11700.00, @creada2, @creada2);
 SET @r2 = SCOPE_IDENTITY();
 INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin, precio_unitario, descuento_aplicado, subtotal, descripcion_snapshot)
 VALUES (@r2, @sPaqChis, @prBienvenida, 2,
@@ -408,8 +409,9 @@ VALUES (@r2, @sPaqChis, @prBienvenida, 2,
         6500.00, 1300.00, 13000.00, N'Chiapas mágico 3 días — 2 personas');
 
 -- FV-260903 · Ana · CANCELADA · con reembolso SOLICITADO.
-INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en)
-VALUES (@uAna, @erCancelada, N'FV-260903', 2400.00, 0, 2400.00, @creada3);
+-- Esta sí se modificó: se canceló al día siguiente, igual que su bitácora de estados más abajo.
+INSERT INTO dbo.reservaciones (id_usuarioglobal, id_estado_reservacion, codigo_reserva, subtotal, descuento_total, total, creada_en, actualizada_en)
+VALUES (@uAna, @erCancelada, N'FV-260903', 2400.00, 0, 2400.00, @creada3, DATEADD(DAY, 1, @creada3));
 SET @r3 = SCOPE_IDENTITY();
 INSERT INTO dbo.detalle_reservacion (id_reservacion, id_servicio, id_promocion, cantidad, fecha_inicio, fecha_fin, precio_unitario, descuento_aplicado, subtotal, descripcion_snapshot)
 VALUES (@r3, @sHotelScl, NULL, 1,

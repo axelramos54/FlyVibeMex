@@ -172,7 +172,9 @@ public sealed class CancelacionesService : ICancelacionesService
         var estadoAnterior = actual.id_estado_reservacion;
         var filas = await _db.Reservaciones
             .Where(r => r.id == idReservacion && r.id_estado_reservacion == estadoAnterior)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.id_estado_reservacion, idCancelada), cancellationToken);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.id_estado_reservacion, idCancelada)
+                .SetProperty(r => r.actualizada_en, ahora), cancellationToken);
         if (filas != 1) throw new CambioConcurrenteException();
 
         var conReembolso = orden.Reembolso != ModoReembolso.Ninguno;
