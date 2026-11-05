@@ -1,0 +1,59 @@
+@*
+ ============================================================================================
+ Views/Shared/_LayoutWidget.cshtml — plantilla MÍNIMA para contenido embebido (widget / iframe).
+
+ Para qué sirve: una vista que se va a mostrar DENTRO de otra página (por ejemplo en un <iframe>)
+ no debe traer el header, el menú ☰, los mensajes ni el footer de _Layout: se verían duplicados.
+ Este layout carga solo lo necesario para que el contenido funcione y se vea bien.
+
+ Diferencias contra _Layout:
+   · Sin barra de navegación, sin _Marca, sin _Mensajes, sin footer, sin favicon
+     (el favicon lo pone la página anfitriona, no el iframe).
+   · Fondo transparente: el widget toma el color de la página donde se inserta.
+   · No inyecta IContenidoSitioService: no hay textos editables que mostrar aquí.
+
+ Bootstrap se sirve desde el propio sitio con los parciales _BootstrapCss / _BootstrapJs
+ (mismas rutas y mismo motivo que en _Layout: en una feria, un CDN caído deja el sitio sin estilos).
+
+ Cómo se usa en una vista:
+   @{ Layout = "_LayoutWidget"; }
+ y, si necesita CSS o JS propio:
+   @section Styles  { <link rel="stylesheet" href="~/assets/css/style_X.css"> }
+   @section Scripts { <script src="~/assets/js/script_X.js"></script> }
+ ============================================================================================
+
+ Fase 4: publica en la página los orígenes a los que script_widget.js puede mandar avisos
+ (window.parent.postMessage). Salen de "Integracion:OrigenesPermitidos" en appsettings, la MISMA lista que
+ autoriza la incrustación, para que no haya dos listas que se puedan desincronizar.
+*@
+@inject Microsoft.Extensions.Options.IOptions<FlyVibeMex.Models.OpcionesIntegracion> OpcionesIntegracion
+@{
+    var origenesWidget = System.Text.Json.JsonSerializer.Serialize(
+        new { origenes = OpcionesIntegracion.Value.OrigenesValidos },
+        new System.Text.Json.JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default
+        });
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is string titulo ? titulo : "Widget Integrado")</title>
+    <partial name="_BootstrapCss" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="bg-transparent">
+    @RenderBody()
+
+    <partial name="_BootstrapJs" />
+
+    @* Fase 4 · avisos hacia la página anfitriona. Va ANTES de los scripts de la vista, para que puedan
+       usar window.FlyVibeWidget.avisar(...). *@
+    <script id="widget-config" type="application/json">@Html.Raw(origenesWidget)</script>
+    <script src="~/assets/js/script_widget.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

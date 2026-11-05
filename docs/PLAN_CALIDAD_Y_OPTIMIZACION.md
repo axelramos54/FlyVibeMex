@@ -375,6 +375,126 @@ dotnet build 2>&1 | Select-Object -Last 20     # PowerShell
 
 ---
 
+### ⚠ Hueco en esta bitácora (04/11/2026)
+
+**Faltan las entradas de todo el 03/11/2026.** Los lotes L2a, L2b, L3a, L3b, L4, L5-libs, L6, L6a, L6b y
+L5 primera mitad **sí se ejecutaron y están en `main`** —el código se subió y se verificó—, pero sus
+entradas de bitácora y la sección «Correcciones al propio plan» se escribían en este archivo sin llegar a
+un commit, y se perdieron con la laptop de trabajo. El commit de las 19:35 del 03/11 incluyó este
+documento en su estado del 02/11.
+
+No se reconstruyen de memoria a propósito: una bitácora inventada es peor que una bitácora con un hueco
+declarado. Lo que se puede afirmar con certeza de esos lotes está en el código y en sus comentarios, que
+sí sobrevivieron. Si hace falta recuperar el detalle, está en el historial de la conversación de ese día.
+
+### Lote L5 (2.ª mitad) · Columnas de control — **REAPLICADO** (04/11/2026)
+
+**Historia de este lote, porque la lección vale más que el código.** Se aplicó el 03/11/2026, el build
+falló por una causa ajena (ver el punto 4), se corrigió, y antes de que llegara el build siguiente **se
+perdió la laptop de trabajo**. Como la costumbre del equipo es subir a GitHub solo después de verificar,
+estos 32 cambios nunca se commitearon y desaparecieron. El último commit era de las 19:35 del 03/11 con
+L5 primera mitad, así que la pérdida de código se limitó a lo no verificado. Se reaplicó el 04/11/2026
+desde el registro de la conversación, en la rama `l5b-columnas-de-control`.
+
+**Recomendación que sale de esto:** commitear al final de cada lote **aunque no esté verificado**, en una
+rama de trabajo, y hacer merge a `main` solo después de verificar. Así «no verificado» deja de significar
+«no existe en ningún lado». Y commitear el documento junto con el código, no por separado.
+
+**32 cambios en 13 archivos.** Rompe la compatibilidad con cualquier base creada con el script anterior:
+EF lista las columnas explícitamente en cada `SELECT`, así que en cuanto las propiedades existen, una BD
+vieja falla en *toda* consulta a `usuarios` y `reservaciones`, no solo en los UPDATE. Hay que correr
+`01 → 02 → 03`.
+
+#### 1. `Ubicaciones.correo` eliminada
+
+Propiedad fantasma: la tabla `dbo.ubicaciones` nunca tuvo esa columna, y el `e.Ignore(x => x.correo)` del
+`DbContext` existía solo para que EF no la pidiera. Se verificó que **ningún** otro archivo la lee ni la
+escribe. Se borró la propiedad, el `Ignore`, las dos NOTAS que la describían y el comentario que la
+mencionaba dentro del `CREATE TABLE`.
+
+#### 2. `usuarios.actualizado_en` y `reservaciones.actualizada_en`
+
+**El proyecto ya tenía la convención y se siguió tal cual.** Seis tablas ya declaraban la columna como
+`DATETIME NOT NULL DEFAULT(CURRENT_TIMESTAMP)`, y `AplicarFechasDeControlPorDefecto`
+(`FlyVibeMexDbContext.cs`) ya aplica `HasDefaultValueSql("CURRENT_TIMESTAMP")` a toda propiedad `DateTime`
+cuyo nombre esté en `ColumnasFechaControl` — lista que **ya incluía** ambos nombres. Por eso **no se tocó
+el `DbContext`**: agregar la propiedad al modelo bastó para el INSERT.
+
+La trampa: **`ExecuteUpdateAsync` no pasa por el rastreador de cambios de EF**, así que los UPDATE no se
+estampan solos. Cada sitio necesita su `SetProperty` escrito a mano.
+
+| Tabla | Sitio | Qué cambia | Estampa |
+|---|---|---|---|
+| usuarios | `AuthService` · registro de cliente | INSERT | sí (= `creado_en`) |
+| usuarios | `SAUsuariosService` · alta interna | INSERT | sí (= `creado_en`) |
+| usuarios | `MiCuentaService` · perfil propio | nombre, apellidos, teléfono | sí |
+| usuarios | `MiCuentaService` · contraseña propia | `password_hash` | sí |
+| usuarios | `SAUsuariosService` · el SA edita datos | nombre, apellidos, teléfono | sí |
+| usuarios | `SAUsuariosService` · cambio de rol | `id_rol` | sí |
+| usuarios | `SAUsuariosService` · baja lógica | `activo` | sí |
+| usuarios | `SAUsuariosService` · restablecer contraseña | `password_hash` | sí |
+| usuarios | `AuthService` · re-hash automático al iniciar sesión | `password_hash` | **sí** |
+| reservaciones | `ReservacionService` · alta | INSERT (PENDIENTE) | sí (= `creada_en`) |
+| reservaciones | `ReservacionService` · PENDIENTE → CONFIRMADA | estado | **no** |
+| reservaciones | `CancelacionesService` · → CANCELADA | estado | sí |
+
+**Las dos decisiones que no son obvias:**
+
+- **El re-hash automático sí estampa.** Es un UPDATE que ocurre al iniciar sesión, cuando el hasher pide
+  actualizar sus parámetros, así que en teoría un login puede mover la fecha sin que nadie haya cambiado
+  nada. Se estampa igual porque la columna significa «cuándo cambió esta fila por última vez», y cualquier
+  excepción necesitaría un comentario que la justificara — más difícil de defender que la regla simple.
+- **El paso a CONFIRMADA no estampa.** Ocurre un segundo después del INSERT, en la misma transacción y la
+  misma petición: es parte de crear la reserva, no una modificación posterior. Si estampara,
+  `actualizada_en` jamás igualaría a `creada_en` y siempre marcaría +1 s, un dato sin significado. Mismo
+  criterio y mismo comentario en `pa_crear_reservacion_pago`.
+
+Detalle menor pero visible: en los dos INSERT de usuario se usa **una sola lectura del reloj** (`var
+ahora`) para las dos fechas. Con dos `DateTime.Now` distintos, la cuenta nacería con `actualizado_en` unos
+microsegundos después de `creado_en`, y la interfaz mostraría una cuenta recién creada como «modificada».
+
+#### 3. Procedimientos almacenados y datos demo
+
+Los 4 procedimientos que escriben en esas tablas (`pa_cambiar_rol_usuario`, `pa_cambiar_estado_usuario`,
+`pa_cancelar_reservacion`, `pa_crear_reservacion_pago`) **no los llama la aplicación** —duplican en SQL la
+lógica que vive en C#—, así que el riesgo de regresión es cero; se actualizaron porque son parte de la
+entrega y un revisor notaría que el SQL ignora una columna que el C# sí mantiene.
+
+En el seed, las 3 reservaciones demo tienen `creada_en` hacia atrás. Con solo el DEFAULT habrían quedado
+con `actualizada_en` = el momento de instalar la BD, incluidas las dos que nunca se modificaron. Ahora:
+las dos confirmadas con `actualizada_en = creada_en`, y la cancelada con `DATEADD(DAY, 1, @creada3)`, que
+es exactamente cuando la cancela su propia bitácora de estados.
+
+#### 4. La exclusión que costó 77 errores
+
+`FlyVibeMex.csproj` ahora excluye `_respaldo_claude/**` de la compilación, con el mismo mecanismo que ya
+usaba para `wwwroot/uploads/**`. Sin ella, el SDK compila las copias de seguridad que se hacen antes de
+refactorizar y **cada clase respaldada queda definida dos veces**: 77 errores `CS0111` («ya define un
+miembro denominado…») que no se parecen en nada a su causa. También se agregó `_respaldo_claude/` al
+`.gitignore`: son copias del código fuente y no deben versionarse.
+
+> Nota sobre los respaldos: `_respaldo_claude/` **no** es una red de seguridad confiable. Se ha borrado
+> solo entre sesiones más de una vez, igual que le pasó a `herramientas/`. Lo que de verdad protege son
+> los commits.
+
+#### Cómo se comprobó, sin compilador
+
+1. **Arnés con verificación previa**: las 32 sustituciones se validaron todas (`count == 1` en cada texto
+   buscado) **antes de escribir un solo archivo**; si una hubiera fallado, no se habría tocado nada.
+2. **Riesgo de CS0128/CS0136** (declarar `ahora` donde ya existe uno en un ámbito envolvente): se listó
+   cada declaración con su método contenedor. Las 14 están en métodos distintos; en `CrearInternoAsync` la
+   variable se llama `ahoraAlta` justamente para no chocar, y en `ReservacionService` y
+   `CancelacionesService` se reutilizó el `ahora` que ya existía en el método en lugar de declarar otro.
+3. **Conteo final**: 7 `SetProperty(u => u.actualizado_en)` sobre `_db.Usuarios` (un octavo resultado del
+   grep es un UPDATE preexistente de `_db.Ubicaciones` que también usa `u` como parámetro), 2 INSERT de
+   usuario con la fecha, 1 `SetProperty(r => r.actualizada_en)` sobre `_db.Reservaciones`.
+4. **Paréntesis balanceados** en los tres `CREATE TABLE` modificados y **csproj válido como XML**.
+5. **Revisión de cada línea eliminada que no fuera comentario**: las 24 son exactamente las sentencias que
+   se reemplazaron por su versión extendida.
+
+**Pendiente de verificación:** recrear la BD (`01 → 02 → 03`) y `dotnet build`. No hay SDK de .NET
+disponible del lado de Claude, así que la compilación la hace el equipo.
+
 ## Anexo · Comandos de referencia
 
 ```bash

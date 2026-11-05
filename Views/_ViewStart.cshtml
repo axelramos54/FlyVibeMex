@@ -1,10 +1,19 @@
 ﻿@*
- _ViewStart.cshtml: asigna "_Layout" como plantilla por defecto.
- Desde el 26-10-2026 lo usan todas las páginas públicas (Home, Miusuario, Solicitar, Otros, Catalogo, Reservas…).
+ ███ ESTE ARCHIVO VA EN EL PROYECTO DE FLYVIBEMEX ███  (no en GoldStay)
+ Ruta: Views/_ViewStart.cshtml
+
+ _ViewStart.cshtml: asigna el layout por defecto de las páginas públicas (Home, Miusuario, Solicitar, Otros,
+ Catalogo, Reservas…).
  Solo lo anulan con Layout = null las pantallas de acceso: IniciarSesion y Crearusuario (Index y Creado).
  Las páginas de error (Views/Estado) eligen _Layout o _AdminLayout según la zona.
  El panel interno tiene su propio _ViewStart (Views/Admin/) con _AdminLayout.cshtml.
+
+ 04-11-2026 · Integración con GoldStay: si la página se está pidiendo DENTRO de un iframe, se usa
+ _LayoutWidget (solo el contenido, sin header, menú ni footer, que se verían duplicados dentro de la página
+ anfitriona). Lo decide PeticionEmbebida.EsEmbebida (cabecera Sec-Fetch-Dest del navegador, o ?widget=1 como
+ respaldo y para probar). La vista es LA MISMA en los dos casos: lo único que cambia es el marco, así que no
+ hay copias que mantener al día.
 *@
 @{
-    Layout = "_Layout";
+    Layout = Context.EsEmbebida() ? "_LayoutWidget" : "_Layout";
 }

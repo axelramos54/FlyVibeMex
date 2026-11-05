@@ -2,7 +2,8 @@
    FlyVibe Mex · 01_crear_base_datos.sql                         (script 1 de 3)
    -------------------------------------------------------------------------------------
    Crea la base de datos de PRUEBA FlyVibeMex_Test COMPLETA:
-       - las 31 tablas del modelo (una por clase de Models/), con sus PK, FK, UNIQUE, CHECK e índices;
+       - las 32 tablas: 31 del modelo (una por clase de Models/) más dbo.LogError, el registro de errores de
+         los procedimientos almacenados; con sus PK, FK, UNIQUE, CHECK e índices;
        - los catálogos que la aplicación NECESITA para funcionar: roles, estados de reservación,
          estados de pago y métodos de pago;
        - una cuenta inicial SA (sa.prueba@flyvibemex.test) para poder entrar al panel.
@@ -514,6 +515,26 @@ CREATE INDEX ix_bitacora_fecha   ON dbo.bitacora(fecha);
 CREATE INDEX ix_bitacora_entidad ON dbo.bitacora(entidad, id_entidad);
 GO
 
+/* ---------- Registro de errores de los procedimientos almacenados ----------
+   Cada BEGIN CATCH de sql/02_procedimientos_almacenados.sql escribe una fila aquí y después vuelve a lanzar
+   el error. Las columnas son exactamente lo que devuelven las funciones ERROR_* dentro de un CATCH, más la
+   fecha y hora. Si la base ya existe y no quieres recrearla, usa sql/04_log_errores.sql: crea solo esta tabla.
+   El nombre va en PascalCase (LogError) por requisito de la entrega; el resto del modelo usa snake_case. */
+CREATE TABLE dbo.LogError(
+    id                  BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_logerror PRIMARY KEY,
+    error_numero        INT            NOT NULL,   -- ERROR_NUMBER()
+    error_severidad     INT            NOT NULL,   -- ERROR_SEVERITY()
+    error_estado        INT            NOT NULL,   -- ERROR_STATE()
+    error_procedimiento NVARCHAR(128)  NULL,       -- ERROR_PROCEDURE(): NULL si el error no nació dentro de un procedimiento
+    error_linea         INT            NOT NULL,   -- ERROR_LINE()
+    error_mensaje       NVARCHAR(4000) NOT NULL,   -- ERROR_MESSAGE()
+    fecha               DATETIME       NOT NULL CONSTRAINT df_logerror_fecha DEFAULT(GETDATE())
+);
+GO
+CREATE INDEX ix_logerror_fecha        ON dbo.LogError(fecha DESC);
+CREATE INDEX ix_logerror_procedimiento ON dbo.LogError(error_procedimiento);
+GO
+
 /* ---------- Contenido del sitio que edita el SA sin tocar código (T4 fase D) ----------
    Una fila por CLAVE (p. ej. 'inicio.bienvenida.titulo', 'politicas.privacidad'); la lista de claves válidas y su
    texto por defecto están en Models/ContenidoSitioClaves.cs. Si una clave no tiene fila, el sitio muestra el texto
@@ -613,8 +634,8 @@ VALUES ((SELECT id FROM dbo.roles_usuarios WHERE nombre = 'SA'),
         'AQAAAAIAAYagAAAAEKrTa4pzbnSHVkqn1+0EcRQQhceq2uQeDEnxY6z6Axl4Obp+Xg5gjSKkHMhQeEL0Zw==', 1);
 GO
 
-/* ---------- Verificación: deben salir 31 tablas y los catálogos ---------- */
-SELECT COUNT(*) AS tablas_creadas   -- 31
+/* ---------- Verificación: deben salir 32 tablas y los catálogos ---------- */
+SELECT COUNT(*) AS tablas_creadas   -- 32
 FROM sys.tables
 WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N'servicios', N'vuelos',
                N'hospedajes', N'vehiculos', N'paquete', N'paquete_servicio', N'disponibilidad_servicio',
@@ -623,7 +644,7 @@ WHERE name IN (N'roles_usuarios', N'usuarios', N'ubicaciones', N'proveedores', N
                N'instituciones_financieras', N'tarjetas_usuarios', N'estados_pago', N'pagos',
                N'historial_estado_pago', N'reembolsos', N'historial_estado_reembolso', N'solicitudes_soporte',
                N'mensajes_soporte', N'bitacora', N'contenido_sitio', N'telegram_vinculos',
-               N'telegram_avisos');
+               N'telegram_avisos', N'LogError');
 
 SELECT 'roles_usuarios' AS catalogo, COUNT(*) AS filas FROM dbo.roles_usuarios UNION ALL   -- 5
 SELECT 'estados_reservacion', COUNT(*) FROM dbo.estados_reservacion UNION ALL              -- 5

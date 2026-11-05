@@ -8,6 +8,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using System.Globalization;
+using Microsoft.AspNetCore.DataProtection;
+
+var cultura = CultureInfo.GetCultureInfo("es-MX");
+CultureInfo.DefaultThreadCurrentCulture = cultura;
+CultureInfo.DefaultThreadCurrentUICulture = cultura;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +28,22 @@ builder.Services.AddControllersWithViews(opciones =>
 
 // Caché en memoria: el contenido del sitio que edita el SA (ContenidoSitioService) se lee de la BD cada 10 minutos.
 builder.Services.AddMemoryCache();
+
+// =============================================================================================
+// Integración con GoldStay (widget en <iframe>)
+// ---------------------------------------------------------------------------------------------
+// Qué sitios pueden incrustar FlyVibeMex y qué rutas: sección "Integracion" de appsettings.json
+// (ver Models/OpcionesIntegracion.cs). Se lee aquí porque la decide DOS cosas:
+//   · el middleware de cabeceras (app.UseCabecerasIntegracion(), más abajo);
+//   · la cookie de sesión, que necesita SameSite=None para viajar dentro de un iframe ajeno.
+// Con la sección ausente o "Habilitado": false el sitio se comporta como antes: no se puede incrustar.
+// =============================================================================================
+builder.Services.Configure<OpcionesIntegracion>(
+    builder.Configuration.GetSection(OpcionesIntegracion.Seccion));
+
+var opcionesIntegracion = builder.Configuration
+    .GetSection(OpcionesIntegracion.Seccion)
+    .Get<OpcionesIntegracion>() ?? new OpcionesIntegracion();
 
 // =============================================================================================
 // Compresión de las respuestas dinámicas (L3.11 de docs/PLAN_CALIDAD_Y_OPTIMIZACION.md)
@@ -94,6 +116,16 @@ builder.Services.AddDbContext<FlyVibeMexDbContext>(opciones =>
     }
 });
 
+// Data Protection: las llaves se guardan en disco para que las sesiones y los tokens
+// antiforgery sobrevivan a los reciclados del app pool en IIS.
+var carpetaLlaves = new DirectoryInfo(
+    Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys"));
+carpetaLlaves.Create();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(carpetaLlaves)
+    .SetApplicationName("FlyVibeMex");
+
 // =============================================================================================
 // Servicios de la aplicación
 // =============================================================================================
@@ -118,6 +150,16 @@ builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 builder.Services.AddSingleton<ILimitadorIntentos, LimitadorIntentosEnMemoria>();
 
 // Catálogo público: búsqueda por sección, detalle y cotización.
+// SSO del widget de GoldStay: valida el token firmado y lo traduce a un usuario local (Fase 3).
+builder.Services.AddScoped<ISsoIntegracionService, SsoIntegracionService>();
+
+// Dirección CONTRARIA: FlyVibeMex como anfitrión, incrustando el widget de habitaciones de GoldStay.
+// Firma el token con la sesion del cliente (Services/WidgetFlyVibeService.cs). Llave aparte de la del SSO
+// de entrada: una llave por direccion.
+builder.Services.Configure<OpcionesWidgetFlyVibe>(
+    builder.Configuration.GetSection(OpcionesWidgetFlyVibe.Seccion));
+builder.Services.AddScoped<IWidgetFlyVibeService, WidgetFlyVibeService>();
+
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 
 // Compra: resumen, pago simulado en una transacción y confirmación.
@@ -133,11 +175,12 @@ builder.Services.AddScoped<ICancelacionesService, CancelacionesService>();
 builder.Services.AddScoped<IReservacionesPanelService, ReservacionesPanelService>();
 builder.Services.AddScoped<ISoportePanelService, SoportePanelService>();
 
-// Panel SA (T4 fase D): usuarios y roles, catálogos base, bitácora y contenido del sitio.
+// Panel SA (T4 fase D): usuarios y roles, catálogos base, bitácora, contenido del sitio y estadísticas de ventas.
 builder.Services.AddScoped<ISAUsuariosService, SAUsuariosService>();
 builder.Services.AddScoped<ISACatalogosService, SACatalogosService>();
 builder.Services.AddScoped<ISABitacoraService, SABitacoraService>();
 builder.Services.AddScoped<IContenidoSitioService, ContenidoSitioService>();
+builder.Services.AddScoped<ISAEstadisticasService, SAEstadisticasService>();
 
 // Panel: Gestor de ventas (proveedores, servicios con su subtipo y disponibilidad). Escribe en la bitácora.
 builder.Services.AddScoped<IGestorCatalogoService, GestorCatalogoService>();
@@ -163,11 +206,21 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.AccessDeniedPath = "/Estado/403";   // T6.2: página 403 propia (según la zona: sitio o panel)
         opciones.Cookie.Name = "FlyVibeMex.Sesion";
         opciones.Cookie.HttpOnly = true;                              // JavaScript no puede leerla
-        // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.
-        opciones.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
-        opciones.Cookie.SameSite = SameSiteMode.Lax;
+        // Dentro de un <iframe> de GoldStay la cookie es "de terceros": con SameSite=Lax el navegador NO la manda
+        // y el cliente aparece como no autenticado dentro del widget (bucle infinito hacia IniciarSesion).
+        // SameSite=None la deja viajar, pero los navegadores la EXIGEN marcada Secure: por eso las dos van juntas
+        // y solo cuando la integración está activa. Sin integración se queda con Lax, que es más estricto.
+        if (opcionesIntegracion.EstaActiva)
+        {
+            opciones.Cookie.SameSite = SameSiteMode.None;
+            opciones.Cookie.SecurePolicy = CookieSecurePolicy.Always;   // obligatorio con SameSite=None
+        }
+        else
+        {
+            // En producción la cookie solo viaja por HTTPS; en desarrollo también funciona con el perfil http.
+            opciones.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            opciones.Cookie.SameSite = SameSiteMode.Lax;
+        }
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = true;
         // En cada petición: la cuenta debe seguir activa y con el mismo rol (si el SA la cambió, se cierra la sesión).
@@ -199,6 +252,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Cabeceras que deciden quién puede incrustar cada página en un <iframe> (Services/CabecerasIntegracion.cs).
+// Va temprano, antes de los archivos estáticos y de los controladores, para que la cabecera viaje también en las
+// páginas de error que regenera UseStatusCodePagesWithReExecute.
+app.UseCabecerasIntegracion();
 
 // Respuestas de error SIN contenido (404 de una dirección inexistente, 400 del antiforgery, NotFound(), Forbid()…):
 // se vuelve a ejecutar la petición en /Estado/{código}, que muestra la página propia con el mismo código HTTP.

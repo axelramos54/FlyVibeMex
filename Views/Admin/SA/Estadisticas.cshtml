@@ -1,0 +1,321 @@
+@* GET /Admin/SA/Estadisticas (SAController.Estadisticas): resumen de ventas del periodo. Solo lectura. *@
+@model EstadisticasVentasViewModel
+@{
+    ViewData["Title"] = "Estadísticas de ventas";
+
+    var f = Model.Filtro;
+    var (desde, hasta) = f.Periodo();
+    var desdeTexto = desde.ToString("yyyy-MM-dd");
+    var hastaTexto = hasta.ToString("yyyy-MM-dd");
+
+    // "día" o "mes", según cómo quedó agrupada la gráfica. Se calcula aquí para no repetir el ternario
+    // dentro de los atributos HTML (ahí las comillas anidadas confunden al analizador de Razor).
+    var unidad = Model.AgrupadoPorMes ? "mes" : "día";
+    var unidadTitulo = Model.AgrupadoPorMes ? "Mes" : "Día";
+    var notaGrafica = Model.AgrupadoPorMes
+        ? "El periodo pasa de " + FiltroEstadisticas.MaximoDiasEnGrafica + " días, así que se agrupa por mes."
+        : "Pasa el puntero sobre una barra para ver el detalle.";
+    var tituloGrafica = "Vendido por " + unidad + " en el periodo. El detalle está en la tabla de abajo.";
+
+    // Accesos rápidos del periodo. El activo se marca comparando con el rango que se está mostrando.
+    var hoy = DateTime.Today;
+    var atajos = new (string texto, DateTime d, DateTime h)[]
+    {
+        ("Hoy", hoy, hoy),
+        ("7 días", hoy.AddDays(-6), hoy),
+        ("30 días", hoy.AddDays(-29), hoy),
+        ("Mes en curso", new DateTime(hoy.Year, hoy.Month, 1), hoy),
+        ("Año", new DateTime(hoy.Year, 1, 1), hoy)
+    };
+
+    // ---------- Geometría de la gráfica ----------
+    // Todas las medidas se escriben como ENTEROS a propósito: la app corre con cultura es-MX, donde un
+    // double se imprime con coma decimal ("12,5") y eso rompería el atributo d="" de un <path> SVG.
+    const int ancho = 960, alto = 250;
+    const int margenX = 10, margenArriba = 26, margenAbajo = 34;
+    var areaAncho = ancho - margenX * 2;
+    var areaAlto = alto - margenArriba - margenAbajo;
+    var baseY = margenArriba + areaAlto;
+
+    var barras = Model.PorPeriodo;
+    var maximo = (double)Model.MaximoPeriodo;
+    var paso = barras.Count > 0 ? (double)areaAncho / barras.Count : areaAncho;
+    var anchoBarra = Math.Max(2, (int)Math.Floor(paso) - 2);          // 2 px de aire entre barras
+    var cada = barras.Count <= 14 ? 1 : (int)Math.Ceiling(barras.Count / 12.0);   // cada cuántas se etiqueta el eje
+    var iMaximo = barras.Count == 0 ? -1 : barras.IndexOf(barras.OrderByDescending(b => b.vendido).First());
+
+    // Dibuja una barra con la punta redondeada (4 px) y la base pegada al eje.
+    Func<int, int, int, int, string> barraPath = (x, y, w, h) =>
+    {
+        var r = Math.Min(4, Math.Min(w / 2, h));
+        return $"M{x},{y + h} L{x},{y + r} Q{x},{y} {x + r},{y} L{x + w - r},{y} Q{x + w},{y} {x + w},{y + r} L{x + w},{y + h} Z";
+    };
+
+    // OJO: <text> es una etiqueta RESERVADA de Razor (marca texto literal dentro de un bloque de código) y no
+    // acepta atributos: escrita tal cual, la compilación falla con RZ1023. Por eso el <text> de SVG se arma
+    // como cadena y se imprime con Html.Raw, que no pasa por el analizador de Razor.
+    Func<int, int, string, string, string> rotulo = (cx, cy, clase, texto) =>
+        $"<text class=\"{clase}\" x=\"{cx}\" y=\"{cy}\" text-anchor=\"middle\">{System.Net.WebUtility.HtmlEncode(texto)}</text>";
+}
+
+<style>
+    .grafica-ventas .barra { fill: #0d6efd; transition: fill .12s ease-in-out; }
+    .grafica-ventas .barra:hover { fill: #0a58ca; }
+    .grafica-ventas .eje { stroke: #dee2e6; stroke-width: 1; }
+    .grafica-ventas .rotulo { fill: #6c757d; font-size: 11px; }
+    .grafica-ventas .valor { fill: #212529; font-size: 11px; font-weight: 600; }
+</style>
+
+<h1 class="h3 mb-1">Estadísticas de ventas</h1>
+<p class="text-muted">
+    Lo vendido en el periodo, por tipo de servicio y por @unidad.
+    Una venta cuenta en la fecha de su primer pago cobrado.
+</p>
+
+<form method="get" asp-action="Estadisticas" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label for="desde" class="form-label">Desde</label>
+            <input id="desde" name="desde" type="date" value="@desdeTexto" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label for="hasta" class="form-label">Hasta</label>
+            <input id="hasta" name="hasta" type="date" value="@hastaTexto" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-primary w-100">Ver</button>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex flex-wrap gap-1 justify-content-md-end">
+                @foreach (var (texto, d, h) in atajos)
+                {
+                    var activo = d.Date == desde && h.Date == hasta;
+                    var clase = activo ? "btn btn-sm btn-secondary" : "btn btn-sm btn-outline-secondary";
+                    var dRuta = d.ToString("yyyy-MM-dd");
+                    var hRuta = h.ToString("yyyy-MM-dd");
+                    <a class="@clase" asp-action="Estadisticas" asp-route-desde="@dRuta" asp-route-hasta="@hRuta">@texto</a>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="form-text mt-2">
+        Periodo: @desde.ToString("d 'de' MMMM 'de' yyyy") al @hasta.ToString("d 'de' MMMM 'de' yyyy") (@f.Dias() día(s)).
+    </div>
+</form>
+
+@if (Model.VariasMonedas)
+{
+    <div class="alert alert-warning">
+        En este periodo hay reservaciones en más de una moneda. Los totales se están sumando sin convertir:
+        revisa el detalle antes de usarlos.
+    </div>
+}
+
+@if (Model.SinDatos)
+{
+    <div class="alert alert-info">No hubo ventas ni reembolsos en este periodo.</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Vendido</div>
+                    <div class="fs-2 fw-semibold lh-1">$@Model.Vendido.ToString("N2") <small class="fs-6 fw-normal text-muted">@Model.Moneda</small></div>
+                    <div class="small text-muted mt-1">@Model.Reservaciones reservación(es) · promedio $@Model.Promedio.ToString("N2")</div>
+                    @if (Model.Descuentos > 0)
+                    {
+                        <div class="small text-muted">Ya con $@Model.Descuentos.ToString("N2") de descuentos aplicados.</div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Reembolsado</div>
+                    <div class="fs-2 fw-semibold lh-1">$@Model.Reembolsado.ToString("N2")</div>
+                    <div class="small text-muted mt-1">@Model.ReembolsosProcesados reembolso(s) procesado(s)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Neto</div>
+                    <div class="fs-2 fw-semibold lh-1">$@Model.Neto.ToString("N2")</div>
+                    <div class="small text-muted mt-1">Vendido menos reembolsos procesados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2 mb-2">
+                <h2 class="h5 mb-0">Vendido por @unidad</h2>
+                <span class="small text-muted">@notaGrafica</span>
+            </div>
+
+            <div class="grafica-ventas">
+                @* Sin alto fijo: el navegador lo calcula con el viewBox, así la gráfica ocupa todo el ancho de la tarjeta. *@
+                <svg viewBox="0 0 @ancho @alto" style="width:100%;height:auto;display:block" role="img" aria-label="@tituloGrafica">
+                    @* Línea del máximo y base del eje: discretas, solo para dar referencia. *@
+                    <line class="eje" x1="@margenX" y1="@margenArriba" x2="@(ancho - margenX)" y2="@margenArriba" />
+                    <line class="eje" x1="@margenX" y1="@baseY" x2="@(ancho - margenX)" y2="@baseY" />
+
+                    @for (var i = 0; i < barras.Count; i++)
+                    {
+                        var b = barras[i];
+                        var x = margenX + (int)Math.Round(i * paso) + 1;
+                        var h = maximo <= 0 ? 0 : (int)Math.Round((double)b.vendido / maximo * areaAlto);
+                        var y = baseY - h;
+                        var trazo = barraPath(x, y, anchoBarra, h);
+
+                        <g>
+                            <title>@b.etiquetaLarga: $@b.vendido.ToString("N2") · @b.reservaciones reservación(es)</title>
+                            @if (h > 0)
+                            {
+                                <path class="barra" d="@trazo" />
+                            }
+                            else
+                            {
+                                @* Sin ventas: una marca de 2 px sobre el eje, para que el día siga siendo visitable. *@
+                                <rect class="eje" fill="#dee2e6" stroke="none" x="@x" y="@(baseY - 2)" width="@anchoBarra" height="2" />
+                            }
+                            @if (i % cada == 0 || i == barras.Count - 1)
+                            {
+                                @Html.Raw(rotulo(x + anchoBarra / 2, baseY + 16, "rotulo", b.etiqueta))
+                            }
+                            @if (i == iMaximo && h > 0)
+                            {
+                                @Html.Raw(rotulo(x + anchoBarra / 2, y - 6, "valor", "$" + b.vendido.ToString("N0")))
+                            }
+                        </g>
+                    }
+                </svg>
+            </div>
+
+            <details class="mt-2">
+                <summary class="small text-muted">Ver los mismos datos en tabla</summary>
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>@unidadTitulo</th>
+                                <th class="text-end">Reservaciones</th>
+                                <th class="text-end">Vendido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in barras.Where(b => b.reservaciones > 0))
+                            {
+                                <tr>
+                                    <td>@b.etiquetaLarga</td>
+                                    <td class="text-end">@b.reservaciones</td>
+                                    <td class="text-end">$@b.vendido.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Por tipo de servicio</h2>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Reservaciones</th>
+                                    <th class="text-end">Vendido</th>
+                                    <th class="text-end">Reembolsado</th>
+                                    <th class="text-end">Neto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in Model.PorTipo)
+                                {
+                                    <tr>
+                                        <td>@t.tipo</td>
+                                        <td class="text-end">@t.reservaciones</td>
+                                        <td class="text-end text-nowrap">$@t.vendido.ToString("N2")</td>
+                                        <td class="text-end text-nowrap">@(t.reembolsado > 0 ? "−$" + t.reembolsado.ToString("N2") : "—")</td>
+                                        <td class="text-end text-nowrap fw-semibold">$@t.neto.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="border-top">
+                                    <th>Total</th>
+                                    <th class="text-end">@Model.Reservaciones</th>
+                                    <th class="text-end text-nowrap">$@Model.Vendido.ToString("N2")</th>
+                                    <th class="text-end text-nowrap">@(Model.Reembolsado > 0 ? "−$" + Model.Reembolsado.ToString("N2") : "—")</th>
+                                    <th class="text-end text-nowrap">$@Model.Neto.ToString("N2")</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Lo que más se vendió</h2>
+                    @if (Model.MasVendidos.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Sin servicios que mostrar en este periodo.</p>
+                    }
+                    else
+                    {
+                        <ol class="list-group list-group-numbered list-group-flush">
+                            @foreach (var s in Model.MasVendidos)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-start px-0">
+                                    <div class="me-2">
+                                        <div>@s.servicio</div>
+                                        <div class="small text-muted">@s.tipo · @s.reservaciones reservación(es)</div>
+                                    </div>
+                                    <span class="text-nowrap">$@s.vendido.ToString("N2")</span>
+                                </li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body small text-muted">
+            <strong class="text-body">Cómo se cuentan estos números.</strong>
+            Son las mismas reglas del reporte <code>pa_reporte_ventas</code> de la entrega de base de datos, para que
+            el panel y SSMS coincidan:
+            <ul class="mb-2">
+                <li>Una venta se fecha en el <strong>primer pago cobrado</strong> de la reservación (estado APROBADO
+                    o REEMBOLSADO: un cobro que después se devolvió sí fue una venta ese día).</li>
+                <li>Los importes son los <strong>históricos</strong> de la reservación: no se recalculan con los precios de hoy.</li>
+                <li>Se restan los reembolsos en estado <strong>PROCESADO</strong>, por su fecha de resolución, que puede
+                    caer en un periodo distinto al de la venta.</li>
+                <li>Cada reservación se cuenta en el tipo de servicio de su primera línea.</li>
+                @if (Model.Canceladas > 0)
+                {
+                    <li>@Model.Canceladas de estas reservaciones terminaron <strong>canceladas</strong>; siguen contando como venta
+                        del día en que se cobraron y su devolución, si la hubo, aparece en «Reembolsado».</li>
+                }
+            </ul>
+            <strong class="text-body">«Neto» no es ganancia.</strong>
+            La base de datos no guarda cuánto le cuesta cada servicio a la agencia ni la comisión del proveedor, así que
+            lo que se muestra es ingreso menos devoluciones. Para hablar de ganancia habría que registrar el costo de
+            cada servicio.
+        </div>
+    </div>
+}
