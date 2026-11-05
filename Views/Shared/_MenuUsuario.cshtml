@@ -45,7 +45,17 @@
 }
 else
 {
+    // Volver a la página donde estaba después de iniciar sesión, salvo desde una pantalla de acceso o de error
+    // (regresar ahí no tiene sentido, y desde el propio login sería un círculo). HomeController.IniciarSesion
+    // solo acepta direcciones locales. StartsWithSegments no distingue mayúsculas.
+    var rutaActual = Context.Request.Path;
+    string? regreso = rutaActual.StartsWithSegments("/Home/IniciarSesion")
+                      || rutaActual.StartsWithSegments("/Crearusuario")
+                      || rutaActual.StartsWithSegments("/Estado")
+        ? null
+        : $"{rutaActual}{Context.Request.QueryString}";
+
     <div class="m-1" id="sesion">
-        <a class="btn-sesion" asp-controller="Home" asp-action="IniciarSesion">Iniciar sesión</a>
+        <a class="btn-sesion" asp-controller="Home" asp-action="IniciarSesion" asp-route-returnUrl="@regreso">Iniciar sesión</a>
     </div>
 }

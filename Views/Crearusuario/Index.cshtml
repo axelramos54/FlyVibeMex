@@ -22,6 +22,7 @@
     <title>Crear nueva cuenta - FlyVibeMex</title>
     <partial name="_BootstrapCss" />
     <link rel="stylesheet" href="~/assets/css/style_C.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/assets/css/campo_password.css" asp-append-version="true">
     <partial name="_Favicon" />
 </head>
 
@@ -41,6 +42,9 @@
                     }
                 </div>
             }
+
+            @* A dónde volver al terminar (lo valida el controlador con Url.IsLocalUrl). *@
+            <input type="hidden" asp-for="returnUrl" />
 
             <div class="row g-3">
                 <div class="col-12">
@@ -63,7 +67,9 @@
 
                 <div class="col-12">
                     <label asp-for="correo" class="form-label"></label>
-                    <input asp-for="correo" type="email" class="form-control" maxlength="150" placeholder="ejemplo@gmail.com" autocomplete="email" required />
+                    @* data-validar-al-salir: el aviso de correo ya registrado ([Remote]) se consulta al salir del campo, no en
+                       cada tecla (script_password.js). En la feria todos salen por la misma IP y el límite es de 20 por minuto. *@
+                    <input asp-for="correo" type="email" class="form-control" maxlength="150" placeholder="ejemplo@gmail.com" autocomplete="email" required data-validar-al-salir />
                     <span asp-validation-for="correo" class="text-danger small"></span>
                 </div>
 
@@ -73,20 +79,35 @@
                     <span asp-validation-for="telefono" class="text-danger small"></span>
                 </div>
 
+                @* Botón "Ver" DENTRO del recuadro (wwwroot/assets/css/campo_password.css + js/script_password.js).
+                   type="button": no envía el formulario y el "Procesando…" de script_validacion.js no lo toca. *@
                 <div class="col-sm-6">
                     <label asp-for="password" class="form-label"></label>
-                    <input asp-for="password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required />
+                    <div class="campo-password">
+                        <input asp-for="password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required aria-describedby="requisitos_password" />
+                        <button type="button" class="btn-ver-password" data-ver-password aria-controls="password"><span data-texto-ver>Ver</span><span class="visually-hidden"> contraseña</span></button>
+                    </div>
                     <span asp-validation-for="password" class="text-danger small"></span>
                 </div>
 
                 <div class="col-sm-6">
                     <label asp-for="confirmar_password" class="form-label"></label>
-                    <input asp-for="confirmar_password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required />
+                    <div class="campo-password">
+                        <input asp-for="confirmar_password" type="password" class="form-control" minlength="8" maxlength="128" autocomplete="new-password" required />
+                        <button type="button" class="btn-ver-password" data-ver-password aria-controls="confirmar_password"><span data-texto-ver>Ver</span><span class="visually-hidden"> confirmación de contraseña</span></button>
+                    </div>
                     <span asp-validation-for="confirmar_password" class="text-danger small"></span>
                 </div>
 
+                @* Requisitos de la contraseña: los MISMOS de CrearUsuarioViewModel.password ([StringLength] 8–128 y
+                   [RegularExpression] letra + número). script_password.js los marca en vivo y toca el DOM solo cuando un
+                   requisito cambia de estado. Sin JavaScript se leen como texto de ayuda. *@
                 <div class="col-12">
-                    <div class="form-text mt-0">Mínimo 8 caracteres, con al menos una letra y un número.</div>
+                    <ul id="requisitos_password" class="requisitos-password" data-campo="password" aria-live="polite">
+                        <li data-requisito="longitud" data-cumple="false" aria-atomic="true"><span class="visually-hidden estado-requisito">Pendiente: </span>Entre 8 y 128 caracteres</li>
+                        <li data-requisito="letra" data-cumple="false" aria-atomic="true"><span class="visually-hidden estado-requisito">Pendiente: </span>Al menos una letra</li>
+                        <li data-requisito="numero" data-cumple="false" aria-atomic="true"><span class="visually-hidden estado-requisito">Pendiente: </span>Al menos un número</li>
+                    </ul>
                 </div>
 
                 <div class="col-12">
@@ -107,11 +128,13 @@
 
         <p id="ya_tengo_cuenta" class="text-center mb-0">
             ¿Ya tienes cuenta?
-            <a asp-controller="Home" asp-action="IniciarSesion">Inicia sesión</a>
+            <a asp-controller="Home" asp-action="IniciarSesion" asp-route-returnUrl="@Model.returnUrl">Inicia sesión</a>
         </p>
     </div>
     @* Validación en el navegador + "Procesando…" (T6.1). *@
     <partial name="_ValidationScriptsPartial" />
+    @* Botón "Ver", requisitos en vivo y [Remote] al salir del campo. Va DESPUÉS de la validación: usa su validador. *@
+    <script src="~/assets/js/script_password.js" asp-append-version="true"></script>
 </body>
 
 </html>

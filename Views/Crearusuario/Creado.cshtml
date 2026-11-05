@@ -10,6 +10,9 @@
     var exito = TempData["Exito"] as string;
     var aviso = TempData["Aviso"] as string;
     var nombre = TempData["NombreNuevo"] as string;
+    // Módulo 1: con el auto-login normalmente se llega aquí YA con sesión, y entonces los botones cambian.
+    // Sin sesión (el auto-login falló, o modo sin BD) se ofrece iniciar sesión como antes.
+    var conSesion = User.Identity?.IsAuthenticated == true;
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -34,14 +37,22 @@
         </h1>
 
         <partial name="_Mensajes" />
-        @if (exito is null && aviso is null)
+        @if (exito is null && aviso is null && !conSesion)
         {
             <p id="subtitulo_registro">Si ya creaste tu cuenta, inicia sesión para continuar.</p>
         }
 
         <div class="d-grid gap-2 mt-3">
-            <a asp-controller="Home" asp-action="IniciarSesion" id="btn_registrar" class="btn">Iniciar sesión</a>
-            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Ir al inicio</a>
+            @if (conSesion)
+            {
+                <a asp-controller="Miusuario" asp-action="Index" id="btn_registrar" class="btn">Ir a mi cuenta</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Seguir explorando</a>
+            }
+            else
+            {
+                <a asp-controller="Home" asp-action="IniciarSesion" id="btn_registrar" class="btn">Iniciar sesión</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Ir al inicio</a>
+            }
         </div>
     </div>
     @* JS de Bootstrap: lo necesita el botón ✕ de los mensajes. *@

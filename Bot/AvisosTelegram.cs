@@ -17,7 +17,7 @@ public sealed record AvisoTelegram(TipoAvisoTelegram Tipo, ulong IdTicket, long 
 
 /// <summary>
 /// Implementación de <see cref="IAvisosTelegram"/> cuando el bot está activo: solo forma el aviso en una cola en
-/// memoria (no espera a Telegram). <see cref="DespachadorAvisosTelegram"/> los manda en segundo plano.
+/// memoria (no espera a Telegram). <see cref="DespachadorAvisosTelegram"/> los manda en segundo plano. g
 /// </summary>
 public sealed class ColaAvisosTelegram : IAvisosTelegram
 {

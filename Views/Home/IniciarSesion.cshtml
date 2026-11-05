@@ -21,6 +21,7 @@
     <title>Iniciar sesión - FlyVibeMex</title>
     <partial name="_BootstrapCss" />
     <link rel="stylesheet" href="~/assets/css/style_s.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/assets/css/campo_password.css" asp-append-version="true">
     <partial name="_Favicon" />
 </head>
 
@@ -36,6 +37,8 @@
     </div>
     @* Validación en el navegador + "Procesando…" (T6.1). *@
     <partial name="_ValidationScriptsPartial" />
+    @* Botón "Ver" de la contraseña. Va DESPUÉS de la validación. *@
+    <script src="~/assets/js/script_password.js" asp-append-version="true"></script>
 </body>
 
 </html>

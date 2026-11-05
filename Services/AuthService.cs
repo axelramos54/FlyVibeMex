@@ -231,6 +231,30 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<bool> CorreoDisponibleAsync(string? correo, CancellationToken cancellationToken = default)
+    {
+        // El formato y la longitud los valida el propio formulario; aquí no se consulta la BD por algo inválido.
+        if (string.IsNullOrWhiteSpace(correo) || correo.Length > LongitudMaximaCorreo)
+            return true;
+
+        // Misma normalización y misma condición que RegistrarClienteAsync (cuenta activa o no: el UNIQUE es del correo).
+        var correoNormalizado = NormalizarCorreo(correo);
+        try
+        {
+            return !await _db.Usuarios.AsNoTracking().AnyAsync(u => u.correo == correoNormalizado, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // La petición la canceló el navegador: no es un error de BD.
+        }
+        catch (Exception ex) when (EsErrorDeBaseDeDatos(ex))
+        {
+            _logger.LogWarning(ex, "Registro: no se pudo consultar si un correo está disponible; se responde como disponible.");
+            return true;
+        }
+    }
+
     /// <summary>Re-hashea la contraseña con los parámetros actuales. Un fallo aquí no impide iniciar sesión.</summary>
     private async Task ActualizarHashAsync(ulong idUsuario, string password, CancellationToken cancellationToken)
     {

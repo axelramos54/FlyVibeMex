@@ -20,24 +20,31 @@ namespace FlyVibeMex.Controllers;
 /// </remarks>
 public class CrearusuarioController : Controller
 {
+    /// <summary>Consultas de "¿este correo ya existe?" permitidas por IP en <see cref="VentanaConsultasCorreo"/>.</summary>
+    private const int MaximoConsultasCorreo = 20;
+    private static readonly TimeSpan VentanaConsultasCorreo = TimeSpan.FromMinutes(1);
+
     private readonly Lazy<IAuthService> _auth;
     private readonly ConfiguracionBaseDatos _configuracionBd;
+    private readonly ILimitadorIntentos _limitador;
 
-    public CrearusuarioController(Lazy<IAuthService> auth, ConfiguracionBaseDatos configuracionBd)
+    public CrearusuarioController(Lazy<IAuthService> auth, ConfiguracionBaseDatos configuracionBd, ILimitadorIntentos limitador)
     {
         _auth = auth;
         _configuracionBd = configuracionBd;
+        _limitador = limitador;
     }
 
-    // GET /Crearusuario
+    // GET /Crearusuario?returnUrl=…   returnUrl: a dónde volver al terminar (solo direcciones de este sitio).
     [HttpGet]
-    public IActionResult Index() => View(new CrearUsuarioViewModel());
+    public IActionResult Index(string? returnUrl) =>
+        View(new CrearUsuarioViewModel { returnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null });
 
     // POST /Crearusuario
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(
-        [Bind("nombre,apellido_paterno,apellido_materno,correo,telefono,password,confirmar_password,acepto_terminos")]
+        [Bind("nombre,apellido_paterno,apellido_materno,correo,telefono,password,confirmar_password,acepto_terminos,returnUrl")]
         CrearUsuarioViewModel datos,
         CancellationToken cancellationToken)
     {
@@ -70,6 +77,29 @@ public class CrearusuarioController : Controller
             return VistaFormulario(datos);
         }
 
+        // Auto-login (Módulo 1): se entra con las credenciales recién guardadas y por el MISMO camino que el
+        // formulario de inicio de sesión, así el rol sale de roles_usuarios (lo que revisa ValidacionSesion).
+        // Si este paso falla NO es un error de registro: la cuenta ya existe, así que se manda a Creado para
+        // entrar a mano.
+        var acceso = await _auth.Value.ValidarCredencialesAsync(datos.correo, datos.password, cancellationToken);
+        if (acceso.Exitoso && acceso.Usuario is not null)
+        {
+            await HttpContext.IniciarSesionAsync(acceso.Usuario, persistente: false);
+
+            var nombre = datos.nombre.Trim();
+
+            // Solo se regresa a direcciones de este mismo sitio (evita "open redirect").
+            if (!string.IsNullOrEmpty(datos.returnUrl) && Url.IsLocalUrl(datos.returnUrl))
+            {
+                TempData["Exito"] = $"¡Bienvenido, {nombre}! Tu cuenta quedó creada y ya iniciaste sesión.";
+                return LocalRedirect(datos.returnUrl);
+            }
+
+            TempData["Exito"] = "Tu cuenta quedó creada y ya iniciaste sesión.";
+            TempData["NombreNuevo"] = nombre;
+            return RedirectToAction(nameof(Creado));
+        }
+
         TempData["Exito"] = resultado.Mensaje;
         TempData["NombreNuevo"] = datos.nombre.Trim();
         return RedirectToAction(nameof(Creado));
@@ -78,6 +108,27 @@ public class CrearusuarioController : Controller
     // GET /Crearusuario/Creado  → confirmación después de registrarse
     [HttpGet]
     public IActionResult Creado() => View();
+
+    // GET /Crearusuario/CorreoDisponible?correo=…  → lo llama el [Remote] del campo correo (aviso en vivo).
+    // Respuesta en el formato de jquery-validation: true = válido; un texto = el mensaje de error.
+    // Falla ABIERTO (responde "disponible") en tres casos: sin BD configurada, pasado el límite por IP y ante un
+    // error de BD (eso lo resuelve AuthService.CorreoDisponibleAsync). Nunca bloquea el registro: la comprobación
+    // que manda está en AuthService.RegistrarClienteAsync.
+    [HttpGet]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public async Task<IActionResult> CorreoDisponible(string? correo, CancellationToken cancellationToken)
+    {
+        if (!_configuracionBd.EstaConfigurada)
+            return Json(true);
+
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
+        if (!_limitador.Permitir($"registro-correo:{ip}", MaximoConsultasCorreo, VentanaConsultasCorreo))
+            return Json(true);
+
+        return await _auth.Value.CorreoDisponibleAsync(correo, cancellationToken)
+            ? Json(true)
+            : Json("Ya existe una cuenta con ese correo. Inicia sesión.");
+    }
 
     /// <summary>
     /// Vuelve a mostrar el formulario. Las contraseñas no se regresan al navegador: los &lt;input type="password"&gt;

@@ -31,4 +31,12 @@ public interface IAuthService
     /// el problema (correo / telefono) o, sin errores por campo, un mensaje general. Nunca lanza errores de BD.
     /// </summary>
     Task<ResultadoOperacion> RegistrarClienteAsync(CrearUsuarioViewModel datos, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>true</c> si ninguna cuenta usa ese correo (normalizado con <see cref="NormalizarCorreo"/>). Es la consulta del
+    /// aviso en vivo del registro ([Remote]); la comprobación que manda sigue siendo la de <see cref="RegistrarClienteAsync"/>.
+    /// Falla ABIERTO: con un correo vacío o demasiado largo, o ante un error de base de datos, devuelve <c>true</c>
+    /// (el error queda en el log). Nunca lanza errores de BD.
+    /// </summary>
+    Task<bool> CorreoDisponibleAsync(string? correo, CancellationToken cancellationToken = default);
 }

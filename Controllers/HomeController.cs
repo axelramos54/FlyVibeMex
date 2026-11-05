@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using FlyVibeMex.Data;
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
@@ -121,21 +120,9 @@ public class HomeController : Controller
         }
 
         var usuario = resultado.Usuario!;
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, usuario.id.ToString()),
-            new(ClaimTypes.Name, usuario.nombre),
-            new(ClaimTypes.Email, usuario.correo),
-            new(ClaimTypes.Role, usuario.rol),
-            new("id_rol", usuario.id_rol.ToString())
-        };
 
-        var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identidad),
-            new AuthenticationProperties { IsPersistent = datos.recordarme });
+        // Los claims de la sesión se arman en UN solo lugar: Services/SesionCookie.cs (Módulo 1).
+        await HttpContext.IniciarSesionAsync(usuario, datos.recordarme);
 
         // Solo se regresa a direcciones de este mismo sitio (evita "open redirect").
         if (!string.IsNullOrEmpty(datos.returnUrl) && Url.IsLocalUrl(datos.returnUrl))

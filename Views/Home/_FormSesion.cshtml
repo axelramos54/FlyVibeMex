@@ -31,11 +31,17 @@
         <span asp-validation-for="correo" class="text-danger small fw-normal"></span>
     </label>
 
-    <label asp-for="password">
-        Contraseña
-        <input asp-for="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" maxlength="128" required />
+    @* La contraseña NO va dentro del <label> (a diferencia del correo): un <label> no debe contener otro elemento
+       etiquetable, y junto al campo va el botón "Ver" (campo_password.css + script_password.js). El contenedor
+       .campo-sesion reproduce el estilo en columna de "#formu_inicio_sesion label" (style_s.css). *@
+    <div class="campo-sesion">
+        <label asp-for="password">Contraseña</label>
+        <div class="campo-password">
+            <input asp-for="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" maxlength="128" required />
+            <button type="button" class="btn-ver-password" data-ver-password aria-controls="password"><span data-texto-ver>Ver</span><span class="visually-hidden"> contraseña</span></button>
+        </div>
         <span asp-validation-for="password" class="text-danger small fw-normal"></span>
-    </label>
+    </div>
 
     <div class="form-check">
         <input asp-for="recordarme" class="form-check-input" />
@@ -52,4 +58,5 @@
 </div>
 
 @* El registro es una página completa en /Crearusuario. *@
-<a asp-controller="Crearusuario" asp-action="Index" id="btn_crear_cuenta" class="btn w-100">Crear nueva cuenta</a>
+@* returnUrl: quien llegó al login desde una página y decide registrarse, vuelve a esa página al terminar. *@
+<a asp-controller="Crearusuario" asp-action="Index" asp-route-returnUrl="@Model.returnUrl" id="btn_crear_cuenta" class="btn w-100">Crear nueva cuenta</a>

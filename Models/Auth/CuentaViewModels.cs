@@ -53,6 +53,11 @@ namespace FlyVibeMex.Models
 
         [Display(Name = "Correo")]
         [Required(ErrorMessage = "El correo es obligatorio.")]
+        // Aviso en vivo de correo ya registrado (CrearusuarioController.CorreoDisponible). Es solo una comodidad:
+        // falla abierto y NO se vuelve a comprobar al recibir el POST; la comprobación que manda está en
+        // AuthService.RegistrarClienteAsync. Nombre completo para no importar Microsoft.AspNetCore.Mvc en este archivo.
+        [Microsoft.AspNetCore.Mvc.Remote(action: "CorreoDisponible", controller: "Crearusuario",
+            ErrorMessage = "Ya existe una cuenta con ese correo. Inicia sesión.")]
         [StringLength(150, ErrorMessage = "Máximo 150 caracteres.")]
         [EmailAddress(ErrorMessage = "Correo no válido.")]
         public string correo { get; set; } = string.Empty;
@@ -79,5 +84,11 @@ namespace FlyVibeMex.Models
         [Display(Name = "Acepto los términos y la política de privacidad")]
         [Range(typeof(bool), "true", "true", ErrorMessage = "Debes aceptar los términos para crear tu cuenta.")]
         public bool acepto_terminos { get; set; }
+
+        /// <summary>
+        /// Página a la que se regresa después de crear la cuenta (solo se acepta si es local).
+        /// OJO: tiene que estar en la lista [Bind] del POST de CrearusuarioController; si no, llega siempre nula.
+        /// </summary>
+        public string? returnUrl { get; set; }
     }
 }

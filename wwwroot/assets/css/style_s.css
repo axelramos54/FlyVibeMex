@@ -103,6 +103,18 @@ body {
     transform: translateY(-1px);
 }
 
+/* ---- Campo de contraseña (Módulo 1): la etiqueta va FUERA del campo porque al lado está el botón "Ver"
+   (ver _FormSesion.cshtml), así que el contenedor reproduce el estilo en columna de "#formu_inicio_sesion label".
+   El botón "Ver" se estiliza en campo_password.css. ---- */
+#formu_inicio_sesion .campo-sesion {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    gap: 6px;
+}
+
 /* ---- Casilla "Mantener la sesión iniciada": la etiqueta no debe usar el estilo en columna de arriba ---- */
 #formu_inicio_sesion .form-check-label {
     display: inline;
