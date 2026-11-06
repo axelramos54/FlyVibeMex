@@ -144,11 +144,6 @@ builder.Services.AddScoped<IDiagnosticoBdService, DiagnosticoBdService>();
 // Imágenes subidas: se guardan en wwwroot/uploads/ y en la BD solo va la ruta (imagen_ruta).
 builder.Services.AddSingleton<IAlmacenImagenes, AlmacenImagenes>();
 
-// Límite de intentos por llave y ventana de tiempo. Singleton porque el conteo vive en memoria del proceso y
-// tiene que ser el mismo para todas las peticiones. Va aquí, SIN condiciones, y no en AgregarBotTelegram: ese
-// método sale antes cuando no hay token de Telegram, y lo usan tanto el bot como el sitio web.
-builder.Services.AddSingleton<ILimitadorIntentos, LimitadorIntentosEnMemoria>();
-
 // Catálogo público: búsqueda por sección, detalle y cotización.
 // SSO del widget de GoldStay: valida el token firmado y lo traduce a un usuario local (Fase 3).
 builder.Services.AddScoped<ISsoIntegracionService, SsoIntegracionService>();
@@ -287,7 +282,9 @@ app.UseRouting();
 app.UseAuthentication();   // debe ir antes de UseAuthorization
 app.UseAuthorization();
 
-app.MapStaticAssets();
+// app.MapStaticAssets(); linea anterior 5-11-2026
+
+app.UseStaticFiles();
 
 app.MapControllerRoute(
     name: "default",
