@@ -504,7 +504,9 @@ BEGIN
             EXEC dbo.pa_interno_registrar_bitacora @id_usuario, N'CREAR', N'solicitudes_soporte', @id_ticket, @detalle;
         COMMIT TRANSACTION;
 
-        SELECT @id_ticket AS id_ticket, N'ABIERTA' AS estado;
+        -- Lo que quedó guardado, no un valor fijo: si está activo el trigger de sql/08, el ticket ya salió
+        -- asignado y EN_PROCESO.
+        SELECT id AS id_ticket, estado, id_agente_asignado FROM dbo.solicitudes_soporte WHERE id = @id_ticket;
     END TRY
     BEGIN CATCH
         IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;   -- deshacer ANTES de escribir (si no, el INSERT falla)

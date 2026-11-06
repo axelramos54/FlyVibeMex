@@ -1,0 +1,244 @@
+/* ============================================================================================
+ * style.css — Hoja GLOBAL. La cargan Views/Shared/_Layout.cshtml (sitio) y Views/Admin/_AdminLayout.cshtml (panel).
+ * Estiliza: reset base, cuerpo, header sticky, barra de navegación (#navbar, menú ☰), bloque de sesión (#sesion,
+ * .avatar-iniciales), contenedor <main id="contenido_main"> y footer.
+ * Regla del equipo: los atributos `class` se reservan para utilidades de Bootstrap; los componentes
+ * propios se estilizan con selectores #id (p. ej. #mapas_preferidos, #buscador, #tarjetas).
+ * NOTA: esta hoja también usa selectores de clase propios (p. ej. .mi-tarjeta, .btn-card-action);
+ *       mantenerlos o migrarlos a #id es una decisión pendiente del equipo.
+ * ============================================================================================ */
+/* ---- Reset y cuerpo de la página ---- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f3f4f8;
+    color: #1a1d20;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Al saltar a un ancla (#privacidad) o al enfocar el primer error de un formulario, se deja espacio para el header
+ * (es sticky: se queda arriba encima del contenido mientras se hace scroll). */
+html {
+    scroll-padding-top: 90px;
+}
+
+/* ---- Header (T7.4): <header class="sticky-top"> de Bootstrap. A diferencia del antiguo position: fixed, ocupa su
+ * lugar en la página, así que #contenido_main ya no necesita un margin-top "a ojo" que fallaba en celular. ---- */
+
+/* ---- Barra de navegación: degradado azul → naranja, marca (#navbar_left), botón ☰ y menú (#navbar_right) ---- */
+#navbar {
+    background: linear-gradient(115deg, #3E8FD6 0%, #7FC4F2 45%, #F07B3F 100%);
+    padding: 10px 24px;
+    box-shadow: 0 4px 18px rgba(13, 27, 84, 0.2);
+    /* Ícono ☰ en blanco (el de Bootstrap es gris oscuro y no se ve sobre el degradado). */
+    --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.95%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+#navbar .navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.7);
+}
+
+#navbar .navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.5);
+}
+
+/* Marca: logo (si existe wwwroot/assets/img/logo.png) + texto. Ver Views/Shared/_Marca.cshtml. */
+#navbar_left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 0;
+    text-decoration: none;
+}
+
+.logo-sitio {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+}
+
+.texto-marca {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.25rem;
+    letter-spacing: 0.5px;
+}
+
+/* Etiqueta "Panel" junto a la marca en _AdminLayout. */
+.etiqueta-panel {
+    background-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+#navbar_right {
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 12px;
+}
+
+#navbar_right a {
+    color: rgba(255, 255, 255, 0.92);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+#navbar_right a:hover,
+#navbar_right a:focus-visible {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+/* ---- Bloque de sesión (Views/Shared/_MenuUsuario.cshtml) ---- */
+#sesion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Círculo con las iniciales del usuario (T7.3; sustituye a la foto de prueba). */
+.avatar-iniciales {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: #3E8FD6;
+    font-weight: 800;
+    font-size: 0.85rem;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Contenedor principal de cada página ---- */
+#contenido_main {
+    flex: 1;
+    padding: 24px;
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ---- Pie de página ---- */
+footer {
+    background-color: #0f172a;
+    color: #94a3b8;
+    text-align: center;
+    padding: 20px 16px;
+    margin-top: auto;
+    font-size: 0.85rem;
+}
+
+footer a {
+    color: #cbd5e1;
+    text-decoration: none;
+}
+
+footer a:hover,
+footer a:focus-visible {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* ---- Responsivo: menos de 992 px = menú ☰ (navbar-expand-lg) ---- */
+@media (max-width: 991.98px) {
+    #navbar {
+        padding: 8px 16px;
+    }
+
+    /* Menú desplegado: una opción por renglón, a todo lo ancho (fácil de tocar con el dedo). */
+    #navbar_right {
+        align-items: stretch;
+        padding: 8px 0 4px;
+        gap: 2px;
+    }
+
+    #navbar_right > a {
+        display: block;
+        margin: 0 !important;
+    }
+
+    #sesion {
+        margin: 6px 0 0 !important;
+    }
+
+    #sesion .menu-usuario {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: 12px;
+    }
+
+    #sesion .btn-sesion {
+        display: block;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* El desplegable del usuario se abre dentro del menú, no flotando. */
+    #navbar_right .dropdown {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #contenido_main {
+        padding: 16px;
+    }
+}
+
+/* ---- Botón "Iniciar sesión" y botón del menú del usuario (Views/Shared/_MenuUsuario.cshtml) ---- */
+.btn-sesion {
+    background-color: #e62b4a;
+    color: #ffffff !important;
+    padding: 8px 18px !important;
+    border-radius: 20px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    box-shadow: 0 3px 10px rgba(230, 43, 74, 0.3);
+}
+
+.btn-sesion:hover { background-color: #d0203d !important; }
+
+.menu-usuario {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+}
+
+.menu-usuario:hover, .menu-usuario:focus, .menu-usuario.show { color: #ffffff; background-color: rgba(255, 255, 255, 0.18); }
+
+/* Los enlaces del menú desplegable no deben heredar el color blanco de #navbar_right a */
+#navbar_right .dropdown-menu a,
+#navbar_right .dropdown-menu button {
+    color: #1a1d20;
+    font-weight: 500;
+    border-radius: 0;
+    padding: 0.4rem 1rem;
+}
+
+#navbar_right .dropdown-menu a:hover,
+#navbar_right .dropdown-menu button:hover { background-color: #f1f3f5; color: #1a1d20; }

@@ -491,7 +491,10 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<SolicitudesSoporte>(e =>
         {
             // Tickets de la regla R9 (también los crea el bot, ver docs/06). Titular: `id_usuarioglobal`.
-            e.ToTable("solicitudes_soporte");
+            // HasTrigger: sql/08_trigger_asignacion_tickets.sql puede crear un trigger AFTER INSERT en esta tabla. Sin
+            // esta declaración EF Core inserta con "OUTPUT INSERTED.id", que SQL Server rechaza si la tabla tiene un
+            // trigger (error 334): crear un ticket desde la web fallaría. Si el trigger no existe, no cambia nada.
+            e.ToTable("solicitudes_soporte", t => t.HasTrigger("tr_solicitudes_soporte_asignar_agente"));
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
             e.Property(x => x.tipo).HasMaxLength(20);
