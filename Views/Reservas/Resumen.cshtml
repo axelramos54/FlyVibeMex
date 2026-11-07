@@ -167,6 +167,22 @@
                             <input type="hidden" name="codigo" value="@(Model.Promocion?.codigo)">
                             <input type="hidden" name="total_confirmado" value="@s.total_confirmado">
 
+                            @if (srv.tipo == TipoCatalogo.Hospedaje)
+                            {
+                                <fieldset class="mb-3">
+                                    <legend class="h6">¿Algún huésped requiere atención especial?</legend>
+                                    @foreach (var t in Model.TiposHuesped)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <input type="number" name="huespedes[@t.id]" value="@(s.huespedes.GetValueOrDefault(t.id))"
+                                                min="0" max="@s.personas" class="form-control form-control-sm" style="width:5rem" />
+                                            <label class="mb-0">@t.nombre <small class="text-muted">— @t.descripcion</small></label>
+                                        </div>
+                                    }
+                                    <div class="text-danger small">@Error("huespedes")</div>
+                                </fieldset>
+                            }
+
                             <div class="mb-3">
                                 <label for="id_metodo_pago" class="form-label">Método de pago</label>
                                 <select id="id_metodo_pago" name="id_metodo_pago" class="form-select" asp-items="metodos"></select>

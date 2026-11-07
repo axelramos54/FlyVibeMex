@@ -1,0 +1,24 @@
+@model List<ResenaFila>
+<h1 class="h4">Reseñas del servicio #@ViewBag.IdServicio — @(((decimal)ViewBag.Promedio).ToString("0.0")) ★ (@ViewBag.Total visibles)</h1>
+<table class="table align-middle">
+    <thead><tr><th>Autor</th><th>★</th><th>Comentario</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr class="@(r.estado == "OCULTA" ? "table-secondary" : "")">
+            <td>@r.autor<br /><small>@r.creada_en.ToString("dd/MM/yyyy")</small></td>
+            <td>@r.calificacion</td>
+            <td>@r.titulo @r.comentario</td>
+            <td>@r.estado</td>
+            <td>
+                <form asp-controller="AdminResenas" asp-action="Moderar" method="post">
+                    <input type="hidden" name="idServicio" value="@ViewBag.IdServicio" />
+                    <input type="hidden" name="idResena" value="@r.id" />
+                    <input type="hidden" name="ocultar" value="@(r.estado == "VISIBLE" ? "true" : "false")" />
+                    <button class="btn btn-sm btn-outline-danger">@(r.estado == "VISIBLE" ? "Ocultar" : "Mostrar")</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

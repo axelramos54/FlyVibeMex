@@ -66,6 +66,18 @@ else
                         }
                         <h5 class="card-title">@r.nombre</h5>
                         <p class="card-text">@r.descripcion</p>
+
+                        @if (r.etiquetas.Count > 0)
+                        {
+                            <p class="mb-2">
+                                @foreach (var e in r.etiquetas) { <span class="badge text-bg-secondary me-1">@EtiquetasHospedaje.Nombre(e)</span> }
+                            </p>
+                        }
+                        @if (User.IsInRole(Roles.Cliente) && r.tipo == TipoCatalogo.Hospedaje)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-favorito mb-2" data-id="@r.id"
+                                    aria-pressed="@(r.es_favorito ? "true" : "false")">@(r.es_favorito ? "♥" : "♡")</button>
+                        }
                         <div class="card-footer-box">
                             <div class="price-box">
                                 @if (r.total is decimal total)

@@ -43,7 +43,8 @@ public static class Roles
 
     /// <summary>Panel del SA (/Admin/SA).</summary>
     public const string PanelSA = SA;
-
+    /// <summary>Moderar reseñas (/Admin/Resenas): soporte y administración.</summary>
+    public const string PanelResenas = Soporte + "," + Administrador + "," + SA;
     /// <summary>¿El nombre de rol es de personal de FlyVibeMex (no cliente)?</summary>
     public static bool EsInterno(string? rol) => rol is Soporte or Agente or Administrador or SA;
 

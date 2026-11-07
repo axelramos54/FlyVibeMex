@@ -1,6 +1,7 @@
 using FlyVibeMex.Models;
 using FlyVibeMex.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace FlyVibeMex.Controllers;
 
@@ -14,10 +15,12 @@ namespace FlyVibeMex.Controllers;
 public class CatalogoController : Controller
 {
     private readonly ICatalogoService _catalogo;
+    private readonly IComunidadService _comunidad;
 
-    public CatalogoController(ICatalogoService catalogo)
+    public CatalogoController(ICatalogoService catalogo, IComunidadService comunidad)
     {
         _catalogo = catalogo;
+        _comunidad = comunidad;
     }
 
     // GET /Catalogo/Detalle/5?desde=2026-11-02&hasta=2026-11-05&personas=2&habitaciones=1
@@ -34,6 +37,8 @@ public class CatalogoController : Controller
         var vm = await _catalogo.DetalleAsync(id, busqueda, cotizar: ModelState.IsValid, cancellationToken);
         if (vm is null) return NotFound();
 
+        var (resenas, promedio, total) = await _comunidad.ResenasAsync(id, incluirOcultas: false, cancellationToken);
+        ViewBag.Resenas = resenas; ViewBag.Promedio = promedio; ViewBag.TotalResenas = total;
         return View(vm);
     }
 }

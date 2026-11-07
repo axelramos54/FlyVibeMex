@@ -17,8 +17,31 @@
     <style>
         /* Al imprimir solo sale el comprobante (sin barra de navegación, pie ni botones). */
         @@media print {
+            @@page { size: 80mm auto; margin: 2mm; }
+
+            html, body { width: 76mm; background: #fff !important; }
+
+            /* Todo el texto del comprobante: negro, negrita y sin gris ni transparencia */
+            * {
+                color: #000 !important;
+                font-weight: 700 !important;
+                opacity: 1 !important;
+                text-shadow: none !important;
+                font-family: "Courier New", Consolas, monospace !important;
+                font-size: 10.5pt !important;
+                line-height: 1.3 !important;
+            }
+
             header, footer, .d-print-none { display: none !important; }
             #contenido_main { margin-top: 0 !important; }
+            .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+
+            .card, .card-body, .alert { border: 0 !important; box-shadow: none !important; background: #fff !important; padding: 0 !important; }
+            .badge { background: none !important; border: 1px solid #000 !important; }
+            dl.row { display: block !important; margin: 0 !important; }
+            dt, dd { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            table { width: 100%; border-top: 1px solid #000; }
+            td { border: 0 !important; padding: 2px 0 !important; }
         }
     </style>
 }
@@ -99,3 +122,15 @@
         <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Seguir explorando</a>
     </div>
 </div>
+
+@*
+ Fase 4 · aviso a la página anfitriona (GoldStay) de que la reserva quedó confirmada, para que actualice su
+ pantalla. Si esta página NO está dentro de un iframe, script_widget.js no hace nada: por eso el parcial puede
+ quedarse aquí sin afectar al sitio normal.
+
+ Se manda SOLO el código, el total y la moneda: lo mínimo para que el anfitrión muestre el resultado. Nada de
+ datos del cliente ni del pago. Y del lado de GoldStay este mensaje sirve para refrescar la interfaz, no como
+ comprobante: para cobrar o dar por pagada la reserva, su servidor tiene que confirmarla con el código.
+*@
+<partial name="_EventoWidget"
+         model='new EventoWidget("reserva.confirmada", new { codigo = Model.codigo_reserva, total = Model.total, moneda = Model.moneda })' />

@@ -133,6 +133,12 @@ namespace FlyVibeMex.Models
         [Display(Name = "Ordenar por")]
         public OrdenCatalogo orden { get; set; } = OrdenCatalogo.PrecioAsc;
 
+        [Display(Name = "Precio mínimo"), Range(0, 1000000, ErrorMessage = "Entre 0 y 1,000,000.")] public decimal? precio_min { get; set; }
+        [Display(Name = "Precio máximo"), Range(0, 1000000, ErrorMessage = "Entre 0 y 1,000,000.")] public decimal? precio_max { get; set; }
+        [Display(Name = "Tipo de habitación")] public string? tipo_habitacion { get; set; }
+        /// <summary>Etiquetas marcadas (chips). El hotel debe tener TODAS.</summary>
+        public List<string> etiquetas { get; set; } = new();
+
         // ---------------- Lo llena el servidor ----------------
 
         /// <summary>VUELO, HOSPEDAJE, VEHICULO, PAQUETE o EVENTO (lo asigna la acción, nunca el formulario).</summary>
@@ -142,6 +148,8 @@ namespace FlyVibeMex.Models
         [BindNever, ValidateNever] public List<SelectListItem> Destinos { get; set; } = new();
         [BindNever, ValidateNever] public List<SelectListItem> Origenes { get; set; } = new();
         [BindNever, ValidateNever] public List<TarjetaServicioViewModel> Resultados { get; set; } = new();
+
+        [BindNever, ValidateNever] public List<string> TiposHabitacion { get; set; } = new();
 
         /// <summary><c>true</c> si se buscó con fechas válidas (lo asigna CatalogoService).</summary>
         [BindNever, ValidateNever] public bool BusquedaConFechas { get; set; }
@@ -178,6 +186,9 @@ namespace FlyVibeMex.Models
                 else if (hasta.Value.DayNumber - inicio.DayNumber > MaxDiasRango)
                     yield return (nameof(hasta), $"El máximo es de {MaxDiasRango} días.");
             }
+
+            if (precio_min is not null && precio_max is not null && precio_min > precio_max)
+                yield return (nameof(precio_max), "El precio máximo debe ser mayor o igual al mínimo.");
         }
 
         /// <summary>
@@ -239,6 +250,9 @@ namespace FlyVibeMex.Models
 
         /// <summary>Vuelos: sale justo el día buscado (los demás son de ±3 días).</summary>
         public bool fecha_buscada { get; set; }
+
+        public List<string> etiquetas { get; set; } = new();
+        public bool es_favorito { get; set; }
 
         public string Unidad => TipoCatalogo.Unidad(tipo);
     }

@@ -66,7 +66,7 @@ Los scripts tienen un candado que detiene la ejecución si no están en `FlyVibe
 | `inactivo.prueba@flyvibemex.test` | CLIENTE | **No** | "Credenciales inválidas." |
 | `agente.prueba@flyvibemex.test` | AGENTE | Sí | Éxito (lo crea `02_seed_demo.sql`; atiende el ticket `EN_PROCESO`) |
 | `ana.lopez@flyvibemex.test` | CLIENTE | Sí | Éxito (lo crea `02_seed_demo.sql`; reservaciones `FV-260901` y `FV-260903`) |
-
+|  `sa.prueba@flyvibemex.test` | SA | Sí | Éxito (lo crea `02_seed_demo.sql`; reservaciones `FV-260901` y `FV-260903`) |
 `cliente.prueba` es titular de `FV-260902` (viaje dentro de 2 días).
 
 En la tabla solo está el **hash** (`AQAAAAIAAYag…`, 84 caracteres, formato V3 de ASP.NET Core Identity: PBKDF2‑HMAC‑SHA512, 100 000 iteraciones, sal aleatoria). La contraseña en texto plano no está guardada en ningún lado de la BD.

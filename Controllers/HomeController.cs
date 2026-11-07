@@ -43,9 +43,18 @@ public class HomeController : Controller
     /// GET <c>/Home/Hoteles</c>. Devuelve la <b>página</b> <c>Hoteles.cshtml</c>
     /// (módulo Explorar y reservar › Hospedaje). Buscador + tarjetas con datos de la BD.
     /// </summary>
-    public Task<IActionResult> Hoteles(BusquedaCatalogoViewModel busqueda,
-        [FromServices] ICatalogoService catalogo, CancellationToken cancellationToken)
-        => SeccionCatalogoAsync(TipoCatalogo.Hospedaje, busqueda, catalogo, cancellationToken);
+    public async Task<IActionResult> Hoteles(BusquedaCatalogoViewModel busqueda,
+    [FromServices] ICatalogoService catalogo, [FromServices] IComunidadService comunidad,
+    CancellationToken cancellationToken)
+    {
+        var resultado = await SeccionCatalogoAsync(TipoCatalogo.Hospedaje, busqueda, catalogo, cancellationToken);
+        if (User.IsInRole(Roles.Cliente) && resultado is ViewResult { Model: BusquedaCatalogoViewModel b })
+        {
+            var favs = await comunidad.IdsFavoritosAsync(ulong.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), cancellationToken);
+            foreach (var t in b.Resultados) t.es_favorito = favs.Contains(t.id);
+        }
+        return resultado;
+    }
 
     /// <summary>
     /// GET <c>/Home/Paquetes</c>. Devuelve la <b>página</b> <c>Paquetes.cshtml</c>

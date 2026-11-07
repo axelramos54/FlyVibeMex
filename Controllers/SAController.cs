@@ -15,6 +15,7 @@ namespace FlyVibeMex.Controllers;
 /// <item>SAController.cs: inicio, usuarios y roles.</item>
 /// <item>SAController.Catalogos.cs: ubicaciones, métodos de pago y bancos.</item>
 /// <item>SAController.Contenido.cs: bitácora y contenido del sitio.</item>
+/// <item>SAController.Estadisticas.cs: panel de estadísticas de ventas.</item>
 /// </list>
 /// El SA sale SIEMPRE de la cookie (nunca del formulario). Todo cambio queda en la bitácora.
 /// </remarks>
@@ -29,14 +30,16 @@ public partial class SAController : Controller
     private readonly ISACatalogosService _catalogos;
     private readonly ISABitacoraService _bitacora;
     private readonly IContenidoSitioService _contenido;
+    private readonly ISAEstadisticasService _estadisticas;
 
     public SAController(ISAUsuariosService usuarios, ISACatalogosService catalogos, ISABitacoraService bitacora,
-        IContenidoSitioService contenido)
+        IContenidoSitioService contenido, ISAEstadisticasService estadisticas)
     {
         _usuarios = usuarios;
         _catalogos = catalogos;
         _bitacora = bitacora;
         _contenido = contenido;
+        _estadisticas = estadisticas;
     }
 
     // GET /Admin/SA

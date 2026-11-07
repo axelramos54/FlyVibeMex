@@ -81,6 +81,11 @@ public class FlyVibeMexDbContext : DbContext
     public DbSet<TelegramVinculos> TelegramVinculos => Set<TelegramVinculos>();
     public DbSet<TelegramAvisos> TelegramAvisos => Set<TelegramAvisos>();
 
+    public DbSet<TiposHuesped> TiposHuesped => Set<TiposHuesped>();
+    public DbSet<DetalleReservacionHuesped> DetalleReservacionHuespedes => Set<DetalleReservacionHuesped>();
+    public DbSet<HospedajeEtiqueta> HospedajeEtiquetas => Set<HospedajeEtiqueta>();
+    public DbSet<Favoritos> Favoritos => Set<Favoritos>();
+    public DbSet<Resenas> Resenas => Set<Resenas>();
     /// <summary>
     /// Convenciones globales aplicadas a TODAS las entidades antes de construir el modelo.
     /// </summary>
@@ -174,9 +179,6 @@ public class FlyVibeMexDbContext : DbContext
             e.Property(x => x.estado).HasMaxLength(60);
             e.Property(x => x.municipio_ciudad).HasMaxLength(100);
             e.Property(x => x.codigo_postal).HasMaxLength(10);
-
-            // FIXME (modelo): `correo` no existe en la tabla ubicaciones del script; se ignora para que EF no la pida.
-            e.Ignore(x => x.correo);
         });
     }
 
@@ -246,6 +248,33 @@ public class FlyVibeMexDbContext : DbContext
 
             e.HasOne<Servicios>().WithOne().HasForeignKey<Hospedajes>(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Ubicaciones>().WithMany().HasForeignKey(x => x.id_ubicacion).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TiposHuesped>(e => { e.ToTable("tipos_huesped"); e.HasKey(x => x.id); });
+        modelBuilder.Entity<DetalleReservacionHuesped>(e =>
+        {
+            e.ToTable("detalle_reservacion_huesped");
+            e.HasKey(x => new { x.id_detalle, x.id_tipo_huesped });
+        });
+        modelBuilder.Entity<HospedajeEtiqueta>(e =>
+        {
+            e.ToTable("hospedaje_etiquetas");
+            e.HasKey(x => new { x.id_servicio, x.etiqueta });
+            e.Property(x => x.etiqueta).HasMaxLength(30).IsUnicode(false);
+            e.HasOne<Hospedajes>().WithMany().HasForeignKey(x => x.id_servicio).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Favoritos>(e =>
+        {
+            e.ToTable("favoritos");
+            e.HasKey(x => new { x.id_usuarioglobal, x.id_servicio });
+        });
+        modelBuilder.Entity<Resenas>(e =>
+        {
+            e.ToTable("resenas");
+            e.HasKey(x => x.id);
+            e.Property(x => x.titulo).HasMaxLength(100);
+            e.Property(x => x.comentario).HasMaxLength(1000);
+            e.Property(x => x.estado).HasMaxLength(10);
         });
 
         modelBuilder.Entity<Vehiculos>(e =>
@@ -494,7 +523,10 @@ public class FlyVibeMexDbContext : DbContext
         modelBuilder.Entity<SolicitudesSoporte>(e =>
         {
             // Tickets de la regla R9 (también los crea el bot, ver docs/06). Titular: `id_usuarioglobal`.
-            e.ToTable("solicitudes_soporte");
+            // HasTrigger: sql/08_trigger_asignacion_tickets.sql puede crear un trigger AFTER INSERT en esta tabla. Sin
+            // esta declaración EF Core inserta con "OUTPUT INSERTED.id", que SQL Server rechaza si la tabla tiene un
+            // trigger (error 334): crear un ticket desde la web fallaría. Si el trigger no existe, no cambia nada.
+            e.ToTable("solicitudes_soporte", t => t.HasTrigger("tr_solicitudes_soporte_asignar_agente"));
             e.HasKey(x => x.id);
             e.Property(x => x.id).ValueGeneratedOnAdd();
             e.Property(x => x.tipo).HasMaxLength(20);

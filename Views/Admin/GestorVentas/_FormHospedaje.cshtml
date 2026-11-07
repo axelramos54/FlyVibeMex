@@ -45,4 +45,18 @@
         <input asp-for="hora_salida" type="time" asp-format="{0:HH:mm}" class="form-control" required />
         <span asp-validation-for="hora_salida" class="text-danger small"></span>
     </div>
+        <div class="col-12">
+        <label class="form-label">Etiquetas del hotel (para los filtros)</label>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var (clave, nombre) in EtiquetasHospedaje.Todas)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="etiquetas" id="adm_et_@clave" value="@clave"
+                           checked="@Model.etiquetas.Contains(clave)" />
+                    <label class="form-check-label" for="adm_et_@clave">@nombre</label>
+                </div>
+            }
+        </div>
+        <div class="form-text">Tamaño: pequeña &lt; 20 m², mediana 20–35 m², grande &gt; 35 m². Marca solo una de las tres.</div>
+    </div>
 </div>

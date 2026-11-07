@@ -49,6 +49,19 @@ public sealed class CatalogoService : ICatalogoService
             .Where(c => b.tipo != TipoCatalogo.Vuelo || b.origen is null || c.id_origen == b.origen)
             .ToList();
 
+        if (b.tipo == TipoCatalogo.Hospedaje)
+        {
+            b.etiquetas = b.etiquetas.Where(EtiquetasHospedaje.EsValida).Distinct().ToList();   // nunca confiar en el navegador
+            b.TiposHabitacion = candidatos.Select(c => c.tipo_habitacion?.Trim())
+                .Where(t => !string.IsNullOrEmpty(t)).Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t, StringComparer.Create(Es, ignoreCase: true)).ToList();
+            filtrados = filtrados
+                .Where(c => string.IsNullOrWhiteSpace(b.tipo_habitacion)
+                            || string.Equals(c.tipo_habitacion?.Trim(), b.tipo_habitacion.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Where(c => b.etiquetas.All(e => c.etiquetas.Contains(e)))
+                .ToList();
+        }
+
         b.BusquedaConFechas = aplicarFechas && b.desde is not null;
         var (inicioVentana, finVentana) = VentanaSeccion(b);
         var disponibilidad = await DisponibilidadAsync(null, b.tipo, inicioVentana, finVentana, cancellationToken);
@@ -77,6 +90,7 @@ public sealed class CatalogoService : ICatalogoService
                 imagen_ruta = c.imagen_ruta,
                 moneda = c.moneda,
                 ubicacion = c.ubicacion_texto,
+                etiquetas = c.etiquetas,
                 fecha_texto = c.tipo == TipoCatalogo.Vuelo
                     ? $"{c.codigo_vuelo} · sale {c.salida!.Value.ToString("ddd dd/MM HH:mm", Es)}"
                     : null
@@ -105,7 +119,11 @@ public sealed class CatalogoService : ICatalogoService
 
             tarjetas.Add(tarjeta);
         }
-
+        static decimal? PrecioDe(TarjetaServicioViewModel t) => t.total ?? t.precio_unitario;
+        tarjetas = tarjetas
+            .Where(t => b.precio_min is null || (PrecioDe(t) is decimal p1 && p1 >= b.precio_min))
+            .Where(t => b.precio_max is null || (PrecioDe(t) is decimal p2 && p2 <= b.precio_max))
+            .ToList();
         b.Resultados = Ordenar(tarjetas, b.orden);
     }
 
@@ -371,6 +389,8 @@ public sealed class CatalogoService : ICatalogoService
         public string ubicacion_texto { get; set; } = string.Empty;
         public string? imagen_ruta { get; set; }
         public int capacidad { get; set; } = int.MaxValue;
+
+        public List<string> etiquetas { get; set; } = new();
         public TimeOnly? hora_entrada { get; set; }
         public TimeOnly? hora_salida { get; set; }
         public DateTime? salida { get; set; }
@@ -492,6 +512,12 @@ public sealed class CatalogoService : ICatalogoService
                     h.categoria
                 })
             .ToDictionaryAsync(h => h.id_servicio, cancellationToken);
+        
+        var etiquetasPorHotel = (await _db.HospedajeEtiquetas.AsNoTracking()
+                .Where(e => servicios.Any(s => s.id == e.id_servicio))
+                .ToListAsync(cancellationToken))
+            .GroupBy(e => e.id_servicio)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.etiqueta).OrderBy(e => e).ToList());
 
         foreach (var c in candidatos)
         {
@@ -502,6 +528,7 @@ public sealed class CatalogoService : ICatalogoService
             c.hora_salida = hosp.hora_salida;
             c.tipo_habitacion = hosp.tipo_habitacion;
             c.categoria = hosp.categoria;
+            c.etiquetas = etiquetasPorHotel.GetValueOrDefault(c.id) ?? new List<string>();
         }
     }
 

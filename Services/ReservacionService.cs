@@ -79,6 +79,7 @@ public sealed class ReservacionService : IReservacionService
             .ToListAsync(cancellationToken);
 
         vm.Tarjetas = await TarjetasVigentesAsync(idUsuario, cancellationToken);
+        vm.TiposHuesped = await _db.TiposHuesped.AsNoTracking().Where(t => t.activo).OrderBy(t => t.id).ToListAsync(cancellationToken);
         vm.Bancos = await BancosCatalogo.OpcionesAsync(_db, solicitud.id_institucion, cancellationToken);
         return vm;
     }
@@ -97,6 +98,10 @@ public sealed class ReservacionService : IReservacionService
             return ResultadoPago.Error(string.Empty, "Este servicio ya no está disponible para esas fechas.", cambio: true);
         if (!cot.Disponible)
             return ResultadoPago.Error(string.Empty, cot.motivo ?? "Ya no hay cupo para esas fechas.", cambio: true);
+            
+        var necesidades = pago.huespedes.Where(x => x.Value > 0).ToDictionary(x => x.Key, x => x.Value);
+        if (necesidades.Values.Sum() > pago.personas)
+            return ResultadoPago.Error(nameof(pago.huespedes), "Los huéspedes con atención especial no pueden ser más que las personas.");
 
         var (promocion, errorPromocion) = await AplicarPromocionAsync(pago.codigo, pago.id, cot.subtotal, cancellationToken);
         if (errorPromocion is not null)
@@ -175,7 +180,7 @@ public sealed class ReservacionService : IReservacionService
         {
             var estrategia = _db.Database.CreateExecutionStrategy();
             var codigo = await estrategia.ExecuteAsync(() =>
-                GuardarCompraAsync(idUsuario, pago.id, cot, promocion, idMetodo, idTarjetaGuardada, tarjetaNueva, cancellationToken));
+                GuardarCompraAsync(idUsuario, pago.id, cot, promocion, idMetodo, idTarjetaGuardada, tarjetaNueva, necesidades, cancellationToken));
 
             _logger.LogInformation("Reservación {Codigo} creada por el usuario {IdUsuario}.", codigo, idUsuario);
             return new ResultadoPago { CodigoReserva = codigo };
@@ -200,6 +205,7 @@ public sealed class ReservacionService : IReservacionService
     /// </summary>
     private async Task<string> GuardarCompraAsync(ulong idUsuario, ulong idServicio, CotizacionServicio cot,
         PromocionAplicada? promocion, ushort idMetodo, ulong? idTarjetaGuardada, TarjetasUsuarios? tarjetaNueva,
+        IReadOnlyDictionary<short, int> necesidades,
         CancellationToken cancellationToken)
     {
         _db.ChangeTracker.Clear();
@@ -266,14 +272,18 @@ public sealed class ReservacionService : IReservacionService
             subtotal = cot.subtotal,
             descuento_total = descuento,
             total = cot.subtotal - descuento,
-            creada_en = ahora
+            creada_en = ahora,
+            // Misma fecha que el alta a propósito: el paso a CONFIRMADA del punto (f) ocurre en esta misma
+            // transacción y es parte de crear la reserva, no una modificación posterior, así que ahí no se vuelve
+            // a mover. Una reserva que nadie tocó después de reservar tiene actualizada_en == creada_en.
+            actualizada_en = ahora
         };
         _db.Reservaciones.Add(reservacion);
         await _db.SaveChangesAsync(cancellationToken);
 
         // d) Detalle con snapshot de precio, fechas, descripción y política de cancelación (R4).
         var descripcion = $"{servicio.nombre} — {cot.resumen}";
-        _db.DetallesReservacion.Add(new DetallesReservacion
+        var detalle = new DetallesReservacion
         {
             id_reservacion = reservacion.id,
             id_servicio = idServicio,
@@ -289,7 +299,8 @@ public sealed class ReservacionService : IReservacionService
             horas_reembolso_total = servicio.horas_reembolso_total,
             porcentaje_reembolso_tardio = servicio.porcentaje_reembolso_tardio,
             politica_cancelacion = servicio.politica_cancelacion
-        });
+        };
+        _db.DetallesReservacion.Add(detalle);
         _db.HistorialEstadosReservacion.Add(new HistorialEstadoReservacion
         {
             id_reservacion = reservacion.id,
@@ -314,6 +325,12 @@ public sealed class ReservacionService : IReservacionService
         };
         _db.Pagos.Add(pagoBd);
         await _db.SaveChangesAsync(cancellationToken);
+        if (necesidades.Count > 0)
+        {
+            _db.DetalleReservacionHuespedes.AddRange(necesidades.Select(x => new DetalleReservacionHuesped
+                { id_detalle = detalle.id, id_tipo_huesped = x.Key, cantidad = (short)x.Value }));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
 
         _db.HistorialEstadosPago.Add(new HistorialEstadoPago
         {

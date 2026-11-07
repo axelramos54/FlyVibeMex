@@ -61,6 +61,32 @@
                         <label asp-for="orden">Ordenar por</label>
                         <select asp-for="orden" asp-items="Html.GetEnumSelectList<OrdenCatalogo>()" class="form-select"></select>
                     </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="tipo_habitacion">Tipo de habitación</label>
+                        <select asp-for="tipo_habitacion" class="form-select">
+                            <option value="">Todos</option>
+                            @foreach (var t in Model.TiposHabitacion)
+                            {
+                                <option value="@t" selected="@string.Equals(t, Model.tipo_habitacion, StringComparison.OrdinalIgnoreCase)">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6"><label asp-for="precio_min">Precio mín.</label><input asp-for="precio_min" type="number" min="0" step="50" class="form-control" /></div>
+                        <div class="col-6"><label asp-for="precio_max">Precio máx.</label><input asp-for="precio_max" type="number" min="0" step="50" class="form-control" />
+                            <span asp-validation-for="precio_max" class="text-danger small"></span></div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="d-block mb-1">Características</label>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var (clave, nombre) in EtiquetasHospedaje.Todas)
+                            {
+                                <input type="checkbox" class="btn-check" name="etiquetas" id="et_@clave" value="@clave"
+                                    checked="@Model.etiquetas.Contains(clave)" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="et_@clave">@nombre</label>
+                            }
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-search-submit">Buscar hoteles</button>
                     <a asp-action="Hoteles" class="d-block text-center mt-2 small">Limpiar búsqueda</a>
                 </form>
@@ -73,4 +99,9 @@
         </div>
 
     </section>
+        <div class="mt-5 mb-5" id="goldstay_seccion">
+        <h2 class="h4 mb-3">También en GoldStay</h2>
+        @* Widget de GoldStay: token de un solo uso, esta página no se puede cachear. *@
+        <partial name="_WidgetFlyVibe" />
+    </div>
 </div>

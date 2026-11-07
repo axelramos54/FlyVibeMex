@@ -237,4 +237,35 @@
             }
         </div>
     </div>
+    <section class="mt-5" id="resenas">
+        <h2 class="h4">Reseñas <small class="text-muted">@(((decimal)ViewBag.Promedio).ToString("0.0")) ★ · @ViewBag.TotalResenas</small></h2>
+
+        @if (User.IsInRole(Roles.Cliente))
+        {
+            <form asp-controller="Resenas" asp-action="Crear" method="post" class="card card-body mb-4">
+                <input type="hidden" name="id_servicio" value="@Model.id" />
+                <label class="form-label">Calificación</label>
+                <select name="calificacion" class="form-select mb-2" required>
+                    @for (var i = 5; i >= 1; i--) { <option value="@i">@(new string('★', i)) (@i)</option> }
+                </select>
+                <input name="titulo" class="form-control mb-2" maxlength="100" placeholder="Título (opcional)" />
+                <textarea name="comentario" class="form-control mb-2" maxlength="1000" rows="3" required placeholder="Cuéntanos tu experiencia"></textarea>
+                <button class="btn btn-primary align-self-start">Publicar reseña</button>
+            </form>
+        }
+
+        @foreach (var r in (List<ResenaFila>)ViewBag.Resenas)
+        {
+            <article class="border-bottom py-3">
+                <strong>@r.autor</strong> <span class="text-warning">@(new string('★', r.calificacion))</span>
+                <small class="text-muted">@r.creada_en.ToString("dd/MM/yyyy")</small>
+                @if (!string.IsNullOrWhiteSpace(r.titulo)) { <h3 class="h6 mt-1">@r.titulo</h3> }
+                <p class="mb-0">@r.comentario</p>
+            </article>
+        }
+        @if (Roles.Puede(User, Roles.PanelResenas))
+        {
+            <a class="btn btn-sm btn-outline-secondary mt-3" href="/Admin/Resenas/@Model.id">Moderar reseñas</a>
+        }
+    </section>
 </div>

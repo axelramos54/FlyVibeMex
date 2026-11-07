@@ -34,6 +34,8 @@ namespace FlyVibeMex.Models
 
         [Range(1, BusquedaCatalogoViewModel.MaxHabitaciones, ErrorMessage = "Debe ser entre 1 y 10.")]
         public int habitaciones { get; set; } = 1;
+        /// <summary>id de tipos_huesped → cantidad. Llega como huespedes[1]=2&huespedes[3]=1.</summary>
+        public Dictionary<short, int> huespedes { get; set; } = new();
 
         /// <summary>Código de promoción (opcional).</summary>
         [StringLength(30, ErrorMessage = "Máximo 30 caracteres.")]
@@ -98,6 +100,7 @@ namespace FlyVibeMex.Models
     public class ResumenReservaViewModel
     {
         public PagoFormViewModel Solicitud { get; set; } = new();
+        public List<TiposHuesped> TiposHuesped { get; set; } = new();
         public DetalleServicioViewModel Servicio { get; set; } = new();
 
         /// <summary>Precio y cupo recalculados (null o no disponible = no se puede pagar).</summary>

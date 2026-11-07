@@ -1,0 +1,29 @@
+@*
+ Views/Shared/_EventoWidget.cshtml — declara un aviso del widget hacia GoldStay (Fase 4).
+
+ Escribe el evento como JSON en la página; script_widget.js (que carga _LayoutWidget) lo lee al cargar y lo
+ manda con window.parent.postMessage. Si la página NO está dentro de un iframe, el script no hace nada, así
+ que la misma vista sirve para el sitio normal y para el widget.
+
+ Uso en una vista:
+   <partial name="_EventoWidget"
+            model='new EventoWidget("reserva.confirmada", new { codigo = Model.codigo_reserva, total = Model.total })' />
+
+ Por qué JSON en un <script type="application/json"> y no un <script> con código generado: así los datos
+ NUNCA se interpretan como JavaScript. Razor escaparía el texto, pero generar código a partir de datos es
+ justo la forma de abrir un XSS, y JsonSerializer con HtmlEncode cierra además el caso de "</script>" dentro
+ de un valor.
+*@
+@using System.Text.Encodings.Web
+@using System.Text.Json
+@model FlyVibeMex.Models.EventoWidget
+
+@{
+    // JavaScriptEncoder.Default escapa <, > y &: un valor que contenga "</script>" queda como "</script>"
+    // y no puede cerrar la etiqueta.
+    var opcionesJson = new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default };
+
+    var json = JsonSerializer.Serialize(new { tipo = Model.Tipo, datos = Model.Datos }, opcionesJson);
+}
+
+<script id="widget-evento" type="application/json">@Html.Raw(json)</script>

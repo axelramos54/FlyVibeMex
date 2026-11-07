@@ -244,6 +244,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
             case "HOSPEDAJE":
             {
                 var h = await _db.Hospedajes.AsNoTracking().FirstOrDefaultAsync(x => x.id_servicio == id, cancellationToken);
+                var etiquetasActuales = await _db.HospedajeEtiquetas.AsNoTracking().Where(x => x.id_servicio == id)
+                    .Select(x => x.etiqueta).ToListAsync(cancellationToken);
                 formulario = new HospedajeFormViewModel
                 {
                     id_ubicacion = h?.id_ubicacion,
@@ -252,6 +254,7 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                     capacidad_huespedes = h?.capacidad_huespedes ?? 1,
                     hora_entrada = h?.hora_entrada,
                     hora_salida = h?.hora_salida,
+                    etiquetas = etiquetasActuales,
                     imagen_actual = s.imagen_ruta   // L6: vive en el servicio
                 };
                 break;
@@ -388,6 +391,8 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                             hora_entrada = h.hora_entrada!.Value,
                             hora_salida = h.hora_salida!.Value
                         });
+                        _db.HospedajeEtiquetas.AddRange(h.etiquetas.Where(EtiquetasHospedaje.EsValida).Distinct()
+                            .Select(e => new HospedajeEtiqueta { id_servicio = servicio.id, etiqueta = e }));
                         break;
                     case VehiculoFormViewModel ve:
                         _db.Vehiculos.Add(new Vehiculos
@@ -546,6 +551,11 @@ public sealed class GestorCatalogoService : IGestorCatalogoService
                         fila.capacidad_huespedes = h.capacidad_huespedes;
                         fila.hora_entrada = h.hora_entrada!.Value;
                         fila.hora_salida = h.hora_salida!.Value;
+                        var actuales = await _db.HospedajeEtiquetas.Where(x => x.id_servicio == id).ToListAsync(cancellationToken);
+                        var nuevas = h.etiquetas.Where(EtiquetasHospedaje.EsValida).Distinct().ToHashSet();
+                        _db.HospedajeEtiquetas.RemoveRange(actuales.Where(x => !nuevas.Contains(x.etiqueta)));
+                        _db.HospedajeEtiquetas.AddRange(nuevas.Where(e => actuales.All(x => x.etiqueta != e))
+                            .Select(e => new HospedajeEtiqueta { id_servicio = id, etiqueta = e }));
                         break;
                     }
                     case VehiculoFormViewModel ve:
