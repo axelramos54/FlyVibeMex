@@ -50,7 +50,7 @@ builder.Services.AddAntiforgery(o =>
     if (opcionesIntegracion.EstaActiva)
     {
         o.Cookie.SameSite = SameSiteMode.None;
-        o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // antes: Always
     }
 });
 // =============================================================================================

@@ -33,7 +33,11 @@
 
     <label asp-for="password">
         Contraseña
-        <input asp-for="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" maxlength="128" required />
+        <span class="d-flex align-items-center gap-2">
+            <input asp-for="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" maxlength="128" required />
+            <button type="button" id="btn_mostrar_password" class="btn btn-sm btn-outline-secondary text-nowrap"
+                    aria-controls="password" aria-pressed="false">Mostrar</button>
+        </span>
         <span asp-validation-for="password" class="text-danger small fw-normal"></span>
     </label>
 
@@ -50,6 +54,23 @@
     <span class="small text-muted">¿Aún no tienes cuenta?</span>
     <hr class="flex-grow-1 m-0" />
 </div>
+
+<script>
+    (function () {
+        var campo = document.getElementById('password');
+        var boton = document.getElementById('btn_mostrar_password');
+        if (!campo || !boton) return;
+
+        boton.addEventListener('click', function (e) {
+            e.preventDefault();
+            var visible = campo.type === 'text';
+            campo.type = visible ? 'password' : 'text';
+            boton.textContent = visible ? 'Mostrar' : 'Ocultar';
+            boton.setAttribute('aria-pressed', visible ? 'false' : 'true');
+            campo.focus();
+        });
+    })();
+</script>
 
 @* El registro es una página completa en /Crearusuario. *@
 <a asp-controller="Crearusuario" asp-action="Index" id="btn_crear_cuenta" class="btn w-100">Crear nueva cuenta</a>
